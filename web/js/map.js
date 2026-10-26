@@ -72,7 +72,7 @@
           filter: ['match', ['get', 'class'], ['primary', 'secondary', 'tertiary', 'minor'], true, false],
           layout: { 'symbol-placement': 'line', 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': ['Noto Sans Regular'], 'text-size': z([13, 11, 18, 14]) },
           paint: { 'text-color': c.text, 'text-halo-color': c.halo, 'text-halo-width': 1.6 } },
-        { id: 'peak', type: 'symbol', source: 'omt', 'source-layer': 'mountain_peak', minzoom: 11,
+        { id: 'peak', type: 'symbol', source: 'omt', 'source-layer': 'mountain_peak', minzoom: 11, filter: ['all', ['has', 'name'], ['==', ['get', 'class'], 'peak']],
           layout: { 'text-field': ['concat', '▲ ', ['coalesce', ['get', 'name:en'], ['get', 'name']]], 'text-font': ['Noto Sans Italic'], 'text-size': 11, 'text-anchor': 'top' },
           paint: { 'text-color': c.text, 'text-halo-color': c.halo, 'text-halo-width': 1.4, 'text-opacity': 0.8 } },
         { id: 'place-village', type: 'symbol', source: 'omt', 'source-layer': 'place', minzoom: 10, filter: ['match', ['get', 'class'], ['village', 'hamlet', 'suburb'], true, false],
