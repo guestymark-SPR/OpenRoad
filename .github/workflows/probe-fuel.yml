@@ -1,0 +1,14 @@
+name: Check live fuel price sources
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: France (prix-carburants, official open data)
+        run: |
+          U='https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records'
+          curl -fsS -G "$U" --data-urlencode "where=within_distance(geom, geom'POINT(1.85 50.95)', 10km)" --data-urlencode "limit=3" -o fr.json && python3 - <<'PY'
+          import json; j=json.load(open('fr.json')); print('total', j.get('total_count'))
+          r=j['results'][0]; print('FIELDS', sorted(r.keys()))
+          for r in j['results']: print('ROW', {k: r.get(k) for k in ['id','adresse','ville','geom','sp95_prix','e10_prix','sp98_prix','gazole_prix','sp95_maj','e10_maj','sp98_maj']})
+          PY
