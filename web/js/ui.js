@@ -132,11 +132,12 @@
     const c = OR.cfg;
     sheet('<h2>Map</h2><div class="seg big" id="mt"><button data-v="road" class="' + (c.mapType !== 'satellite' ? 'on' : '') + '">' + ic('map') + 'Road</button><button data-v="satellite" class="' + (c.mapType === 'satellite' ? 'on' : '') + '">' + ic('layers') + 'Satellite</button></div>' +
       '<p class="small muted">Satellite pictures need a signal. Offline packs show the road map.</p>' +
-      '<button class="btn wide" id="radarTog">' + ic('cloud') + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Show rain radar') + '</button><p class="small muted">Rain over the last 2 hours from RainViewer (free for personal use). It doesn\'t forecast, and it\'s coarse when zoomed in.</p>' +
+      '<button class="btn wide" id="roughTog">' + ic('warn') + (OR.roughOn && OR.roughOn() ? 'Hide rough roads' : 'Show rough roads I\'ve ridden') + '</button>' + '<button class="btn wide" id="radarTog">' + ic('cloud') + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Show rain radar') + '</button><p class="small muted">Rain over the last 2 hours from RainViewer (free for personal use). It doesn\'t forecast, and it\'s coarse when zoomed in.</p>' +
       '<div class="seg" id="th">' + [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']].map(([k, l]) => '<button data-v="' + k + '" class="' + (c.theme === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
       '<p class="small muted">Auto switches to night colours after sunset where you are.</p>', b => {
       $$('#mt button', b).forEach(x => x.onclick = () => { OR.setMapType(x.dataset.v); closeSheet(); });
       const rb = $('#radarTog', b); if (rb) rb.onclick = () => { closeSheet(); OR.toggleRadar(); };
+      const rr = $('#roughTog', b); if (rr) rr.onclick = () => { closeSheet(); OR.showRough(!OR.roughOn()); };
       $$('#th button', b).forEach(x => x.onclick = () => { c.theme = x.dataset.v; OR.saveCfg(); OR.applyTheme(); closeSheet(); });
     });
   }
@@ -543,7 +544,7 @@
         new Date(r.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + '</span>' +
         '<div class="kv"><span><b>' + OR.fmtDist(r.dist) + '</b>distance</span><span><b>' + OR.fmtTime(r.moving) + '</b>moving</span><span><b>' + (r.moving ? OR.speed(r.dist / r.moving) : 0) + '</b>avg ' + OR.speedUnit() + '</span><span><b>' + OR.speed(r.max) + '</b>max ' + OR.speedUnit() + '</span>' +
         (r.leanL || r.leanR ? '<span><b>' + (r.leanL || 0) + '° / ' + (r.leanR || 0) + '°</b>lean L / R</span>' : '') + '</div>' +
-        '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small" data-a="replay" data-id="' + r.id + '">Replay</button><button class="btn small" data-a="card" data-id="' + r.id + '">Picture</button><button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="route" data-id="' + r.id + '">Save as route</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
+        '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small" data-a="replay" data-id="' + r.id + '">Replay</button><button class="btn small" data-a="card" data-id="' + r.id + '">Picture</button><button class="btn small" data-a="coach" data-id="' + r.id + '">Corners</button><button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="route" data-id="' + r.id + '">Save as route</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
         : '<div class="empty">' + ic('rides', 'big') + '<p>Every ride is recorded with distance, time, speeds and an estimate of your lean angle. Recording carries on with the screen off in the Android app.</p></div>') +
       '<p class="small muted">Lean angle is estimated from GPS speed and how sharply you turn, so treat it as a guide rather than a measurement.</p>';
     $('#freeRide', v).onclick = () => startRide(null);
@@ -555,6 +556,7 @@
       if (b.dataset.a === 'gpx') OR.saveFile(OR.fileName(r.name) + '.gpx', OR.toGpx({ name: r.name, pts, times: OR.rides.times(r) }));
       if (b.dataset.a === 'replay') OR.replayRide(r);
       if (b.dataset.a === 'card') OR.rideCard(r);
+      if (b.dataset.a === 'coach') OR.cornerCoach(r);
       if (b.dataset.a === 'route') { try { const rt = await OR.routeFromTrack(pts, r.name); OR.routes.save(rt); OR.toast('Saved to Saved routes'); } catch (e) { OR.toast('Could not make a route: ' + e.message, 6000); } }
       if (b.dataset.a === 'del' && confirm('Delete this ride?')) { OR.rides.del(r.id); renderRides(); }
     });

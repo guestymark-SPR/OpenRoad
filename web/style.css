@@ -533,3 +533,10 @@ body.riding #menuBtn{display:none}
 .golden span,.dry span{flex:1;font-size:14px}
 .pricetag{font-style:normal;background:#0e9f57;color:#fff;border-radius:8px;padding:1px 6px;font-size:13px;margin-left:4px}
 .cheap{padding-left:20px;margin:6px 0}.cheap li{margin:4px 0}
+
+.ghost-dot{width:34px;height:34px;border-radius:17px;background:rgba(124,58,237,.55);border:2px dashed #fff;display:flex;align-items:center;justify-content:center}
+.ghost-dot svg{width:22px;height:22px;stroke:#fff}.ghost-dot svg .d{fill:#fff;opacity:.3}
+#ghostChip{position:absolute;right:10px;top:calc(150px + var(--safe-t));display:flex;gap:6px;align-items:center;padding:8px 12px;border-radius:14px;box-shadow:var(--shadow);font-size:15px;color:#fff}
+#ghostChip svg{width:20px;height:20px;stroke:#fff}#ghostChip.ahead{background:#0e9f57}#ghostChip.behind{background:#7c3aed}
+.li.cc{display:flex;gap:10px;align-items:flex-start;text-align:left}.li.cc small{display:block;color:var(--ink-2);margin-top:2px}
+.ccn{flex:none;width:26px;height:26px;border-radius:13px;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}.ccn.g{background:#0e9f57}.ccn.h{background:#ef6c00}

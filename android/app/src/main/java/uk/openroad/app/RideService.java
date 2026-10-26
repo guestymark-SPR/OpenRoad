@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Locale;
 
 /** Keeps GPS recording the ride while the screen is off or another app is in front. */
-public class RideService extends Service implements LocationListener {
+public class RideService extends Service implements LocationListener, android.hardware.SensorEventListener {
     static final String ACTION_START = "uk.openroad.app.RIDE_START", ACTION_STOP = "uk.openroad.app.RIDE_STOP";
     private static final String CHANNEL = "ride";
     private static final int NOTE_ID = 11;
@@ -35,6 +35,24 @@ public class RideService extends Service implements LocationListener {
     private String name = "Ride";
     private double dist = 0; private Location last;
     private long lastNote = 0;
+    // rough road: big jolts while riding, compared with the usual vibration of the bike on that ride
+    private static final List<double[]> jolts = new ArrayList<>(); // [lon, lat, g, speed, time]
+    private float speedNow = 0; private double rms = 0.5; private long lastJolt = 0;
+    static String joltsSince(long t) {
+        StringBuilder sb = new StringBuilder("[");
+        synchronized (jolts) { boolean f = true; for (double[] j : jolts) { if (j[4] <= t) continue; if (!f) sb.append(','); f = false; sb.append(String.format(Locale.US, "[%.6f,%.6f,%.2f,%.1f,%d]", j[0], j[1], j[2], j[3], (long) j[4])); } }
+        return sb.append(']').toString();
+    }
+    @Override public void onSensorChanged(android.hardware.SensorEvent e) {
+        double g = Math.sqrt(e.values[0] * e.values[0] + e.values[1] * e.values[1] + e.values[2] * e.values[2]) / 9.81, dev = Math.abs(g - 1);
+        rms = rms * 0.995 + dev * 0.005; // the bike's normal shake, over the last few seconds
+        long now = System.currentTimeMillis();
+        if (speedNow > 4 && dev > Math.max(1.2, rms * 5) && now - lastJolt > 2000 && last != null) {
+            lastJolt = now;
+            synchronized (jolts) { jolts.add(new double[]{last.getLongitude(), last.getLatitude(), dev, speedNow, now}); if (jolts.size() > 3000) jolts.remove(0); }
+        }
+    }
+    @Override public void onAccuracyChanged(android.hardware.Sensor s, int a) { }
 
     static String pointsSince(long t) {
         StringBuilder sb = new StringBuilder("[");
@@ -73,12 +91,15 @@ public class RideService extends Service implements LocationListener {
             try { ((LocationManager) getSystemService(LOCATION_SERVICE)).requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, this, Looper.getMainLooper()); } catch (Exception ignored) { }
             running = true;
             CrashWatch.start(this, "ride");
+            synchronized (jolts) { jolts.clear(); }
+            try { android.hardware.SensorManager sm = (android.hardware.SensorManager) getSystemService(SENSOR_SERVICE); sm.registerListener(this, sm.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER), android.hardware.SensorManager.SENSOR_DELAY_GAME); } catch (Exception ignored) { }
         }
         return START_STICKY;
     }
 
     @Override public void onLocationChanged(Location l) {
         CrashWatch.fix(l);
+        speedNow = l.hasSpeed() ? l.getSpeed() : 0;
         synchronized (points) {
             points.add(new double[]{l.getLongitude(), l.getLatitude(), l.hasSpeed() ? l.getSpeed() : 0, l.getAccuracy(), System.currentTimeMillis()});
             if (points.size() > 40000) points.subList(0, 10000).clear();
@@ -103,6 +124,7 @@ public class RideService extends Service implements LocationListener {
 
     private void stop() {
         running = false;
+        try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(this); } catch (Exception ignored) { }
         CrashWatch.stop("ride");
         try { ((LocationManager) getSystemService(LOCATION_SERVICE)).removeUpdates(this); } catch (Exception ignored) { }
         if (lock != null && lock.isHeld()) lock.release();
@@ -113,6 +135,7 @@ public class RideService extends Service implements LocationListener {
 
     @Override public void onDestroy() {
         running = false;
+        try { ((android.hardware.SensorManager) getSystemService(SENSOR_SERVICE)).unregisterListener(this); } catch (Exception ignored) { }
         CrashWatch.stop("ride");
         try { ((LocationManager) getSystemService(LOCATION_SERVICE)).removeUpdates(this); } catch (Exception ignored) { }
         if (lock != null && lock.isHeld()) lock.release();
