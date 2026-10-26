@@ -1,0 +1,23 @@
+name: Test group ride link
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/app/src/main/java/uk/openroad/app/GroupLink.java', 'tools/grouptest/**', '.github/workflows/test-group.yml']
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Two riders, a stranger and a late joiner on the real servers
+        run: |
+          mkdir -p out
+          javac -d out android/app/src/main/java/uk/openroad/app/GroupLink.java tools/grouptest/GroupTest.java
+          java -cp out GroupTest ssl://broker.hivemq.com:8883 ssl://broker.emqx.io:8883 | tee result.txt
+          grep -E "dave sees|PASSED|FAILED" result.txt | sed 's/^/::notice::/'
