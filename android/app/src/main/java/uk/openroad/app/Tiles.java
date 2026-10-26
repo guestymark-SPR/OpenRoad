@@ -341,7 +341,7 @@ final class Tiles {
                 try {
                     String[] p = t.split("/");
                     int z = Integer.parseInt(p[0]), x = Integer.parseInt(p[1]), y = Integer.parseInt(p[2]);
-                    boolean have = packTile(z, x, y) != null || new File(tileDir, t + ".pbf").exists();
+                    boolean have = packTiles(z, x, y, new ArrayList<>()) || new File(tileDir, t + ".pbf").exists();
                     if (!have && tile(z, x, y, true) == null) failed.incrementAndGet();
                 } catch (Exception e) { failed.incrementAndGet(); }
                 int d = done.incrementAndGet();
