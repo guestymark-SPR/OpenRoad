@@ -617,6 +617,21 @@
     const ok = $('#ciOk', box); if (ok) ok.onclick = () => { OR.checkin.ok(); pageSafety(box); };
     const off = $('#ciOff', box); if (off) off.onclick = () => { OR.checkin.cancel(); pageSafety(box); };
   }
+  // voice commands and watch alerts, at the end of Settings
+  function handsFree(box) {
+    const c = OR.cfg, el = document.createElement('div');
+    el.innerHTML = '<h3>Voice commands</h3><p class="small">Tap the microphone in the ride bar and say what you want. Answers are spoken.</p>' +
+      '<label class="chk"><input type="checkbox" id="sVBtn"' + (c.voiceButton ? ' checked' : '') + '> Use my intercom or headset button to start a voice command while riding</label>' +
+      '<p class="small muted">Most Sena and Cardo intercoms send a play/pause press from their button. While this is on, that press starts a voice command instead of playing music. It depends on the intercom, so try it before a ride.</p>' +
+      '<details><summary>What you can say</summary><ul class="vhelp">' + OR.VOICE_HELP.map(h => '<li><b>' + esc(h[0]) + '</b><br><span>' + esc(h[1]) + '</span></li>').join('') + '</ul></details>' +
+      (A ? '<button id="sVTry" class="btn wide">' + ic('mic') + 'Try a voice command</button>' : '') +
+      '<h3>Watch</h3><label class="chk"><input type="checkbox" id="sWatch"' + (c.watchTurns ? ' checked' : '') + '> Alert my watch at each turn</label>' +
+      '<p class="small muted">Each turn pops up as a notification, so a paired watch (Galaxy Watch and others) buzzes and shows it, for example "Turn left onto the A515". On a Galaxy Watch, turn on "Show phone notifications on watch while using phone" in the Galaxy Wearable app, or it only shows them when the phone screen is off.</p>';
+    box.appendChild(el);
+    $('#sVBtn', el).onchange = e => { c.voiceButton = e.target.checked; OR.saveCfg(); OR.voiceApply(); };
+    $('#sWatch', el).onchange = e => { c.watchTurns = e.target.checked; OR.saveCfg(); if (c.watchTurns && A && A.turnNote) A.turnNote('Watch alerts are on: turns will show here'); };
+    const tr = $('#sVTry', el); if (tr) tr.onclick = () => OR.voiceListen();
+  }
   // crash detection, over-the-limit warning and break reminders, below the check-in
   function safetyExtras(box) {
     const s = OR.safetyCfg(), c = OR.crashContact();
@@ -690,6 +705,7 @@
 
   function pageSettings(box) {
     const c = OR.cfg;
+    setTimeout(() => handsFree(box), 0);
     const seg = (id, val, opts) => '<div class="seg" id="' + id + '">' + opts.map(([k, l]) => '<button data-v="' + k + '" class="' + (val === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
     box.innerHTML = '<h3>Units</h3>' + seg('sUnits', c.units, [['mi', 'Miles and mph'], ['km', 'Kilometres']]) +
       '<h3>Map colours</h3>' + seg('sTheme', c.theme, [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']]) +
@@ -748,6 +764,9 @@
   function refOf(street) { const m = String(street || '').match(/\b([A-Z]{1,3}\d{1,4}[A-Z]?)\b/); return m ? m[1] : ''; }
   function bindHud() {
     $('#hEnd').onclick = () => { if (confirm('End this ride?')) endRide(); };
+    $('#hMic').innerHTML = ic('mic'); $('#hMic').onclick = () => OR.voiceListen();
+    OR.on('voiceState', s => { $('#hMic').classList.toggle('on', s === 'listening' || s === 'thinking'); });
+    OR.on('voiceToggled', updateMute);
     $('#hMute').onclick = () => { OR.cfg.voice = !OR.cfg.voice; OR.saveCfg(); if (!OR.cfg.voice) OR.hush(); updateMute(); OR.toast(OR.cfg.voice ? 'Voice on' : 'Voice off'); };
     $('#hMore').onclick = rideOptions;
     $('#recentre').onclick = () => { OR.ride.follow = true; $('#recentre').hidden = true; };

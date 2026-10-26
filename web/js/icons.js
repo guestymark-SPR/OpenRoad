@@ -12,6 +12,7 @@
     send: '<path class="d" d="M3.5 11.2 20.5 4l-5.6 16.5-3.6-6.9z"/><path d="M3.5 11.2 20.5 4l-5.6 16.5-3.6-6.9z"/><path d="m11.3 13.6 9.2-9.6"/>',
     warn: '<path class="d" d="M12 3.5 21.5 20h-19z"/><path d="M12 3.5 21.5 20h-19z"/><path d="M12 9.5v5M12 17.3v.2"/>',
     qr: '<rect x="3.5" y="3.5" width="7" height="7" rx="1"/><rect x="13.5" y="3.5" width="7" height="7" rx="1"/><rect x="3.5" y="13.5" width="7" height="7" rx="1"/><path class="d" d="M5.5 5.5h3v3h-3zM15.5 5.5h3v3h-3zM5.5 15.5h3v3h-3z"/><path d="M13.5 13.5h3v3M20.5 13.5v.1M13.5 20.5h.1M17 20.5h3.5V17"/>',
+    mic: '<rect class="d" x="9" y="3" width="6" height="11" rx="3"/><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7"/>',
     // a speech bubble (group message)
     chat: '<path class="d" d="M4 5.5h16v10H10l-4 3.5v-3.5H4z"/><path d="M4 5.5h16v10H10l-4 3.5v-3.5H4z"/><path d="M8 9.5h8M8 12.5h5"/>',
     // a rider leaning into a bend (lean angle)

@@ -39,7 +39,7 @@ import java.util.List;
  */
 public class MainActivity extends Activity {
 
-    private static final int REQ_PERMS = 7, REQ_FILE = 42, REQ_SMS = 8;
+    private static final int REQ_PERMS = 7, REQ_FILE = 42, REQ_SMS = 8, REQ_MIC = 9;
     private WebView web;
     private WebView printView; // kept so it isn't collected while printing
     private ValueCallback<Uri[]> fileCallback;
@@ -107,6 +107,8 @@ public class MainActivity extends Activity {
     @Override public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
         super.onRequestPermissionsResult(code, perms, res);
         if (code == REQ_PERMS && bridge.hasLocation() && bridge.wantGps) bridge.gpsOn();
+        if (code == REQ_MIC && res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) Voice.get(this).listen();
+        if (code == REQ_MIC && (res.length == 0 || res[0] != PackageManager.PERMISSION_GRANTED)) js("window.onVoiceError&&onVoiceError('OpenRoad needs the microphone for voice commands')");
         if (code == REQ_PERMS && !bridge.hasLocation()) js("window.onGpsError&&onGpsError('Location permission was refused. Allow it in Settings > Apps > OpenRoad > Permissions.')");
     }
 
@@ -224,6 +226,18 @@ public class MainActivity extends Activity {
                 return "Saved to " + f.getPath() + (share ? " (sharing pictures needs Android 10 or newer)" : "");
             } catch (Exception e) { return "Could not save the picture: " + e.getMessage(); }
         }
+        // voice commands and watch turn alerts
+        @JavascriptInterface public void voiceListen() {
+            Voice.get(MainActivity.this).out = MainActivity.this::js;
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_MIC)); return; }
+            Voice.get(MainActivity.this).listen();
+        }
+        @JavascriptInterface public void voiceButton(boolean on) {
+            Voice.get(MainActivity.this).out = MainActivity.this::js;
+            if (on && checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_PERMS));
+            Voice.get(MainActivity.this).button(on);
+        }
+        @JavascriptInterface public void turnNote(String text) { Voice.get(MainActivity.this).turn(text); }
         // QR codes for group rides
         @JavascriptInterface public void scanQr() {
             runOnUiThread(() -> {

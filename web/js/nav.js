@@ -76,7 +76,7 @@
     const prevLen = k > 0 ? route.man[k - 1].len : 1e9;
     if (ride.off === 0) {
       if (said < 1 && toTurn <= far && toTurn > near * 1.8 && prevLen > far * 0.6 && m.alert) { OR.say('In ' + OR.spokenDist(toTurn) + ', ' + m.alert.charAt(0).toLowerCase() + m.alert.slice(1)); ride.spoken[k] = 1; }
-      else if (said < 2 && toTurn <= near) { OR.say(m.pre); ride.spoken[k] = 2; }
+      else if (said < 2 && toTurn <= near) { OR.say(m.pre); ride.spoken[k] = 2; if (OR.cfg.watchTurns && A && A.turnNote) A.turnNote(m.pre); }
     }
     ride.limit = OR.limitAt(ride.limits, ride.along);
     for (const c of ride.cams || []) {
