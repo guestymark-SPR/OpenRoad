@@ -386,6 +386,7 @@
     OR.emit('routeShown', o[c]);
   }
   OR.showOptions = showOptions;
+  OR.chooseOption = i => chooseOption(i);
   function chooseOption(i) {
     OR.plan.choice = i; OR.plan.route = OR.plan.options[i]; clearRouteExtras();
     if (planMode === 'loop') { OR.plan.wps = OR.plan.route.wps.map(w => Object.assign({}, w)); OR.savePlan(); drawWaypoints(); }
@@ -410,6 +411,22 @@
       else h += f.gaps.map(g => '<p class="small warn">' + (g.first ? 'From the start, with the fuel you have now: ' : '') + OR.fmtDist(g.len) + ' with no fuel near the route, from mile ' + Math.round(g.from / OR.MI) + ' to ' + Math.round(g.to / OR.MI) + '. Shown in red.</p>').join('');
       h += '<p class="small muted">From OpenStreetMap. Opening hours aren\'t always recorded, so check small stations before relying on them.</p></div>';
       setExtras(h);
+      // live prices for stations in France
+      const fr = f.list.filter(p => p.lng > -5.3 && p.lng < 9.7 && p.lat > 41.3 && p.lat < 51.2);
+      if (fr.length) {
+        setExtras(h + '<p class="muted small">Getting today\'s prices for the stations in France…</p>');
+        await OR.addFuelPrices(f.list);
+        const priced = f.list.filter(p => p.price).sort((a, b) => a.price.eur - b.price.eur);
+        if (priced.length) {
+          const avg = priced.reduce((s, p) => s + p.price.eur, 0) / priced.length, tank = parseFloat(OR.cfg.bike.tankL) || 0;
+          h += '<div class="card okc"><b>' + ic('fuel') + 'Cheapest fuel on the route in France</b><ol class="cheap">' + priced.slice(0, 5).map(p => '<li><b>€' + p.price.eur.toFixed(3) + '</b> ' + esc(p.name) + ' <span class="small muted">' + esc(OR.FUEL_GRADES[p.price.grade]) + ', ' + (OR.cfg.units === 'km' ? 'km ' + Math.round(p.at / 1000) : 'mile ' + Math.round(p.at / OR.MI)) + ', ' + OR.priceAge(p.price.at) + '</span></li>').join('') + '</ol>' +
+            (tank && priced.length > 2 ? '<p class="small">Filling up at the cheapest rather than an average-priced one saves about €' + ((avg - priced[0].price.eur) * tank * 0.8).toFixed(2) + ' on a tank.</p>' : '') +
+            '<p class="small muted">Live prices from the French government\'s official open data (prix-carburants). Grade: ' + esc(OR.FUEL_GRADES[OR.cfg.fuelGrade || 'e10']) + ', change it in More, My bike and fuel.</p></div>';
+          f.list.forEach(p => { if (p.price) p.name = p.name + ' €' + p.price.eur.toFixed(2); });
+          OR.setData('pois', OR.poiGeo(f.list));
+        } else h += '<p class="small muted">No live prices matched the French stations on this route.</p>';
+        setExtras(h);
+      }
     } catch (e) { setExtras('<p class="err">Fuel search failed: ' + esc(e.message) + '</p>'); }
   }
   async function weatherCheck(r, depart) {
@@ -502,10 +519,11 @@
     try {
       const r = kind === 'fuel' ? 8000 : 10000;
       const list = await OR.nearby(kind, ll[0], ll[1], r);
+      if (kind === 'fuel') { await OR.addFuelPrices(list).catch(() => { }); if (list.some(p => p.price)) list.sort((a, b) => (a.price ? 0 : 1) - (b.price ? 0 : 1) || a.d - b.d); }
       OR.lastPois = list; OR.setData('pois', OR.poiGeo(list)); OR.poiPick = onPick || null;
       if (!list.length) { OR.toast('None found within ' + OR.fmtDist(r)); return; }
       sheet('<h2>' + OR.KINDS[kind].label + (onPick ? ' near the end of the day' : ' nearby') + '</h2>' + (onPick ? '<p class="small">Tap one to see it, then "Use for this trip".</p>' : '') + '<div class="list">' +
-        list.slice(0, 40).map((p, i) => { const d = OR.poiDetails(p); return '<button class="li" data-i="' + i + '"><b>' + esc(p.name) + '</b><span>' + esc([d.type, OR.fmtDist(p.d) + ' away', d.phone ? 'phone' : '', d.web ? 'website' : ''].filter(Boolean).join(', ')) + '</span></button>'; }).join('') + '</div>',
+        list.slice(0, 40).map((p, i) => { const d = OR.poiDetails(p); return '<button class="li" data-i="' + i + '"><b>' + esc(p.name) + (p.price ? ' <i class="pricetag">' + esc(OR.priceLabel(p)) + '</i>' : '') + '</b><span>' + esc([d.type, OR.fmtDist(p.d) + ' away', p.price ? OR.priceAge(p.price.at) : '', d.phone ? 'phone' : '', d.web ? 'website' : ''].filter(Boolean).join(', ')) + '</span></button>'; }).join('') + '</div>',
         box => $$('.li', box).forEach(b => b.onclick = () => { const p = list[+b.dataset.i]; closeSheet(); if (innerWidth < 900) $('#panel').classList.remove('open'); OR.map.flyTo({ center: [p.lng, p.lat], zoom: 15 }); setTimeout(() => poiPopup({ properties: { id: p.id } }), 650); }));
       if (!OR.ride.on) OR.map.fitBounds(OR.bbox(list.slice(0, 15).map(p => [p.lng, p.lat]).concat([ll])), { padding: 80, maxZoom: 14 });
     } catch (e) { OR.toast('Search failed: ' + e.message, 6000); }

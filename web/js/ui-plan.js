@@ -19,6 +19,21 @@
         (avoidable.length ? '<button class="btn small" id="lezAvoid">Avoid ' + (avoidable.length > 1 ? 'them' : 'it') + '</button>' : '') + '</div>';
     } else if (c.zones) h += OR.plan.avoidZones && OR.plan.avoidZones.length ? '' : '';
     if (OR.plan.avoidZones && OR.plan.avoidZones.length) h += '<div class="card okc"><b>Avoiding low-emission zones</b><p class="small">Routes go round ' + OR.plan.avoidZones.length + ' zone' + (OR.plan.avoidZones.length > 1 ? 's' : '') + '.</p><button class="btn small ghost" id="lezUndo">Stop avoiding</button></div>';
+    const gh = OR.goldenHour(r, OR.plan.depart ? new Date(OR.plan.depart) : new Date());
+    if (gh) {
+      const late = gh.leave < new Date() && (!OR.plan.depart || new Date(OR.plan.depart).toDateString() === new Date().toDateString());
+      h += '<div class="golden"><b>' + ic('sun') + 'Golden hour at the end</b><span>' + OR.clock(gh.start) + ' to sunset at ' + OR.clock(gh.set) + '. ' +
+        (late ? 'Too late to make it today.' : 'Leave by <b>' + OR.clock(gh.leave) + '</b> to arrive as it starts.') + '</span>' + (late ? '' : '<button class="btn small" id="ghSet">Leave then</button>') + '</div>';
+    }
+    if (c.rain && OR.plan.options.length > 1) {
+      const best = c.rain.reduce((b, x, i) => x && (b < 0 || x.score < c.rain[b].score) ? i : b, -1);
+      if (best >= 0) {
+        const cur = OR.plan.choice, d = c.rain[best], me = c.rain[cur];
+        h += '<div class="dry"><b>' + ic('cloud') + (best === cur ? 'This is the driest option' : 'Option ' + (best + 1) + ' is drier') + '</b><span>' +
+          (me ? (me.wet ? 'About ' + me.wet + ' hour' + (me.wet > 1 ? 's' : '') + ' likely wet on this one' : 'Little rain expected on this one') + ', highest chance ' + Math.round(me.maxP) + '%.' : '') + '</span>' +
+          (best !== cur ? '<button class="btn small" id="dryPick">Take the driest</button>' : '') + '</div>';
+      }
+    }
     if (c.elev) {
       const e = c.elev;
       h += '<div class="hills"><div class="hl-h"><b>' + ic('pass') + 'Hills</b><span>↑ ' + OR.fmtHeight(e.up) + ' · ↓ ' + OR.fmtHeight(e.down) + ' · highest ' + OR.fmtHeight(e.max) + (e.steep >= 6 ? ' · steepest about ' + Math.round(e.steep) + '%' : '') + '</span></div>' + OR.profileSvg(e) + '</div>';
@@ -27,6 +42,8 @@
     return h;
   }
   function bind() {
+    const gs = $('#ghSet'); if (gs) gs.onclick = () => { const gh = OR.goldenHour(cur, OR.plan.depart ? new Date(OR.plan.depart) : new Date()); if (!gh) return; OR.plan.depart = gh.leave.getTime(); OR.toast('Leave time set to ' + OR.clock(gh.leave)); OR.emit('departChanged', gh.leave); };
+    const dp = $('#dryPick'); if (dp) dp.onclick = () => { const c = cache[sig(cur)]; if (!c || !c.rain) return; const best = c.rain.reduce((b, x, i) => x && (b < 0 || x.score < c.rain[b].score) ? i : b, -1); if (best >= 0 && OR.chooseOption) OR.chooseOption(best); };
     const a = $('#lezAvoid'); if (a) a.onclick = () => {
       const c = cache[sig(cur)]; if (!c) return;
       OR.plan.avoidZones = (OR.plan.avoidZones || []).concat(...c.zones.filter(z => !z.startsIn && !z.endsIn).map(z => z.outline));
@@ -36,12 +53,20 @@
   }
   OR.on('routeShown', async r => {
     cur = r; const k = sig(r);
-    let c = cache[k];
-    if (!c) {
-      c = cache[k] = { loading: true };
+    const c = cache[k] = cache[k] || {};
+    if (!c.done && !c.loading) {
+      c.loading = true;
       html = render(r, c); paint();
       const [z, e] = await Promise.all([OR.zonesAlong(r).catch(() => null), OR.elevationAlong(r).catch(err => { c.elevErr = err.message; return null; })]);
-      c.zones = z; c.elev = e; c.loading = false; r.zones = z; r.elev = e;
+      c.zones = z; c.elev = e; c.loading = false; c.done = true; r.zones = z; r.elev = e;
+    }
+    // rain on each option, once per set of options
+    const opts = OR.plan.options.slice();
+    if (opts.length > 1 && !c.rain && !c.rainBusy) {
+      c.rainBusy = true;
+      const dep = OR.plan.depart ? new Date(OR.plan.depart) : new Date();
+      c.rain = await Promise.all(opts.map(o => OR.rainScore(o, dep).catch(() => null)));
+      opts.forEach(o => { const k2 = sig(o); cache[k2] = cache[k2] || {}; cache[k2].rain = c.rain; });
     }
     if (cur !== r) return;
     html = render(r, c); paint();

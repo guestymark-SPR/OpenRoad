@@ -525,3 +525,11 @@ body.riding #menuBtn{display:none}
 @keyframes mic{from{box-shadow:0 0 0 0 rgba(21,101,192,.5)}to{box-shadow:0 0 0 10px rgba(21,101,192,0)}}
 .vhelp{padding-left:18px;margin:6px 0}.vhelp li{margin:6px 0}.vhelp span{color:var(--ink-2);font-size:14px}
 @media (max-width:600px){ .hudBtns .hb{min-width:0} }
+
+.golden,.dry{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;border-radius:14px;padding:10px 12px;margin:8px 0}
+.golden{background:color-mix(in srgb,#f59f00 14%,var(--surface));border:1.5px solid color-mix(in srgb,#f59f00 50%,var(--line))}
+.dry{background:color-mix(in srgb,#1e88e5 10%,var(--surface));border:1.5px solid color-mix(in srgb,#1e88e5 40%,var(--line))}
+.golden>b,.dry>b{display:flex;gap:6px;align-items:center;width:100%}.golden svg,.dry svg{width:20px;height:20px}
+.golden span,.dry span{flex:1;font-size:14px}
+.pricetag{font-style:normal;background:#0e9f57;color:#fff;border-radius:8px;padding:1px 6px;font-size:13px;margin-left:4px}
+.cheap{padding-left:20px;margin:6px 0}.cheap li{margin:4px 0}

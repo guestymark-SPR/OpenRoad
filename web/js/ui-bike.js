@@ -164,7 +164,8 @@
     if (byStyle.length) h += '<div class="learned"><p class="lbl">By riding style</p>' + byStyle.map(([s, l]) => '<div class="lr"><span>' + OR.STYLE_NAMES[s] + '</span><b>' + l.mpg.toFixed(1) + ' mpg</b></div>').join('') +
       '<p class="small muted">Routes and trips use the economy that fits their roads.</p></div>';
     h += '<div class="two">' + OR.field('bTank', 'Tank size (litres)', b.tankL, 'number') + OR.field('bMpg', lm ? 'Your mpg before learning' : 'Starting mpg (until it learns)', b.mpg, 'number') + '</div>' +
-      OR.field('bRes', 'Warn me with this many miles left', b.reserveMi, 'number');
+      OR.field('bRes', 'Warn me with this many miles left', b.reserveMi, 'number') +
+      '<label class="f"><span>Fuel for live prices abroad</span><select id="bGrade">' + Object.keys(OR.FUEL_GRADES).map(k => '<option value="' + k + '"' + ((OR.cfg.fuelGrade || 'e10') === k ? ' selected' : '') + '>' + OR.FUEL_GRADES[k] + '</option>').join('') + '</select></label>';
     const fl = OR.fuelLog.list();
     if (fl.length) h += '<details><summary>' + OR.ic('fuel') + 'Fill-ups (' + fl.length + ')</summary><div class="list">' + fl.slice(0, 30).map((f, i) => '<div class="li fill"><div class="svc-h"><b>' + f.litres.toFixed(1) + ' L' + (f.price ? ' at ' + money(f.price, f.cur) : '') + '</b>' + (f.price ? '<span class="tag okc">' + money(f.litres * f.price, f.cur) + '</span>' : '') + '</div><span>' + fmtD(f.t) + (f.full ? ', full tank' : ', part fill') + (f.odo ? ', ' + Math.round(f.odo).toLocaleString('en-GB') + ' mi' : '') + '</span><div class="row"><button class="mini" data-delfill="' + i + '" aria-label="Delete">' + OR.ic('x') + '</button></div></div>').join('') + '</div></details>';
 
@@ -197,6 +198,7 @@
     };
     const keep = (id, key) => { const el = $('#' + id, box); if (el) el.onchange = () => { b[key] = el.value === '' ? '' : (key === 'name' ? el.value.trim() : parseFloat(el.value)); OR.saveCfg(); re(); }; };
     keep('bName', 'name'); keep('bTank', 'tankL'); keep('bMpg', 'mpg'); keep('bRes', 'reserveMi');
+    { const gs = box.querySelector('#bGrade'); if (gs) gs.onchange = () => { OR.cfg.fuelGrade = gs.value; OR.saveCfg(); }; }
     $('#bFill', box).onclick = OR.fillUpSheet;
     $$('[data-delfill]', box).forEach(x => x.onclick = () => { if (!confirm('Delete this fill-up?')) return; const l = OR.fuelLog.list(); l.splice(+x.dataset.delfill, 1); OR.fuelLog.save(l); re(); });
   }
