@@ -21,6 +21,7 @@
     renderAll();
     OR.groupBoot && OR.groupBoot();
     OR.crashSync && OR.crashSync();
+    if (A && A.setPacksOnly) A.setPacksOnly(!!OR.cfg.packsOnly);
     OR.recoverRide();
     drawWaypoints();
     OR.on('style', () => { if (OR.plan.route) showOptions(); });
@@ -635,9 +636,12 @@
 
   let catalogue = null, packState = {};
   function pageMaps(box) {
+    setTimeout(() => { const c = $('#packsOnly', box); if (c) c.onchange = () => { OR.cfg.packsOnly = c.checked; OR.saveCfg(); if (A.setPacksOnly) A.setPacksOnly(c.checked); }; }, 0);
     if (!A) { box.innerHTML = '<p class="hint">Offline map packs are part of the Android app. In a browser the map loads from the internet as you go.</p>'; return; }
     const inst = OR.packs.installed(), info = OR.cacheInfo();
     let h = '<p class="small">A pack holds a whole country\'s map so it works with no signal. Download on Wi-Fi: big countries are several hundred MB.</p>';
+    h += '<label class="chk"><input type="checkbox" id="packsOnly"' + (OR.cfg.packsOnly ? ' checked' : '') + '> Save mobile data: never download map at country borders</label>' +
+      '<p class="small muted">Where a pack ends at a border or coast, OpenRoad uses the full online map when there\'s signal, so neighbouring countries aren\'t blank. Tick this to use only your packs (areas outside them stay blank).</p>';
     if (!catalogue) { h += '<p class="muted">Loading the list of packs…</p>'; OR.packs.catalogue().then(c => { catalogue = c; if (morePage === 'maps') pageMaps(box); }).catch(e => { catalogue = []; packState._err = e.message; if (morePage === 'maps') pageMaps(box); }); }
     else if (!catalogue.length) h += '<p class="err">No packs listed' + (packState._err ? ' (' + esc(packState._err) + ')' : '') + '.</p>';
     else h += '<div class="list">' + catalogue.map(p => {
