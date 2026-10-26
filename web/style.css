@@ -550,3 +550,103 @@ body.riding #menuBtn{display:none}
 .dbig{width:100%;border-radius:12px;display:block;margin-bottom:8px}
 .dnotes{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:12px;padding:10px;font:inherit;background:var(--surface);color:var(--ink)}
 label.btn input[hidden]{display:none}
+
+/* =====================================================================
+   Redesign (1.0.30): road-sign identity, quieter surfaces, clearer places
+   One bold thing: the tab bar is a primary-route sign panel. Everything else is calm.
+   ===================================================================== */
+:root{
+  --green:#00703c; --green-2:#00703c; --yellow:#ffd200; --red:#c62828;
+  --paper:#f3f5f2; --surface:#ffffff; --surface-2:#eef1ee; --ink:#15191c; --ink-2:#48525a; --ink-3:#717c84; --line:#e0e5e1;
+  --sheet:#f3f5f2; --shadow:0 10px 30px -10px rgba(16,28,22,.28), 0 1px 3px rgba(16,28,22,.10);
+  --r:20px; --r-s:12px;
+}
+[data-theme=night]{
+  --paper:#1e2428; --surface:#262e33; --surface-2:#2e373d; --ink:#eef2f2; --ink-2:#b4bfc4; --ink-3:#86939b; --line:#37424a;
+  --sheet:#1e2428; --shadow:0 12px 34px -10px rgba(0,0,0,.65), 0 1px 3px rgba(0,0,0,.4); --green-2:#1d9a5b;
+}
+body{letter-spacing:.005em}
+.vh{font-size:26px;font-weight:800;margin:6px 0 14px;letter-spacing:-.015em}
+h2{font-size:21px}
+h3,.gh{font-size:15px;font-weight:700;color:var(--ink-2);margin:22px 2px 8px;text-transform:none;letter-spacing:0}
+h3.grp{margin:20px 4px 8px;color:var(--ink-3);font-weight:700;font-size:14px}
+
+/* the tab bar: a green route sign with a white keyline; the open tab is the yellow number plate */
+#nav{padding:8px 10px calc(8px + var(--safe-b));border-top:0;background:transparent}
+.navsign{display:flex;width:100%;gap:2px;background:var(--green);border-radius:14px;padding:5px;box-shadow:inset 0 0 0 2px var(--green),inset 0 0 0 4px #fff,0 6px 16px -8px rgba(0,60,30,.6)}
+#nav .navsign button{flex:1;min-height:56px;border:0;border-radius:9px;background:transparent;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:12.5px;font-weight:700;position:relative;margin:3px 0}
+#nav .navsign button svg{width:24px;height:24px;stroke:#fff;opacity:.92;background:none!important;padding:0!important}
+#nav .navsign button svg .d{fill:#fff;opacity:.18}
+#nav .navsign button.on{background:var(--yellow);color:#15191c}
+#nav .navsign button.on svg{stroke:#15191c;opacity:1}#nav .navsign button.on svg .d{fill:#15191c;opacity:.15}
+#nav .navsign button::before{display:none}
+#nav button[data-n]:not([data-n=""])::after{content:attr(data-n);position:absolute;top:2px;right:calc(50% - 22px);min-width:18px;height:18px;border-radius:9px;background:var(--red);color:#fff;font:800 11px/18px var(--f);padding:0 4px;box-shadow:0 0 0 2px var(--green)}
+#nav button.live:not(.on) span::after{content:"";display:inline-block;width:7px;height:7px;border-radius:4px;background:var(--yellow);margin-left:4px;vertical-align:1px}
+
+/* panel */
+#panel{background:var(--sheet);border-radius:24px 24px 0 0}
+@media (min-width:900px){ #panel{border-radius:22px;width:400px} .maplibregl-ctrl-bottom-left{left:420px} }
+#views{padding:4px 16px 18px}
+
+/* search, settings button and place chips */
+#top{border-radius:16px;background:var(--surface);padding:4px 4px 4px 10px;right:72px}
+#top .logo{border-radius:7px;box-shadow:inset 0 0 0 1.5px #fff,0 0 0 1px var(--green)}
+#setBtn{color:var(--ink-2)}#setBtn.on{color:var(--green-2)}
+#chips{position:fixed;z-index:19;top:calc(72px + var(--safe-t));left:10px;right:72px;max-width:430px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 6px}
+#chips::-webkit-scrollbar{display:none}
+#chips button{flex:none;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 13px 0 10px;border-radius:19px;border:0;background:var(--surface);color:var(--ink);font-weight:700;font-size:14px;box-shadow:0 2px 8px -3px rgba(16,28,22,.3)}
+#chips button svg{width:18px;height:18px;color:var(--c)}#chips button svg .d{fill:var(--c);opacity:.25}
+body.riding #chips,body.menu-2 #chips,body.chatting #chips{display:none}
+@media (max-width:899px){ #panel.open ~ #chips{display:none} }
+
+/* map buttons: fewer and quieter */
+.fab{width:50px;height:50px;background:var(--surface);box-shadow:0 4px 14px -4px rgba(16,28,22,.35)}
+#fabs{gap:8px}
+.grppill{position:fixed;z-index:20;right:10px;top:calc(130px + var(--safe-t));display:flex;align-items:center;gap:8px;height:46px;padding:0 14px 0 10px;border-radius:23px;border:0;background:var(--green);color:#fff;font-size:14px;box-shadow:inset 0 0 0 2px var(--green),inset 0 0 0 3.5px #fff,0 6px 16px -6px rgba(0,60,30,.6)}
+.grppill svg{stroke:#fff}.grppill svg .d{fill:#fff;opacity:.25}.grppill.unread{background:#00703c}.grppill.unread span{color:#fff}
+.grppill.alert{background:var(--yellow);color:#15191c;box-shadow:inset 0 0 0 3.5px #15191c,0 6px 16px -6px rgba(0,0,0,.5)}.grppill.alert svg{stroke:#15191c}
+body.riding .grppill{top:auto;bottom:calc(200px + var(--safe-b))}
+body.menu-2 .grppill{top:calc(80px + var(--safe-t))}
+
+/* lists: grouped rows, not stacks of boxes */
+.menu{border:0;border-radius:16px;background:var(--surface);box-shadow:0 1px 0 var(--line)}
+.menu button{min-height:62px;padding:10px 14px;gap:14px;border-bottom:1px solid var(--line)}
+.menu button .badge{flex:0 0 38px;width:38px;height:38px;border-radius:10px}
+.menu b{font-weight:700;font-size:16px}.menu small{font-size:13px}
+.list{gap:0;border-radius:16px;overflow:hidden;background:var(--surface);box-shadow:0 1px 0 var(--line)}
+.list .li{border:0;border-radius:0;border-bottom:1px solid var(--line);background:transparent;padding:12px 14px}
+.list .li:last-child{border-bottom:0}
+.card{border:1px solid var(--line);border-radius:16px;box-shadow:none}
+.tile{border:0;box-shadow:0 1px 0 var(--line);border-radius:16px}
+.seg{border:0;background:var(--surface-2);border-radius:14px}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 4px rgba(16,28,22,.18)}
+[data-theme=night] .seg button.on{background:var(--surface-2);color:#fff;box-shadow:inset 0 -3px 0 var(--yellow)}
+.seg button.on{box-shadow:inset 0 -3px 0 var(--green),0 1px 4px rgba(16,28,22,.12)}
+
+/* buttons */
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:13px;font-weight:700}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink-2)}
+.btn.pri{background:var(--green);border-color:var(--green)}
+.btn.go{background:var(--green);border:0;box-shadow:inset 0 0 0 3px var(--green),inset 0 0 0 5px #fff;border-radius:16px}
+.backbtn{color:var(--ink-2);font-weight:700}
+[data-theme=night] .btn.pri,[data-theme=night] .btn.go{background:#00703c}
+
+/* sheets */
+#sheetBox{background:var(--sheet);border-radius:24px 24px 0 0}
+@media (min-width:900px){ #sheetBox{border-radius:24px} }
+.sheetX{background:var(--surface-2)!important;border-radius:20px}
+
+/* ride bar */
+#hudBar{border-radius:22px;background:var(--surface)}
+.hb{border:0;background:var(--surface-2);border-radius:15px}
+.hb.end{background:var(--red);color:#fff}
+#panel{height:calc(118px + var(--safe-b));backdrop-filter:none;-webkit-backdrop-filter:none}
+#panel.open{height:76vh}
+#views{flex:1}
+@media (min-width:900px){ #panel,#panel.open{top:calc(122px + var(--safe-t));height:auto} body.menu-1 #panel{top:auto} }
+.gcard{flex-wrap:wrap;border:0;box-shadow:0 1px 0 var(--line)}
+.gcard>div{flex:1 1 200px}
+.gcard .gbtns{flex-direction:row;width:100%}.gcard .gbtns .btn{flex:1}
+.grppill.alert span,.grppill.alert b{color:#15191c}
+#radarChip{top:calc(122px + var(--safe-t));z-index:21}
+body.riding #radarChip{top:calc(150px + var(--safe-t))}

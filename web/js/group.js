@@ -70,7 +70,7 @@
     joinLink: code => 'openroad://join/' + OR.group.pretty(code),
     codeFrom(text) { const m = String(text || '').toUpperCase().replace(/%2D/g, '-').match(/([0-9A-Z]{4})-?([0-9A-Z]{4})-?([0-9A-Z]{4})(?![0-9A-Z])/); return m ? m[1] + '-' + m[2] + '-' + m[3] : null; },
     shareText(code) {
-      return 'Join my OpenRoad group ride.\n\nGroup code: ' + OR.group.pretty(code) + '\n\nIn OpenRoad: Rides, Group ride, then scan my QR code or type the code.\nGet OpenRoad for Android: https://github.com/guestymark-SPR/OpenRoad/releases/download/app/OpenRoad.apk';
+      return 'Join my OpenRoad group ride.\n\nGroup code: ' + OR.group.pretty(code) + '\n\nIn OpenRoad: the Group tab, then scan my QR code or type the code.\nGet OpenRoad for Android: https://github.com/guestymark-SPR/OpenRoad/releases/download/app/OpenRoad.apk';
     }
   };
 

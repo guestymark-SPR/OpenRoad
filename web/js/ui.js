@@ -29,7 +29,7 @@
     if (!OR.store.get('seenIntro', false)) intro();
     setTimeout(checkUpdate, 4000);
   }
-  function renderAll() { renderPlan(); OR.renderTrips && OR.renderTrips(); renderRides(); renderNearby(); renderMore(); }
+  function renderAll() { renderPlan(); if (curTab !== 'plan') tab(curTab, true); }
   OR.renderAll = renderAll;
 
   // the Android app checks GitHub for a newer version (published by the build workflow)
@@ -48,9 +48,11 @@
   window.onUpdateState = s => { if (s === 'permission') OR.toast('Allow OpenRoad to install apps, then tap Install update again', 7000); if (s === 'error') OR.toast('The update could not be downloaded'); };
 
   // ---------- navigation ----------
-  const TABS = [['plan', 'Plan', 'plan', '#ff6a1f'], ['trips', 'Trips', 'trips', '#1e88e5'], ['rides', 'Rides', 'moto', '#0e9f57'], ['nearby', 'Nearby', 'near', '#e53935'], ['more', 'More', 'more', '#8e6bd6']];
+  const TABS = [['plan', 'Plan', 'plan'], ['trips', 'Trips', 'trips'], ['group', 'Group', 'group'], ['rides', 'Rides', 'moto'], ['bike', 'Bike', 'wrench']];
   function bindNav() {
-    $('#nav').innerHTML = TABS.map(t => '<button data-tab="' + t[0] + '" style="--tc:' + t[3] + '">' + ic(t[2]) + '<span>' + t[1] + '</span></button>').join('');
+    $('#nav').innerHTML = '<div class="navsign">' + TABS.map(t => '<button data-tab="' + t[0] + '">' + ic(t[2]) + '<span>' + t[1] + '</span></button>').join('') + '</div>';
+    $('#setBtn').innerHTML = ic('gear'); $('#setBtn').onclick = () => { morePage = null; tab('more'); renderMore(); };
+    bindChips();
     $$('#nav button').forEach(b => b.onclick = () => {
       const open = $('#panel').classList.contains('open'), same = b.classList.contains('on');
       if (same && open && innerWidth < 900) $('#panel').classList.remove('open'); else tab(b.dataset.tab);
@@ -82,12 +84,19 @@
     setTimeout(() => OR.map && OR.map.resize(), 260);
   }
   OR.setMenu = setMenu;
+  let curTab = 'plan';
+  OR.curTab = () => curTab;
   function tab(t, quiet) {
+    if (t === 'nearby') t = 'plan';
+    curTab = t;
     $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+    $('#setBtn').classList.toggle('on', t === 'more');
     $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + t));
     if (!quiet) setMenu(0);
     $('#views').scrollTop = 0;
+    // each screen is built when it's opened, not all at start
     if (t === 'rides') renderRides(); if (t === 'more') renderMore(); if (t === 'trips' && OR.renderTrips) OR.renderTrips();
+    if (t === 'group' && OR.pageGroup) renderGroupTab(); if (t === 'bike') renderBike();
   }
   OR.tab = tab;
 
@@ -125,18 +134,21 @@
     let flew = false;
     function firstFix(p) { if (flew || OR.ride.on) return; flew = true; OR.map.flyTo({ center: [p.lng, p.lat], zoom: 13 }); }
     $('#northBtn').onclick = () => OR.map.easeTo({ bearing: 0, pitch: 0 });
-    OR.map.on('rotate', () => { $('#northBtn svg').style.transform = 'rotate(' + (-OR.map.getBearing()) + 'deg)'; });
+    // the north button only shows when the map is turned or tilted
+    const nb = () => { const m = OR.map, off = Math.abs(m.getBearing()) > 1 || m.getPitch() > 2; $('#northBtn').hidden = !off; if (off) $('#northBtn svg').style.transform = 'rotate(' + (-m.getBearing()) + 'deg)'; };
+    OR.map.on('rotate', nb); OR.map.on('pitch', nb);
     $('#layersBtn').onclick = mapStyleSheet;
   }
   function mapStyleSheet() {
     const c = OR.cfg;
     sheet('<h2>Map</h2><div class="seg big" id="mt"><button data-v="road" class="' + (c.mapType !== 'satellite' ? 'on' : '') + '">' + ic('map') + 'Road</button><button data-v="satellite" class="' + (c.mapType === 'satellite' ? 'on' : '') + '">' + ic('layers') + 'Satellite</button></div>' +
       '<p class="small muted">Satellite pictures need a signal. Offline packs show the road map.</p>' +
-      '<button class="btn wide" id="roughTog">' + ic('warn') + (OR.roughOn && OR.roughOn() ? 'Hide rough roads' : 'Show rough roads I\'ve ridden') + '</button>' + '<button class="btn wide" id="radarTog">' + ic('cloud') + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Show rain radar') + '</button><p class="small muted">Rain over the last 2 hours from RainViewer (free for personal use). It doesn\'t forecast, and it\'s coarse when zoomed in.</p>' +
+      '<button class="btn wide" id="fullTog">' + ic('full') + 'Full-screen map</button>' + '<button class="btn wide" id="roughTog">' + ic('warn') + (OR.roughOn && OR.roughOn() ? 'Hide rough roads' : 'Show rough roads I\'ve ridden') + '</button>' + '<button class="btn wide" id="radarTog">' + ic('cloud') + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Show rain radar') + '</button><p class="small muted">Rain over the last 2 hours from RainViewer (free for personal use). It doesn\'t forecast, and it\'s coarse when zoomed in.</p>' +
       '<div class="seg" id="th">' + [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']].map(([k, l]) => '<button data-v="' + k + '" class="' + (c.theme === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
       '<p class="small muted">Auto switches to night colours after sunset where you are.</p>', b => {
       $$('#mt button', b).forEach(x => x.onclick = () => { OR.setMapType(x.dataset.v); closeSheet(); });
       const rb = $('#radarTog', b); if (rb) rb.onclick = () => { closeSheet(); OR.toggleRadar(); };
+      const fs = $('#fullTog', b); if (fs) fs.onclick = () => { closeSheet(); setMenu(2); OR.toast('Tap the menu button, bottom left, to bring the menu back'); };
       const rr = $('#roughTog', b); if (rr) rr.onclick = () => { closeSheet(); OR.showRough(!OR.roughOn()); };
       $$('#th button', b).forEach(x => x.onclick = () => { c.theme = x.dataset.v; OR.saveCfg(); OR.applyTheme(); closeSheet(); });
     });
@@ -407,7 +419,7 @@
       OR.ride.fuel = f.list; OR.lastPois = f.list;
       OR.setData('pois', OR.poiGeo(f.list)); OR.setData('gaps', OR.gapGeo(r, f.gaps));
       let h = '<div class="card"><b>' + f.list.length + ' fuel stations within a mile of the route</b>';
-      if (!f.range) h += '<p class="small">Add your tank size and mpg in More, Bike and fuel, to see where gaps are too long for your range.</p>';
+      if (!f.range) h += '<p class="small">Add your tank size and mpg in the Bike tab to see where gaps are too long for your range.</p>';
       else if (!f.gaps.length) h += '<p class="small ok">No gap is longer than your safe range (' + OR.fmtDist(f.range - OR.cfg.bike.reserveMi * OR.MI) + ' before reserve).</p>';
       else h += f.gaps.map(g => '<p class="small warn">' + (g.first ? 'From the start, with the fuel you have now: ' : '') + OR.fmtDist(g.len) + ' with no fuel near the route, from mile ' + Math.round(g.from / OR.MI) + ' to ' + Math.round(g.to / OR.MI) + '. Shown in red.</p>').join('');
       h += '<p class="small muted">From OpenStreetMap. Opening hours aren\'t always recorded, so check small stations before relying on them.</p></div>';
@@ -422,7 +434,7 @@
           const avg = priced.reduce((s, p) => s + p.price.eur, 0) / priced.length, tank = parseFloat(OR.cfg.bike.tankL) || 0;
           h += '<div class="card okc"><b>' + ic('fuel') + 'Cheapest fuel on the route in France</b><ol class="cheap">' + priced.slice(0, 5).map(p => '<li><b>€' + p.price.eur.toFixed(3) + '</b> ' + esc(p.name) + ' <span class="small muted">' + esc(OR.FUEL_GRADES[p.price.grade]) + ', ' + (OR.cfg.units === 'km' ? 'km ' + Math.round(p.at / 1000) : 'mile ' + Math.round(p.at / OR.MI)) + ', ' + OR.priceAge(p.price.at) + '</span></li>').join('') + '</ol>' +
             (tank && priced.length > 2 ? '<p class="small">Filling up at the cheapest rather than an average-priced one saves about €' + ((avg - priced[0].price.eur) * tank * 0.8).toFixed(2) + ' on a tank.</p>' : '') +
-            '<p class="small muted">Live prices from the French government\'s official open data (prix-carburants). Grade: ' + esc(OR.FUEL_GRADES[OR.cfg.fuelGrade || 'e10']) + ', change it in More, My bike and fuel.</p></div>';
+            '<p class="small muted">Live prices from the French government\'s official open data (prix-carburants). Grade: ' + esc(OR.FUEL_GRADES[OR.cfg.fuelGrade || 'e10']) + ', change it in the Bike tab.</p></div>';
           f.list.forEach(p => { if (p.price) p.name = p.name + ' €' + p.price.eur.toFixed(2); });
           OR.setData('pois', OR.poiGeo(f.list));
         } else h += '<p class="small muted">No live prices matched the French stations on this route.</p>';
@@ -505,14 +517,22 @@
       }));
   }
 
-  // ---------- nearby ----------
-  const NEAR = ['fuel', 'cafe', 'motopark', 'bikeshop', 'stay', 'camp', 'pub', 'view', 'pass'];
+  // ---------- nearby: chips under the search bar ----------
+  const NEAR = ['fuel', 'cafe', 'stay', 'pub', 'view', 'motopark', 'bikeshop', 'camp', 'pass'];
+  const CHIP = { fuel: 'Fuel', cafe: 'Cafés', stay: 'Stays', pub: 'Pubs', view: 'Viewpoints', motopark: 'Bike parking', bikeshop: 'Bike shops', camp: 'Campsites', pass: 'Passes' };
+  function bindChips() {
+    const el = $('#chips');
+    el.innerHTML = NEAR.slice(0, 5).map(k => '<button data-near="' + k + '" style="--c:' + OR.POI[k].c + '">' + ic(OR.POI[k].i) + CHIP[k] + '</button>').join('') +
+      '<button id="greatRoads" style="--c:#8e24aa">' + ic('twisty') + 'Great roads</button>' + NEAR.slice(5).map(k => '<button data-near="' + k + '" style="--c:' + OR.POI[k].c + '">' + ic(OR.POI[k].i) + CHIP[k] + '</button>').join('');
+    $$('[data-near]', el).forEach(bt => bt.onclick = () => { if (innerWidth < 900) $('#panel').classList.remove('open'); const c = OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray(); findNearby(bt.dataset.near, c); });
+    $('#greatRoads', el).onclick = () => { if (innerWidth < 900) $('#panel').classList.remove('open'); OR.findGreatRoads(); };
+  }
   function renderNearby() {
     $('#v-nearby').innerHTML = '<h2 class="vh">Nearby</h2><p class="muted small">Around your position, or the middle of the map when there\'s no GPS fix.</p><div class="tiles">' +
       NEAR.map(k => '<button class="tile" data-near="' + k + '">' + badge(OR.POI[k].i, OR.POI[k].c) + '<span>' + OR.KINDS[k].label + '</span></button>').join('') +
       '<button class="tile" id="greatRoads">' + badge('twisty', '#8e24aa') + '<span>Great roads</span></button></div>' +
       '<p class="small muted">Places come from OpenStreetMap. Prices aren\'t included: use the website or phone number to check and book.</p>';
-    $('#greatRoads').onclick = () => { if (innerWidth < 900) $('#panel').classList.remove('open'); OR.findGreatRoads(); };
+    const gr0 = $('#v-nearby #greatRoads'); if (gr0) gr0.onclick = () => { if (innerWidth < 900) $('#panel').classList.remove('open'); OR.findGreatRoads(); };
     $$('[data-near]').forEach(bt => bt.onclick = () => { const c = OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray(); findNearby(bt.dataset.near, c); });
   }
   async function findNearby(kind, ll, onPick) {
@@ -537,7 +557,6 @@
     const yr = new Date().getFullYear(), season = list.filter(r => new Date(r.start).getFullYear() === yr);
     const tot = season.reduce((a, r) => ({ d: a.d + r.dist, t: a.t + r.moving, l: Math.max(a.l, r.leanL || 0, r.leanR || 0) }), { d: 0, t: 0, l: 0 });
     v.innerHTML = '<h2 class="vh">Rides</h2><button id="freeRide" class="btn wide go">' + ic('rides') + 'Record a ride</button>' +
-      '<button id="groupRide" class="btn wide grp">' + ic('group') + (OR.group && OR.group.state.on ? 'Group ride: ' + OR.group.state.riders.length + ' other' + (OR.group.state.riders.length === 1 ? '' : 's') + ' riding' : 'Group ride') + '</button>' +
       '<div class="stats"><div><b>' + season.length + '</b><span>rides in ' + yr + '</span></div><div><b>' + OR.fmtDist(tot.d) + '</b><span>ridden</span></div><div><b>' + OR.fmtTime(tot.t) + '</b><span>moving</span></div>' + (tot.l ? '<div><b>' + tot.l + '°</b><span>best lean</span></div>' : '') + '</div>' +
       (list.length ? '<button id="seasonBtn" class="btn wide">' + ic('star') + 'Your riding in numbers</button>' : '') +
       (list.length ? '<div class="list">' + list.map(r => '<div class="li"><b>' + esc(r.name) + '</b><span>' +
@@ -548,7 +567,6 @@
         : '<div class="empty">' + ic('rides', 'big') + '<p>Every ride is recorded with distance, time, speeds and an estimate of your lean angle. Recording carries on with the screen off in the Android app.</p></div>') +
       '<p class="small muted">Lean angle is estimated from GPS speed and how sharply you turn, so treat it as a guide rather than a measurement.</p>';
     $('#freeRide', v).onclick = () => startRide(null);
-    $('#groupRide', v).onclick = () => OR.openMore('group');
     const ss = $('#seasonBtn', v); if (ss) ss.onclick = () => OR.seasonStats(yr);
     $$('button[data-a]', v).forEach(b => b.onclick = async () => {
       const r = OR.rides.get(b.dataset.id); if (!r) return; const pts = OR.rides.pts(r);
@@ -568,20 +586,41 @@
   OR.field = field;
   const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['chat', 'chat', 'Chat settings', 'Quick messages, read aloud and notifications', '#0e9f57'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety', 'Crash alert, check-in, speed and break warnings', '#e53935'],
     ['ice', 'helmet', 'Emergency card', 'Your ICE details, kept on this phone', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
-    ['settings', 'gear', 'Settings', 'Units, voice, avoid tolls and ferries', '#5d6d7e'], ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
+    ['settings', 'gear', 'Units, look and routing', 'Miles or km, day and night colours, tolls and ferries', '#5d6d7e'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, turn alerts on your watch', '#1565c0'],
+    ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
   function renderMore() {
     const v = $('#v-more');
     if (!morePage) {
-      v.innerHTML = '<h2 class="vh">More</h2><div class="menu">' + PAGES.map(p => '<button data-p="' + p[0] + '">' + badge(p[1], p[4]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
+      const sec = (title, ids) => '<h3 class="grp">' + title + '</h3><div class="menu">' + ids.map(id => PAGES.find(p => p[0] === id)).map(p => '<button data-p="' + p[0] + '">' + badge(p[1], p[4]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
+      v.innerHTML = '<h2 class="vh">Settings</h2>' + sec('Riding', ['safety', 'voice', 'chat']) + sec('Maps', ['maps', 'settings']) + sec('You', ['ice']) + sec('App', ['about']);
       $$('.menu button', v).forEach(b => b.onclick = () => { morePage = b.dataset.p; renderMore(); $('#views').scrollTop = 0; });
       return;
     }
     const p = PAGES.find(x => x[0] === morePage);
-    v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'More</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
+    v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'Settings</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
+    ({ voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
   }
-  OR.openMore = p => { morePage = p; tab('more'); renderMore(); };
+  // pages that now have their own tab
+  OR.openMore = p => {
+    if (p === 'group') return tab('group');
+    if (p === 'bike' || p === 'maint') { bikeSeg = p; return tab('bike'); }
+    morePage = p; tab('more'); renderMore();
+  };
+  function renderGroupTab() {
+    const v = $('#v-group');
+    v.innerHTML = '<h2 class="vh">Group ride</h2><div id="groupPage"></div>';
+    OR.pageGroup($('#groupPage', v));
+  }
+  OR.renderGroupTab = renderGroupTab;
+  let bikeSeg = 'bike';
+  function renderBike() {
+    const v = $('#v-bike'), name = (OR.cfg.bike && OR.cfg.bike.name) || 'My bike';
+    v.innerHTML = '<h2 class="vh">' + esc(name) + '</h2><div class="seg big" id="bikeSeg"><button data-v="bike" class="' + (bikeSeg === 'bike' ? 'on' : '') + '">Bike and fuel</button><button data-v="maint" class="' + (bikeSeg === 'maint' ? 'on' : '') + '">Maintenance</button></div><div id="bikePage"></div>';
+    $$('#bikeSeg button', v).forEach(b => b.onclick = () => { bikeSeg = b.dataset.v; renderBike(); });
+    (bikeSeg === 'maint' ? OR.pageMaint : OR.pageBike)($('#bikePage', v));
+  }
+  OR.renderBike = renderBike;
   function keep(box, id, obj, key, num, after) { const el = $('#' + id, box); el.onchange = () => { obj[key] = num ? (el.value === '' ? '' : parseFloat(el.value)) : el.value.trim(); OR.saveCfg(); if (after) after(); }; }
   function pageBike(box) {
     const b = OR.cfg.bike, range = OR.fuelRange(), left = OR.fuelLeft();
@@ -597,7 +636,7 @@
   }
   function pageChat(box) {
     const c = OR.chatCfg(), on = OR.group && OR.group.state.on;
-    box.innerHTML = (on ? '<button id="pcOpen" class="btn wide pri">' + ic('chat') + 'Open the group chat</button>' : '<p class="small">The chat works in a group ride: start or join one in <b>Group ride</b>, then tap the green <b>Chat</b> button on the map, or the chat button while riding.</p><button id="pcGroup" class="btn wide">' + ic('group') + 'Group ride</button>') +
+    box.innerHTML = (on ? '<button id="pcOpen" class="btn wide pri">' + ic('chat') + 'Open the group chat</button>' : '<p class="small">The chat works in a group ride: start or join one in the <b>Group</b> tab. The chat is there, and on the chat button in the ride bar while riding.</p><button id="pcGroup" class="btn wide">' + ic('group') + 'Group ride</button>') +
       '<h3 class="gh">When a message comes in</h3>' +
       '<label class="chk"><input type="checkbox" id="pcVoice"' + (c.voice ? ' checked' : '') + '> Read it out (through your intercom or headphones)</label>' +
       '<label class="chk"><input type="checkbox" id="pcNote"' + (c.notify ? ' checked' : '') + '> Show a notification when OpenRoad isn\'t on screen</label>' +
@@ -640,7 +679,8 @@
   // voice commands and watch alerts, at the end of Settings
   function handsFree(box) {
     const c = OR.cfg, el = document.createElement('div');
-    el.innerHTML = '<h3>Voice commands</h3><p class="small">Tap the microphone in the ride bar and say what you want. Answers are spoken.</p>' +
+    box.innerHTML = '';
+    el.innerHTML = '<p class="small">Tap the microphone in the ride bar and say what you want. Answers are spoken.</p>' +
       '<label class="chk"><input type="checkbox" id="sVBtn"' + (c.voiceButton ? ' checked' : '') + '> Use my intercom or headset button to start a voice command while riding</label>' +
       '<p class="small muted">Most Sena and Cardo intercoms send a play/pause press from their button. While this is on, that press starts a voice command instead of playing music. It depends on the intercom, so try it before a ride.</p>' +
       '<details><summary>What you can say</summary><ul class="vhelp">' + OR.VOICE_HELP.map(h => '<li><b>' + esc(h[0]) + '</b><br><span>' + esc(h[1]) + '</span></li>').join('') + '</ul></details>' +
@@ -725,7 +765,6 @@
 
   function pageSettings(box) {
     const c = OR.cfg;
-    setTimeout(() => handsFree(box), 0);
     const seg = (id, val, opts) => '<div class="seg" id="' + id + '">' + opts.map(([k, l]) => '<button data-v="' + k + '" class="' + (val === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
     box.innerHTML = '<h3>Units</h3>' + seg('sUnits', c.units, [['mi', 'Miles and mph'], ['km', 'Kilometres']]) +
       '<h3>Map colours</h3>' + seg('sTheme', c.theme, [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']]) +
@@ -860,5 +899,6 @@
       '<button class="btn wide go" id="introOk">Let\'s ride</button></div>', b => $('#introOk', b).onclick = closeSheet);
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  // scripts load deferred: start once they all have
+  if (document.readyState === 'complete') boot(); else document.addEventListener('DOMContentLoaded', boot);
 })(window.OR);

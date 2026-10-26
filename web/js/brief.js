@@ -80,7 +80,7 @@
     if (sunny) k.push(['Tinted visor or sunglasses', 'and sun cream for your neck']);
     if (dark) k.push(['Clear visor and hi-vis', 'part of the ride is after sunset']);
     if (route.dist > 160000) k.push(['Water and snacks', 'over 100 miles: plan a break every 1 to 2 hours']);
-    k.push(['Phone charged, ICE card filled in', 'More, Emergency card']);
+    k.push(['Phone charged, ICE card filled in', 'Settings, Emergency card']);
     if (countries.some(c => c !== 'GB')) OR.ABROAD.forEach(a => k.push([a, 'riding abroad']));
     countries.forEach(c => { const r = OR.RULES[c]; if (r) r.carry.forEach(x => k.push([x, r.name])); });
     return k;

@@ -106,7 +106,7 @@
   setTimeout(() => {
     const a = OR.maintAlerts().filter(x => x.state === 'over'); if (!a.length) return;
     const k = 'maintNag' + new Date().toDateString(); if (OR.store.get(k, false)) return; OR.store.set(k, true);
-    OR.toast('Maintenance due: ' + a.map(x => x.what).slice(0, 3).join(', ') + '. See More, Maintenance', 7000);
+    OR.toast('Maintenance due: ' + a.map(x => x.what).slice(0, 3).join(', ') + '. See Bike, Maintenance', 7000);
   }, 6000);
 })(window.OR);
 

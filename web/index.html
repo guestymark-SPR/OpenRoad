@@ -18,28 +18,30 @@
 
 <div id="top">
   <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 21c4-3 2-7 6-9s4-6 4-9"/></svg></span>
-  <input id="q" type="search" placeholder="Search places or postcodes" autocomplete="off" enterkeyhint="search" aria-label="Search places or postcodes">
+  <input id="q" type="search" placeholder="Search places" autocomplete="off" enterkeyhint="search" aria-label="Search places or postcodes">
   <button id="qGo" class="icon" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></button>
+  <button id="setBtn" class="icon" aria-label="Settings"></button>
   <div id="results" hidden></div>
 </div>
+<div id="chips" role="toolbar" aria-label="Find nearby"></div>
 
 <div id="fabs">
   <button id="locBtn" class="fab" aria-label="My position"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M12 2v3 M12 19v3 M2 12h3 M19 12h3"/></svg></button>
   <button id="layersBtn" class="fab" aria-label="Map style"><svg viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5z M3 13l9 5 9-5"/></svg></button>
-  <button id="fullBtn" class="fab" aria-label="Full-screen map"></button>
-  <button id="chatBtn" class="fab chatfab" aria-label="Group chat" hidden></button>
-  <button id="groupBtn" class="fab grpfab" aria-label="Group ride" hidden></button>
-  <button id="northBtn" class="fab" aria-label="North up"><svg viewBox="0 0 24 24"><path d="M12 3 17 20 12 16 7 20Z"/></svg></button>
+  <button id="northBtn" class="fab" aria-label="North up" hidden><svg viewBox="0 0 24 24"><path d="M12 3 17 20 12 16 7 20Z"/></svg></button>
 </div>
 
 <button id="menuBtn" class="fab" aria-label="Show the menu"></button>
+<button id="groupBtn" class="grppill" aria-label="Group ride" hidden></button>
+<button id="chatBtn" hidden></button><button id="fullBtn" hidden></button>
 <aside id="panel">
   <div id="grab" aria-label="Show or hide the panel"><span></span></div>
   <div id="views">
     <section id="v-plan" class="view on"></section>
     <section id="v-trips" class="view"></section>
+    <section id="v-group" class="view"></section>
     <section id="v-rides" class="view"></section>
-    <section id="v-nearby" class="view"></section>
+    <section id="v-bike" class="view"></section>
     <section id="v-more" class="view"></section>
   </div>
   <nav id="nav" aria-label="Main"></nav>
@@ -73,35 +75,35 @@
 <div id="toast" role="status"></div>
 
 <script src="vendor/maplibre-gl.js" onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js';s.onload=function(){window.__mlReady&&__mlReady()};document.head.appendChild(s);var l=document.createElement('link');l.rel='stylesheet';l.href='https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css';document.head.appendChild(l);window.__mlLate=1})()"></script>
-<script src="js/core.js"></script>
-<script src="js/icons.js"></script>
-<script src="js/map.js"></script>
-<script src="js/route.js"></script>
-<script src="js/nav.js"></script>
-<script src="js/trip.js"></script>
-<script src="js/ridekit.js"></script>
-<script src="js/trips.js"></script>
-<script src="js/rules.js"></script>
-<script src="js/brief.js"></script>
-<script src="js/maint.js"></script>
-<script src="js/learn.js"></script>
-<script src="js/group.js"></script>
-<script src="js/safety.js"></script>
-<script src="js/planning.js"></script>
-<script src="js/smartroute.js"></script>
+<script defer src="js/core.js"></script>
+<script defer src="js/icons.js"></script>
+<script defer src="js/map.js"></script>
+<script defer src="js/route.js"></script>
+<script defer src="js/nav.js"></script>
+<script defer src="js/trip.js"></script>
+<script defer src="js/ridekit.js"></script>
+<script defer src="js/trips.js"></script>
+<script defer src="js/rules.js"></script>
+<script defer src="js/brief.js"></script>
+<script defer src="js/maint.js"></script>
+<script defer src="js/learn.js"></script>
+<script defer src="js/group.js"></script>
+<script defer src="js/safety.js"></script>
+<script defer src="js/planning.js"></script>
+<script defer src="js/smartroute.js"></script>
 
-<script src="js/offline.js"></script>
-<script src="js/ui.js"></script>
-<script src="js/ui-trips.js"></script>
-<script src="js/ui-brief.js"></script>
-<script src="js/ui-bike.js"></script>
-<script src="js/ui-group.js"></script>
-<script src="js/ui-chat.js"></script>
-<script src="js/ui-plan.js"></script>
-<script src="js/ui-rides.js"></script>
-<script src="js/ui-convoy.js"></script>
-<script src="js/voice.js"></script>
-<script src="js/riding.js"></script>
-<script src="js/diary.js"></script>
+<script defer src="js/offline.js"></script>
+<script defer src="js/ui.js"></script>
+<script defer src="js/ui-trips.js"></script>
+<script defer src="js/ui-brief.js"></script>
+<script defer src="js/ui-bike.js"></script>
+<script defer src="js/ui-group.js"></script>
+<script defer src="js/ui-chat.js"></script>
+<script defer src="js/ui-plan.js"></script>
+<script defer src="js/ui-rides.js"></script>
+<script defer src="js/ui-convoy.js"></script>
+<script defer src="js/voice.js"></script>
+<script defer src="js/riding.js"></script>
+<script defer src="js/diary.js"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 (function (OR) {
   const $ = OR.$, $$ = OR.$$, esc = OR.esc, ic = (n, c) => OR.ic(n, c);
   const G = () => OR.cfg.group = OR.cfg.group || {};
-  let pageBox = null;
+  let pageBox = null, lastSig = '';
 
   function dot(c) { return '<span class="rdot" style="--c:' + esc(c || '#e53935') + '"></span>'; }
   function serverLine(st) {
@@ -111,7 +111,7 @@
       '<button id="gAll" class="btn wide">' + ic('map') + 'Show everyone on the map</button>' +
       routeSection(st) + meetSection(st) + hazSection() +
       '<h3 class="gh">Riders (' + (rs.length + 1) + ' including you)</h3>' +
-      (rs.length ? '<div class="riders">' + rs.map(riderRow).join('') + '</div>' : '<p class="small muted">Nobody else yet. Send them the code: they open Rides, Group ride, and join with it.</p>') +
+      (rs.length ? '<div class="riders">' + rs.map(riderRow).join('') + '</div>' : '<p class="small muted">Nobody else yet. Send them the code: they open the Group tab and scan your QR code or type the code.</p>') +
       '<h3 class="gh">Quick message to the group</h3>' + quickTiles() + msgList(st) +
       '<button id="gLeave" class="btn wide ghost">Leave the group</button>' +
       '<p class="small muted">Messages and warnings are read out, with the screen off too. Turn voice off in Settings to stop them.</p>';
@@ -132,7 +132,7 @@
     const st = OR.group.state; if (!st.on) return;
     const img = OR.native.qrImage ? OR.native.qrImage(OR.group.joinLink(st.code)) : '';
     OR.sheet('<h2>' + ic('qr') + 'Scan to join</h2>' + (img ? '<img class="qrimg" src="' + img + '" alt="QR code for the group ride">' : '<p>QR codes need the Android app.</p>') +
-      '<p class="gcode center">' + esc(OR.group.pretty(st.code)) + '</p><p class="small muted center">Riders open OpenRoad, go to Rides, Group ride, and tap "Scan a QR code to join". It joins them straight away. They can also type the code underneath.</p>' +
+      '<p class="gcode center">' + esc(OR.group.pretty(st.code)) + '</p><p class="small muted center">Riders open OpenRoad, go to the Group tab, and tap "Scan a QR code to join". It joins them straight away. They can also type the code underneath.</p>' +
       '<button id="qrShare" class="btn wide">' + ic('share') + 'Send the code by message instead</button>', b => { $('#qrShare', b).onclick = () => OR.share(OR.group.shareText(st.code), 'OpenRoad group ride'); });
   };
   // join from a scanned code or an opened link, asking for your name first if it isn't set
@@ -263,16 +263,19 @@
     if (fb) {
       fb.hidden = !st.on;
       if (st.on) {
-        const lost = st.riders.filter(r => OR.riderInfo(r).stale).length;
-        fb.dataset.n = st.riders.length; fb.classList.toggle('alert', lost > 0);
-        if (!fb.onclick) fb.onclick = () => OR.groupSheet();
+        const lost = st.riders.filter(r => OR.riderInfo(r).stale).length, n = st.riders.length;
+        fb.innerHTML = ic('group') + '<span><b>' + n + ' rider' + (n === 1 ? '' : 's') + '</b>' + (st.unread ? ' · ' + st.unread + ' new' : lost ? ' · ' + lost + ' lost' : '') + '</span>';
+        fb.classList.toggle('alert', lost > 0); fb.classList.toggle('unread', !!st.unread);
+        if (!fb.onclick) fb.onclick = () => OR.ride.on ? OR.groupSheet() : OR.openMore('group');
       }
     }
-    const v = $('#v-more');
-    if (pageBox && document.body.contains(pageBox) && v && !v.closest('[hidden]')) {
-      const typing = document.activeElement && pageBox.contains(document.activeElement) && /INPUT|SELECT/.test(document.activeElement.tagName);
-      if (st.on && !typing) { const sc = $('#views').scrollTop; inGroup(pageBox, st); $('#views').scrollTop = sc; }
+    if (pageBox && document.body.contains(pageBox) && OR.curTab && OR.curTab() === 'group') {
+      const typing = document.activeElement && pageBox.contains(document.activeElement) && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+      // redraw only when something you'd notice has changed (not every few seconds)
+      const sig = st.on ? [st.riders.map(r => r.id + (OR.riderInfo(r).stale ? 's' : '') + (OR.riderInfo(r).dist != null ? Math.round(OR.riderInfo(r).dist / 400) : '') + (r.s > 2 ? 'm' : '')).join(','), st.unread, st.role, (st.routes || []).length, (st.meets || []).map(m => m.t).join(), (OR.groupHazards ? OR.groupHazards().length : 0), Object.values(st.servers || {}).join(), (st.msgs || []).length].join('|') : 'off';
+      if (!typing && sig !== lastSig) { lastSig = sig; const sc = $('#views').scrollTop; if (st.on) inGroup(pageBox, st); else OR.pageGroup(pageBox); $('#views').scrollTop = sc; }
     }
+    const nb = document.querySelector('#nav [data-tab=group]'); if (nb) { nb.dataset.n = st.on ? (st.unread || '') : ''; nb.classList.toggle('live', !!st.on); }
     const gr = $('#groupRide');
     if (gr) gr.innerHTML = ic('group') + (st.on ? 'Group ride: ' + st.riders.length + ' other' + (st.riders.length === 1 ? '' : 's') : 'Group ride');
   });
