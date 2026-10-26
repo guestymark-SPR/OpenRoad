@@ -250,7 +250,9 @@
 
   // ---------- saved routes ----------
   const pack = r => Object.assign({}, r, { shape: OR.encodePoly(r.shape, 6), cum: undefined });
+  OR.packRoute = r => pack(r);
   const unpack = r => { const o = Object.assign({}, r, { shape: OR.decodePoly(r.shape, 6) }); o.cum = OR.cumulative(o.shape); return o; };
+  OR.unpackRoute = r => unpack(r);
   OR.routes = {
     list: () => OR.store.get('routes', []),
     save(r) { const l = OR.routes.list().filter(x => x.id !== r.id); l.unshift(pack(r)); OR.store.set('routes', l.slice(0, 200)); },

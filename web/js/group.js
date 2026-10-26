@@ -19,10 +19,29 @@
       const g = OR.cfg.group = OR.cfg.group || {};
       g.code = OR.group.pretty(code); OR.saveCfg();
       N().groupStart(g.code, g.name || 'Rider', g.colour || OR.GROUP_COLOURS[0], OR.cfg.voice !== false, parseFloat(g.splitMi) || 2, OR.cfg.units === 'km' ? 'km' : 'mi');
+      if (N().groupRole) N().groupRole(g.role || '');
       poll(); watch();
     },
     leave() { N().groupStop(); const g = OR.cfg.group || {}; g.code = ''; OR.saveCfg(); setTimeout(poll, 400); },
     say(kind, text) { N().groupSay(kind, text || ''); setTimeout(poll, 300); },
+    setRole(r) { const g = OR.cfg.group = OR.cfg.group || {}; g.role = r; OR.saveCfg(); if (N().groupRole) N().groupRole(r); },
+    // share the planned route: the whole route, so everyone gets exactly the same roads and turn instructions
+    shareRoute(r) {
+      const p = OR.packRoute(r); delete p.limits; delete p.cams; delete p.wx;
+      N().groupShare('r', JSON.stringify({ name: r.name || 'Route', dist: r.dist, time: r.time, route: p }));
+      setTimeout(poll, 400);
+    },
+    unshareRoute() { N().groupShare('r', ''); setTimeout(poll, 400); },
+    setMeet(ll, name) { N().groupShare('x', JSON.stringify({ la: ll[1], lo: ll[0], name: name || 'Regroup point' })); setTimeout(poll, 400); },
+    clearMeet() { N().groupShare('x', ''); setTimeout(poll, 400); },
+    meet() { return (state.meets || []).slice().sort((a, b) => b.t - a.t)[0] || null; },
+    // riders at the regroup point (within 250 m)
+    atMeet(pt) {
+      const near = (la, lo) => OR.dist([pt.lo, pt.la], [lo, la]) <= 250;
+      const others = state.riders.filter(r => r.age <= OR.GROUP_LOST);
+      return { there: others.filter(r => near(r.la, r.lo)).length + (OR.pos && near(OR.pos.lat, OR.pos.lng) ? 1 : 0), of: others.length + 1 };
+    },
+    leader() { return state.riders.find(r => r.r === 'lead') || null; },
     shareText(code) {
       return 'Join my OpenRoad group ride.\n\nGroup code: ' + OR.group.pretty(code) + '\n\nIn OpenRoad: Rides, Group ride, Join with a code.\nGet OpenRoad for Android: https://github.com/guestymark-SPR/OpenRoad/releases/download/app/OpenRoad.apk';
     }
@@ -48,11 +67,15 @@
       if (seen[m.key]) return; seen[m.key] = 1;
       if (!m.mine && !m.sys && Date.now() - m.t < 60000) OR.toast(m.n + ': ' + m.text, 7000);
     });
+    // a route someone else shared that we haven't offered yet
+    (state.routes || []).forEach(r => { const k = 'r' + r.id + r.t; if (r.id !== state.me && !seen[k]) { seen[k] = 1; OR.emit('groupRoute', r); } });
     OR.emit('group', state);
   }
   OR.groupPoll = poll;
   function draw() {
     if (!OR.map) return;
+    const pt = state.on && OR.group.meet();
+    OR.setData('meet', { type: 'FeatureCollection', features: pt ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [pt.lo, pt.la] }, properties: { name: 'Regroup: ' + (pt.name || '') } }] : [] });
     OR.setData('riders', { type: 'FeatureCollection', features: (state.on ? state.riders : []).map(r => {
       const i = OR.riderInfo(r);
       return { type: 'Feature', geometry: { type: 'Point', coordinates: [r.lo, r.la] },

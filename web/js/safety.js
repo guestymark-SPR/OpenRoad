@@ -99,7 +99,9 @@
   }
   async function remindBreak(p) {
     const hrs = moving / 3600, at = ahead(p);
-    const intro = 'You\'ve been riding for ' + (hrs < 1.75 ? 'an hour and a half' : Math.round(hrs) + ' hours') + ' without a break.';
+    const h = Math.floor(hrs), m = Math.round((hrs - h) * 60 / 15) * 15;
+    const spoken = (h ? h + (h === 1 ? ' hour' : ' hours') : '') + (m && m < 60 ? (h ? ' and ' : '') + m + ' minutes' : '');
+    const intro = 'You\'ve been riding for ' + (spoken || 'a while') + ' without a break.';
     let pick = null;
     for (const kind of ['cafe', 'fuel']) {
       try {

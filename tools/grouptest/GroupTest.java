@@ -26,14 +26,19 @@ public class GroupTest {
             Thread.sleep(4000);
             mark.sendPosition("{\"id\":\"aaaaaa000001\",\"n\":\"Mark\",\"la\":52.45,\"lo\":-1.78}");
             dave.sendMessage("{\"id\":\"bbbbbb000002\",\"n\":\"Dave\",\"k\":\"fuel\"}");
+            StringBuilder big = new StringBuilder("{\"id\":\"aaaaaa000001\",\"route\":\"");
+            for (int i = 0; i < 40000; i++) big.append((char) ('a' + i % 26)); big.append("\"}"); // a 40 kB shared route
+            mark.sendKept("r", big.toString());
             waitFor("dave", "Mark", 10); waitFor("mark", "fuel", 10); Thread.sleep(1500);
             GroupLink late = new GroupLink(code, "dddddd000004", one, L("late"));
             waitFor("late", "Mark", 12);
+            boolean ok6 = has("late", "r {\"id\":\"aaaaaa000001\",\"route\":\"abc");
+            mark.clearKept("r"); waitFor("dave", "r-clear", 10); boolean ok7 = has("dave", "r-clear {\"id\":\"aaaaaa000001\"}");
             boolean ok1 = has("dave", "p {\"id\":\"aaaaaa000001\",\"n\":\"Mark\""), ok2 = has("mark", "m {\"id\":\"bbbbbb000002\""), ok3 = !got.containsKey("other"), ok4 = has("late", "Mark");
             mark.close(); waitFor("dave", "left {\"id\":\"aaaaaa000001\"}", 10);
             boolean ok5 = has("dave", "left {\"id\":\"aaaaaa000001\"}");
-            System.out.println(server + ": dave sees Mark " + ok1 + " | Mark hears Dave " + ok2 + " | other group sees nothing " + ok3 + " | late joiner gets kept position " + ok4 + " | leaving clears it " + ok5);
-            if (!(ok1 && ok2 && ok3 && ok4 && ok5)) fails++;
+            System.out.println(server + ": dave sees Mark " + ok1 + " | Mark hears Dave " + ok2 + " | other group sees nothing " + ok3 + " | late joiner gets kept position " + ok4 + " | leaving clears it " + ok5 + " | late joiner gets 40 kB shared route " + ok6 + " | route cleared " + ok7);
+            if (!(ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7)) fails++;
             dave.close(); other.close(); late.close(); Thread.sleep(1500);
         }
         System.out.println(fails == 0 ? "ALL PASSED" : fails + " SERVER(S) FAILED");

@@ -42,7 +42,10 @@ public class GroupService extends Service implements LocationListener {
 
     // shared with the web app (read through the bridge)
     static volatile boolean running = false;
-    static volatile String code = "", myId = "", myName = "", myColour = "";
+    static volatile String code = "", myId = "", myName = "", myColour = "", myRole = "";
+    // routes and regroup points shared by riders (kept by the servers, so latecomers get them), by rider id
+    private static final Map<String, JSONObject> routes = new LinkedHashMap<>(), meets = new LinkedHashMap<>();
+    private static volatile boolean allThere = false;
     private static final Map<String, JSONObject> riders = new LinkedHashMap<>();
     private static final JSONArray msgs = new JSONArray();
     private static final Map<String, String> servers = new LinkedHashMap<>();
@@ -63,7 +66,9 @@ public class GroupService extends Service implements LocationListener {
             o.put("on", running); o.put("code", code); o.put("me", myId); o.put("name", myName); o.put("colour", myColour);
             JSONArray rs = new JSONArray(); long now = System.currentTimeMillis();
             synchronized (riders) { for (JSONObject r : riders.values()) { JSONObject c = new JSONObject(r.toString()); c.put("age", (now - r.optLong("rx", now)) / 1000); rs.put(c); } }
-            o.put("riders", rs);
+            o.put("riders", rs); o.put("role", myRole); o.put("allThere", allThere);
+            JSONArray rt = new JSONArray(); synchronized (routes) { for (JSONObject r : routes.values()) rt.put(r); } o.put("routes", rt);
+            JSONArray mt = new JSONArray(); synchronized (meets) { for (JSONObject r : meets.values()) mt.put(r); } o.put("meets", mt);
             synchronized (msgs) { o.put("msgs", new JSONArray(msgs.toString())); }
             JSONObject sv = new JSONObject(); synchronized (servers) { for (Map.Entry<String, String> e : servers.entrySet()) sv.put(e.getKey(), e.getValue()); }
             o.put("servers", sv);
@@ -100,6 +105,7 @@ public class GroupService extends Service implements LocationListener {
         if (running && GroupLink.clean(newCode).equals(GroupLink.clean(code)) && link != null) { lastSent = 0; sendIfDue(true); return START_STICKY; }
         if (link != null) link.close();
         synchronized (riders) { riders.clear(); } synchronized (servers) { servers.clear(); } alertState.clear();
+        synchronized (routes) { routes.clear(); } synchronized (meets) { meets.clear(); } allThere = false;
         synchronized (msgs) { while (msgs.length() > 0) msgs.remove(0); }
         myId = Util.kvGet(this, "groupRider");
         if (myId == null || myId.length() < 8) { myId = GroupLink.newRiderId(); Util.kvSet(this, "groupRider", myId); }
@@ -133,7 +139,9 @@ public class GroupService extends Service implements LocationListener {
     private void received(String kind, String json) {
         try {
             JSONObject o = new JSONObject(json); String id = o.optString("id");
-            if (id.isEmpty() || id.equals(myId)) return;
+            if (id.isEmpty()) return;
+            if ("r".equals(kind) || "x".equals(kind) || "r-clear".equals(kind) || "x-clear".equals(kind)) { kept(kind, id, o); return; }
+            if (id.equals(myId)) return;
             if ("left".equals(kind)) {
                 JSONObject r; synchronized (riders) { r = riders.remove(id); }
                 if (r != null) { addMsg(r, "left the group"); alertState.remove(id); }
@@ -162,6 +170,32 @@ public class GroupService extends Service implements LocationListener {
         } catch (Exception ignored) { }
     }
 
+    private void kept(String kind, String id, JSONObject o) throws Exception {
+        boolean route = kind.startsWith("r"), clear = kind.endsWith("-clear");
+        Map<String, JSONObject> m = route ? routes : meets;
+        JSONObject prev; synchronized (m) { prev = m.get(id); }
+        if (clear) { synchronized (m) { m.remove(id); } if (!route) allThere = false; return; }
+        if (prev != null && prev.optLong("t") >= o.optLong("t")) return; // the same thing from the other server
+        if (System.currentTimeMillis() - o.optLong("t") > 24 * 3600000L) return; // left over from an old ride
+        synchronized (m) { m.put(id, o); }
+        if (id.equals(myId)) return;
+        String who = o.optString("n", "A rider");
+        if (route) say(who + " shared a route" + (o.optString("name").isEmpty() ? "" : ": " + o.optString("name")) + ". Open the group page to load it.");
+        else { allThere = false; say(who + " set a regroup point" + (o.optString("name").isEmpty() ? "" : " at " + o.optString("name")) + (me != null ? ", " + distWords(o.optDouble("la"), o.optDouble("lo")) + " away." : ".")); }
+    }
+    static void setRole(String r) { myRole = r == null ? "" : r; GroupService g = self; if (g != null) g.main.post(() -> { g.lastSent = 0; g.sendIfDue(true); }); }
+    static void share(String what, String json) {
+        GroupService g = self; if (g == null || g.link == null) return;
+        g.main.post(() -> {
+            try {
+                if (json == null || json.isEmpty()) { g.link.clearKept(what); Map<String, JSONObject> m = "r".equals(what) ? routes : meets; synchronized (m) { m.remove(myId); } if ("x".equals(what)) allThere = false; return; }
+                JSONObject o = new JSONObject(json).put("id", myId).put("n", myName).put("c", myColour).put("t", System.currentTimeMillis());
+                g.link.sendKept(what, o.toString());
+                Map<String, JSONObject> m = "r".equals(what) ? routes : meets; synchronized (m) { m.put(myId, o); }
+                if ("x".equals(what)) allThere = false;
+            } catch (Exception ignored) { }
+        });
+    }
     static String msgText(String k, String x) {
         switch (k == null ? "" : k) {
             case "fuel": return "stopping for fuel";
@@ -188,7 +222,7 @@ public class GroupService extends Service implements LocationListener {
             JSONObject o = new JSONObject().put("id", myId).put("n", myName).put("c", myColour)
                     .put("la", Math.round(me.getLatitude() * 1e6) / 1e6).put("lo", Math.round(me.getLongitude() * 1e6) / 1e6)
                     .put("s", me.hasSpeed() ? Math.round(me.getSpeed() * 10) / 10.0 : 0).put("h", me.hasBearing() ? Math.round(me.getBearing()) : -1)
-                    .put("a", Math.round(me.getAccuracy())).put("t", now).put("b", battery());
+                    .put("a", Math.round(me.getAccuracy())).put("t", now).put("b", battery()).put("r", myRole);
             link.sendPosition(o.toString());
             lastSent = now; lastSentAt = me;
         } catch (Exception ignored) { }
@@ -239,8 +273,38 @@ public class GroupService extends Service implements LocationListener {
                 }
                 alertState.put(id, st);
             }
+            sweepCheck(now);
         }
+        meetCheck(now);
         updateNote();
+    }
+    // the back marker: say when a rider drops behind me (further from the leader than I am)
+    private final Map<String, Boolean> behind = new LinkedHashMap<>();
+    private void sweepCheck(long now) {
+        if (!"sweep".equals(myRole) || me == null) { behind.clear(); return; }
+        JSONObject lead = null;
+        for (JSONObject r : riders.values()) if ("lead".equals(r.optString("r")) && now - r.optLong("rx", now) < LOST_MS) lead = r;
+        if (lead == null) return;
+        double mine = dist(lead.optDouble("la"), lead.optDouble("lo"));
+        for (JSONObject r : riders.values()) {
+            if (r == lead || now - r.optLong("rx", now) > LOST_MS) continue;
+            float[] d = new float[1]; Location.distanceBetween(lead.optDouble("la"), lead.optDouble("lo"), r.optDouble("la"), r.optDouble("lo"), d);
+            String id = r.optString("id"); Boolean was = behind.get(id);
+            boolean now2 = was != null && was ? d[0] > mine + 250 : d[0] > mine + 600; // a margin each way so it doesn't keep flipping
+            if (was != null && now2 != was) say(r.optString("n", "A rider") + (now2 ? " has dropped behind you." : " is back in front of you."));
+            behind.put(id, now2);
+        }
+    }
+    // everyone within 250 m of the newest regroup point: say so once
+    private void meetCheck(long now) {
+        JSONObject pt = null; synchronized (meets) { for (JSONObject x : meets.values()) if (pt == null || x.optLong("t") > pt.optLong("t")) pt = x; }
+        if (pt == null || me == null) return;
+        if (dist(pt.optDouble("la"), pt.optDouble("lo")) > 250) return;
+        int n = 0, there = 0;
+        synchronized (riders) { for (JSONObject r : riders.values()) { if (now - r.optLong("rx", now) > LOST_MS) continue; n++; float[] d = new float[1]; Location.distanceBetween(pt.optDouble("la"), pt.optDouble("lo"), r.optDouble("la"), r.optDouble("lo"), d); if (d[0] <= 250) there++; } }
+        boolean all = n > 0 && there == n;
+        if (all && !allThere) say("Everyone's at the regroup point.");
+        allThere = all;
     }
     private double dist(double la, double lo) { float[] r = new float[1]; Location.distanceBetween(me.getLatitude(), me.getLongitude(), la, lo, r); return r[0]; }
     private String distWords(double la, double lo) {

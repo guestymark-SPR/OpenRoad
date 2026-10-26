@@ -62,7 +62,7 @@
 
   // ---------- colours for places, used on the map and in lists ----------
   OR.POI = {
-    fuel: { c: '#e53935', i: 'fuel', label: 'Fuel' }, stay: { c: '#7e57c2', i: 'bed', label: 'Stay' }, camp: { c: '#2e7d32', i: 'tent', label: 'Campsite' },
+    meet: { c: '#d81b60', i: 'flag', label: 'Regroup point' }, fuel: { c: '#e53935', i: 'fuel', label: 'Fuel' }, stay: { c: '#7e57c2', i: 'bed', label: 'Stay' }, camp: { c: '#2e7d32', i: 'tent', label: 'Campsite' },
     cafe: { c: '#8d5a3b', i: 'cup', label: 'Café' }, pub: { c: '#ef8f00', i: 'pint', label: 'Pub' }, view: { c: '#00897b', i: 'view', label: 'Viewpoint' },
     pass: { c: '#5d6d7e', i: 'pass', label: 'Mountain pass' }, bikeshop: { c: '#1565c0', i: 'wrench', label: 'Motorbike shop' }, motopark: { c: '#0277bd', i: 'park', label: 'Motorbike parking' },
     cam: { c: '#f9a825', i: 'cam', label: 'Speed camera', dark: true }, wx: { c: '#1e88e5', i: 'cloud', label: 'Weather' }

@@ -28,7 +28,7 @@ import javax.net.ssl.SSLSocketFactory;
  */
 public class GroupLink {
     public interface Listener {
-        void onMessage(String kind, String json);   // kind: "p" position, "m" message
+        void onMessage(String kind, String json);   // kind: "p" position, "m" message, "r" shared route, "x" regroup point; "left", "r-clear", "x-clear" when removed
         void onStatus(String server, String status); // "connecting", "online", "offline: why"
     }
 
@@ -65,10 +65,13 @@ public class GroupLink {
     public void sendPosition(String json) { publish(base + "/p/" + riderId, json, true); }
     /** Publish a quick message to the group (not kept). */
     public void sendMessage(String json) { publish(base + "/m/" + riderId, json, false); }
-    /** Leave: remove my kept position from the servers, then disconnect. */
+    /** Something kept for the group until replaced or cleared: "r" a shared route, "x" a regroup point. */
+    public void sendKept(String what, String json) { publish(base + "/" + what + "/" + riderId, json, true); }
+    public void clearKept(String what) { for (Conn k : conns) k.publish(base + "/" + what + "/" + riderId, new byte[0], true); }
+    /** Leave: remove my kept position (and any route or regroup point I shared) from the servers, then disconnect. */
     public void close() {
         running = false;
-        for (Conn k : conns) k.closeGracefully(base + "/p/" + riderId);
+        for (Conn k : conns) k.closeGracefully(new String[]{base + "/p/" + riderId, base + "/r/" + riderId, base + "/x/" + riderId});
     }
     public String topicBase() { return base; }
 
@@ -157,15 +160,18 @@ public class GroupLink {
             int tl = ((b[0] & 0xff) << 8) | (b[1] & 0xff);
             String topic = new String(b, 2, tl, StandardCharsets.UTF_8);
             int at = 2 + tl; if (((flags >> 1) & 3) > 0) at += 2; // packet id when QoS > 0
-            if (b.length - at == 0) { // a rider left: their kept position was cleared
-                String id = topic.substring(topic.lastIndexOf('/') + 1);
-                listener.onMessage("left", "{\"id\":\"" + id.replaceAll("[^0-9a-f]", "") + "\"}");
+            if (!topic.startsWith(base + "/")) return;
+            String[] parts = topic.substring(base.length() + 1).split("/");
+            if (parts.length != 2) return;
+            String seg = parts[0];
+            if (b.length - at == 0) { // something kept was cleared: a rider left, or a route or regroup point was taken down
+                String id = parts[1].replaceAll("[^0-9a-f]", "");
+                listener.onMessage("p".equals(seg) ? "left" : seg + "-clear", "{\"id\":\"" + id + "\"}");
                 return;
             }
             byte[] payload = new byte[b.length - at]; System.arraycopy(b, at, payload, 0, payload.length);
             String json = decrypt(payload); if (json == null) return;
-            String rest = topic.substring(base.length());
-            listener.onMessage(rest.startsWith("/m/") ? "m" : "p", json);
+            listener.onMessage(seg, json);
         }
 
         void publish(String topic, byte[] payload, boolean retain) {
@@ -174,9 +180,9 @@ public class GroupLink {
         void send(byte[] p) throws IOException {
             synchronized (wlock) { if (out == null) throw new IOException("not connected"); out.write(p); out.flush(); }
         }
-        void closeGracefully(String myTopic) {
+        void closeGracefully(String[] myTopics) {
             new Thread(() -> {
-                try { send(publishPacket(myTopic, new byte[0], true)); send(new byte[]{(byte) 0xE0, 0}); } catch (Exception ignored) { }
+                try { for (String t : myTopics) send(publishPacket(t, new byte[0], true)); send(new byte[]{(byte) 0xE0, 0}); } catch (Exception ignored) { }
                 closeSock(); interrupt();
             }).start();
         }

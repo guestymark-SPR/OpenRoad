@@ -103,7 +103,10 @@
     box.innerHTML = '<div class="gcard">' + dot(st.colour) + '<div><span class="small">Group code</span><b class="gcode">' + esc(OR.group.pretty(st.code)) + '</b>' + serverLine(st) + '</div>' +
       '<button id="gShare" class="btn small">' + ic('share') + 'Send code</button></div>' +
       (lost.length ? '<div class="card warnc"><b>' + lost.map(r => esc(r.n)).join(', ') + ' not heard from for 3 minutes or more.</b><p class="small">They may have no signal or have stopped the app. They\'re shown where they were last seen.</p></div>' : '') +
+      '<label class="f"><span>My role in the group</span><select id="gRole"><option value="">Rider</option><option value="lead">Leader (out front)</option><option value="sweep">Sweep (back marker)</option></select></label>' +
+      roleLine(st) +
       '<button id="gAll" class="btn wide">' + ic('map') + 'Show everyone on the map</button>' +
+      routeSection(st) + meetSection(st) +
       '<h3 class="gh">Riders (' + (rs.length + 1) + ' including you)</h3>' +
       (rs.length ? '<div class="riders">' + rs.map(riderRow).join('') + '</div>' : '<p class="small muted">Nobody else yet. Send them the code: they open Rides, Group ride, and join with it.</p>') +
       '<h3 class="gh">Quick message to the group</h3>' + quickTiles() + msgList(st) +
@@ -112,7 +115,79 @@
     bindCommon(box);
     $('#gShare', box).onclick = () => OR.share(OR.group.shareText(st.code), 'OpenRoad group ride');
     $('#gAll', box).onclick = showAll;
+    $('#gRole', box).value = G().role || '';
+    $('#gRole', box).onchange = e => { OR.group.setRole(e.target.value); OR.toast(e.target.value === 'sweep' ? 'You\'re the sweep. You\'ll hear when anyone drops behind you.' : e.target.value === 'lead' ? 'You\'re the leader. The sweep sees how far ahead you are.' : 'Role set'); };
+    bindShared(box, st);
     $('#gLeave', box).onclick = () => { if (!confirm('Leave the group? The others will stop seeing you.')) return; OR.group.leave(); setTimeout(() => OR.pageGroup(box), 700); };
+  }
+
+  // ---------- roles ----------
+  // who is further from the leader than me (when I'm the sweep)
+  function behindMe(st) {
+    const lead = OR.group.leader(); if (!lead || !OR.pos || st.role !== 'sweep') return [];
+    const mine = OR.dist([OR.pos.lng, OR.pos.lat], [lead.lo, lead.la]);
+    return st.riders.filter(r => r !== lead && r.age <= OR.GROUP_LOST && OR.dist([lead.lo, lead.la], [r.lo, r.la]) > mine + 600);
+  }
+  function roleLine(st) {
+    if (st.role !== 'sweep') return '';
+    const lead = OR.group.leader();
+    if (!lead) return '<p class="small muted">Nobody has chosen Leader yet. Once they do, you\'ll see how far ahead they are and hear when anyone drops behind you.</p>';
+    const i = OR.riderInfo(lead), b = behindMe(st);
+    return '<div class="card ' + (b.length ? 'warnc' : 'okc') + '"><b>' + esc(lead.n) + ' (leader) is ' + (i.dist != null ? OR.fmtDist(i.dist) + ' ' + i.dir : 'ahead') + '</b>' +
+      '<p class="small">' + (b.length ? esc(b.map(r => r.n).join(', ')) + (b.length === 1 ? ' has' : ' have') + ' dropped behind you.' : 'Everyone is between you and the leader.') + '</p></div>';
+  }
+
+  // ---------- shared routes ----------
+  function routeSection(st) {
+    const mine = (st.routes || []).find(r => r.id === st.me), others = (st.routes || []).filter(r => r.id !== st.me), plan = OR.plan.route;
+    let h = '<h3 class="gh">Route</h3>';
+    others.forEach(r => { h += '<div class="card"><b>' + dot(r.c) + ' ' + esc(r.n) + '\'s route: ' + esc(r.name) + '</b><p class="small">' + OR.fmtDist(r.dist) + ', about ' + OR.fmtTime(r.time) + '. Shared ' + OR.clock(new Date(r.t)) + '.</p>' +
+      '<div class="row"><button class="btn small" data-rload="' + r.id + '">Show it</button><button class="btn small go" data-rride="' + r.id + '">Ride it</button></div></div>'; });
+    if (mine) h += '<div class="card okc"><b>You\'re sharing: ' + esc(mine.name) + '</b><p class="small">Everyone in the group can load it, including anyone who joins later.</p><div class="row">' +
+      (plan && plan.name !== mine.name ? '<button class="btn small" id="gShareR">Share the route on the map instead</button>' : '') + '<button class="btn small ghost" id="gUnshareR">Stop sharing</button></div></div>';
+    else if (plan) h += '<button id="gShareR" class="btn wide">' + ic('share') + 'Share my planned route: ' + esc(plan.name || 'route') + ' (' + OR.fmtDist(plan.dist) + ')</button>';
+    else if (!others.length) h += '<p class="small muted">Plan a route on the Plan tab, then come back here to share it. Everyone gets exactly the same roads and turn-by-turn.</p>';
+    return h;
+  }
+  function sharedRoute(id) { const r = (OR.group.state.routes || []).find(x => x.id === id); return r && r.route ? OR.unpackRoute(r.route) : null; }
+  OR.on('groupRoute', r => {
+    OR.sheet('<h2>' + dot(r.c) + ' ' + esc(r.n) + ' shared a route</h2><p><b>' + esc(r.name) + '</b>: ' + OR.fmtDist(r.dist) + ', about ' + OR.fmtTime(r.time) + '.</p>' +
+      '<div class="row"><button class="btn pri" data-rload="' + r.id + '">Show it</button><button class="btn go" data-rride="' + r.id + '">Ride it now</button></div><button class="btn wide ghost" id="rLater">Later</button>', b => {
+      bindShared(b, OR.group.state); $('#rLater', b).onclick = OR.closeSheet;
+    });
+  });
+
+  // ---------- regroup point ----------
+  function meetSection(st) {
+    const pt = OR.group.meet();
+    let h = '<h3 class="gh">Regroup point</h3>';
+    if (pt) {
+      const a = OR.group.atMeet(pt), d = OR.pos ? OR.dist([OR.pos.lng, OR.pos.lat], [pt.lo, pt.la]) : null;
+      h += '<div class="card ' + (a.there === a.of ? 'okc' : '') + '"><b>' + esc(pt.name) + '</b><p class="small">Set by ' + (pt.id === st.me ? 'you' : esc(pt.n)) + ' at ' + OR.clock(new Date(pt.t)) + (d != null ? (d <= 250 ? '. You\'re there' : '. ' + OR.fmtDist(d) + ' from you') : '') + '.<br><strong>' + a.there + ' of ' + a.of + ' there</strong>' + (a.there === a.of ? ': everyone\'s in.' : '.') + '</p>' +
+        '<div class="row"><button class="btn small" id="gMeetShow">Show</button><button class="btn small pri" id="gMeetGo">Route there</button>' + (pt.id === st.me ? '<button class="btn small ghost" id="gMeetClear">Remove</button>' : '') + '</div></div>';
+    }
+    h += '<div class="row"><button id="gMeetHere" class="btn small">' + ic('flag') + (pt ? 'Move it to here' : 'Regroup here') + '</button><button id="gMeetPick" class="btn small">' + ic('map') + 'Pick on the map</button></div>';
+    return h;
+  }
+  function meetHere() {
+    if (!OR.pos) return OR.toast('Waiting for your position');
+    OR.reverseName(OR.pos.lng, OR.pos.lat).catch(() => null).then(n => { OR.group.setMeet([OR.pos.lng, OR.pos.lat], n || 'Here'); OR.toast('Regroup point set. Everyone is told.'); });
+  }
+  function meetPick() {
+    OR.toast('Tap the map where everyone should meet', 6000);
+    if (innerWidth < 900) $('#panel').classList.remove('open');
+    OR.pickHook = p => { OR.group.setMeet([p.lng, p.lat], p.name); OR.toast('Regroup point set: ' + p.name); };
+  }
+  function bindShared(b, st) {
+    $$('[data-rload]', b).forEach(x => x.onclick = () => { const r = sharedRoute(x.dataset.rload); if (!r) return; OR.closeSheet(); OR.loadRoute(r); });
+    $$('[data-rride]', b).forEach(x => x.onclick = () => { const r = sharedRoute(x.dataset.rride); if (!r) return; OR.closeSheet(); if (OR.ride.on) return OR.toast('End this ride first'); OR.startRideUi(r); });
+    const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = fn; };
+    on('gShareR', () => { const r = OR.plan.route; if (!r) return; OR.group.shareRoute(r); OR.toast('Route shared with the group'); });
+    on('gUnshareR', () => OR.group.unshareRoute());
+    on('gMeetHere', meetHere); on('gMeetPick', meetPick);
+    on('gMeetClear', () => OR.group.clearMeet());
+    on('gMeetShow', () => { const pt = OR.group.meet(); if (!pt) return; OR.closeSheet(); OR.map.flyTo({ center: [pt.lo, pt.la], zoom: 14 }); if (innerWidth < 900) $('#panel').classList.remove('open'); });
+    on('gMeetGo', () => { const pt = OR.group.meet(); if (!pt) return; OR.closeSheet(); if (OR.ride.on) return OR.toast('End this ride first, or use Show'); OR.routeTo([pt.lo, pt.la], pt.name); });
   }
 
   // a quick sheet for use while riding (from Ride options or the map button)
@@ -121,8 +196,9 @@
     if (!st.on) return OR.openMore('group');
     const rs = st.riders.slice().sort((a, b) => (OR.riderInfo(a).dist || 0) - (OR.riderInfo(b).dist || 0));
     OR.sheet('<h2>Group ride</h2>' + quickTiles() + (rs.length ? '<div class="riders">' + rs.map(riderRow).join('') + '</div>' : '<p class="small muted">Nobody else in the group yet.</p>') +
+      roleLine(st) + '<button id="gMeetHere" class="btn wide">' + ic('flag') + 'Regroup here</button>' +
       '<button id="gsAll" class="btn wide">Show everyone</button><button id="gsMore" class="btn wide ghost">Group page</button>', b => {
-      bindCommon(b);
+      bindCommon(b); bindShared(b, st);
       $('#gsAll', b).onclick = () => { OR.closeSheet(); showAll(); };
       $('#gsMore', b).onclick = () => { OR.closeSheet(); OR.openMore('group'); };
     });

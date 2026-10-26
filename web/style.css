@@ -405,3 +405,4 @@ h3 svg{width:20px;height:20px;vertical-align:-4px;margin-right:4px;color:var(--g
 #crashBox .btn{background:#fff;color:#c62828;font-size:26px;font-weight:800;min-height:84px;border:none}
 #limit.over{animation:lim .5s 6 alternate;box-shadow:0 0 0 6px #c62828}
 @keyframes lim{from{transform:scale(1)}to{transform:scale(1.18)}}
+.card.okc{border-color:color-mix(in srgb,#0e9f57 55%,var(--line));background:color-mix(in srgb,#0e9f57 8%,var(--surface))}
