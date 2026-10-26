@@ -145,7 +145,7 @@
             : '<span class="warn">Not planned yet</span>') +
           portWarn(day, si) + '<div class="row">' +
           '<button class="btn small ' + (r ? 'ghost' : 'pri') + '" data-plan="' + di + ':' + si + '">' + (r ? 'Change on map' : 'Plan on map') + '</button>' +
-          (r ? '<button class="btn small" data-ride="' + di + ':' + si + '">Ride</button><button class="btn small" data-beeline="' + di + ':' + si + '">Beeline</button><button class="btn small ghost" data-fuel="' + di + ':' + si + '">Fuel stops</button>' : '') +
+          (r ? '<button class="btn small" data-ride="' + di + ':' + si + '">Ride</button><button class="btn small" data-beeline="' + di + ':' + si + '">Beeline</button><button class="btn small" data-maps="' + di + ':' + si + '">Google / Apple</button><button class="btn small ghost" data-fuel="' + di + ':' + si + '">Fuel stops</button>' : '') +
           '<button class="mini" data-rm="' + di + ':' + si + '" aria-label="Remove ride">' + ic('x') + '</button></div></div></div></li>';
       } else {
         h += '<li class="step ferry"><span class="when">' + OR.minToClock(x.at) + '</span><div class="what">' + ic('ferry') +
@@ -213,6 +213,7 @@
       day.steps.push({ kind: 'ride', wps: prev ? [{ lng: prev.lng, lat: prev.lat, name: prev.name, type: 'break' }] : [], route: null }); save(t); planStep(t, di, day.steps.length - 1); });
     $$('[data-plan]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.plan); planStep(t, di, si); });
     $$('[data-beeline]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.beeline); const st = t.days[di].steps[si], r = OR.unpackRoute(st.route); r.wps = st.wps; r.name = OR.dayLabel(t, di) + ': ' + (r.name || t.name); OR.sendToBeeline(r); });
+    $$('[data-maps]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.maps); const st = t.days[di].steps[si], r = OR.unpackRoute(st.route); r.wps = st.wps; r.name = OR.dayLabel(t, di) + ': ' + (r.name || t.name); OR.shareToMaps(r); });
     $$('[data-ride]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.ride); const r = OR.unpackRoute(t.days[di].steps[si].route); r.wps = t.days[di].steps[si].wps; OR.startRideUi(r); });
     $$('[data-fuel]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.fuel); fuelStops(t, di, si); });
     $$('[data-rm]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.rm); if (confirm('Remove this from day ' + (di + 1) + '?')) { t.days[di].steps.splice(si, 1); save(t); render(); } });

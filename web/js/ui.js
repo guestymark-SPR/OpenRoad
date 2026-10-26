@@ -341,7 +341,7 @@
       h += OR.wxStripHtml ? OR.wxStripHtml() : '';
       h += OR.planExtrasHtml ? OR.planExtrasHtml() : '';
       h += '<div class="rideRow"><button class="btn go" id="ride">' + ic('rides') + 'Start ride</button><button class="btn brief" id="brief">' + ic('shield') + 'Route brief</button></div>';
-      h += '<div class="tools">' + [['wx', 'cloud', 'Weather', '#1e88e5'], ['fuelChk', 'fuel', 'Fuel check', '#e53935'], ['stays', 'bed', 'Stays at end', '#7e57c2'], ['save', 'save', 'Save', '#0e9f57'], ['toTrip', 'trips', 'Add to trip', '#1565c0'], ['beeline', 'share', 'Beeline', '#f5a300'], ['gpx', 'dl', 'GPX', '#5d6d7e'], ['shareR', 'share', 'Share', '#00897b']]
+      h += '<div class="tools">' + [['wx', 'cloud', 'Weather', '#1e88e5'], ['fuelChk', 'fuel', 'Fuel check', '#e53935'], ['stays', 'bed', 'Stays at end', '#7e57c2'], ['save', 'save', 'Save', '#0e9f57'], ['toTrip', 'trips', 'Add to trip', '#1565c0'], ['beeline', 'share', 'Beeline', '#f5a300'], ['gmaps', 'map', 'Google / Apple Maps', '#4285f4'], ['gpx', 'dl', 'GPX', '#5d6d7e'], ['shareR', 'share', 'Share', '#00897b']]
         .concat(A ? [['offl', 'map', 'Save offline', '#ef8f00']] : []).map(([id, i, l, c]) => '<button class="tool" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>').join('') + '</div>';
       h += '<div id="extraOut">' + (extras.html || '') + '</div>';
       h += '<details><summary>Turn-by-turn list (' + r.man.length + ' steps)</summary><ol class="dirs">' + r.man.map(m =>
@@ -378,6 +378,7 @@
     on('save', () => { const n = prompt('Name this route', r.name); if (n == null) return; r.name = n.trim() || r.name; OR.routes.save(r); OR.toast('Saved to Saved routes'); });
     on('fuelChk', () => fuelCheck(r));
     on('beeline', () => OR.sendToBeeline(r));
+    on('gmaps', () => OR.shareToMaps(r));
     on('wx', () => weatherCheck(r));
     on('stays', () => { const e = r.shape[r.shape.length - 1]; findNearby('stay', e); });
     on('gpx', () => OR.saveFile(OR.fileName(r.name) + '.gpx', OR.toGpx(r)));
@@ -493,7 +494,7 @@
     return '<label class="btn wide file">' + ic('dl') + 'Import a GPX file<input type="file" id="gpxIn" accept=".gpx,application/gpx+xml,application/xml,text/xml,*/*" hidden></label>' +
       (list.length ? '<div class="list">' + list.map(r => '<div class="li"><b>' + esc(r.name) + '</b><span>' + OR.fmtDist(r.dist) + ', ' + OR.fmtTime(r.time) + (r.twist ? ', ' + OR.bendLabel(r.twist).toLowerCase() : '') + '</span>' +
         (r.roads && r.roads.length ? '<span class="refs">' + r.roads.map(chip).join('') + '</span>' : '') +
-        '<div class="row"><button class="btn small" data-a="open" data-id="' + r.id + '">Show</button><button class="btn small pri" data-a="ride" data-id="' + r.id + '">Ride</button><button class="btn small" data-a="beeline" data-id="' + r.id + '">Beeline</button>' +
+        '<div class="row"><button class="btn small" data-a="open" data-id="' + r.id + '">Show</button><button class="btn small pri" data-a="ride" data-id="' + r.id + '">Ride</button><button class="btn small" data-a="beeline" data-id="' + r.id + '">Beeline</button<button class="btn small" data-a="maps" data-id="' + r.id + '">Google / Apple</button>' +
         '<button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
         : '<div class="empty">' + ic('save', 'big') + '<p>Routes you save or import appear here and work with no signal. GPX files from Calimoto, Kurviger or friends open straight in.</p></div>');
   }
@@ -504,6 +505,7 @@
       if (b.dataset.a === 'open') { loadRoute(r); }
       if (b.dataset.a === 'ride') startRide(r);
       if (b.dataset.a === 'beeline') OR.sendToBeeline(r);
+      if (b.dataset.a === 'maps') OR.shareToMaps(r);
       if (b.dataset.a === 'gpx') OR.saveFile(OR.fileName(r.name) + '.gpx', OR.toGpx(r));
       if (b.dataset.a === 'del' && confirm('Delete "' + r.name + '"?')) { OR.routes.del(r.id); renderPlan(); }
     });
