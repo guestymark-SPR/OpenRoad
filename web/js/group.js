@@ -8,7 +8,7 @@
   OR.QUICK = [['fuel', 'Stopping for fuel', 'fuel', '#e53935'], ['stop', 'Pulling over', 'park', '#1565c0'], ['wait', 'Wait for me', 'time', '#ef8f00'],
     ['lost', 'I\'m lost', 'near', '#8e24aa'], ['ok', 'All good', 'check', '#0e9f57'], ['go', 'Setting off', 'moto', '#00897b'], ['help', 'Need help', 'helmet', '#c62828']];
   OR.groupAvailable = () => !!(N() && N().groupStart);
-  let state = { on: false, riders: [], msgs: [] }, timer = null, seen = {};
+  let state = { on: false, riders: [], msgs: [] }, timer = null, seen = {}, chatT = 0;
 
   OR.group = {
     get state() { return state; },
@@ -42,6 +42,18 @@
       return { there: others.filter(r => near(r.la, r.lo)).length + (OR.pos && near(OR.pos.lat, OR.pos.lng) ? 1 : 0), of: others.length + 1 };
     },
     leader() { return state.riders.find(r => r.r === 'lead') || null; },
+    // ---------- chat ----------
+    chatList() { return state.code ? OR.store.get('chat_' + OR.group.pretty(state.code), []) : []; },
+    chatSend(text, to, withLocation) { N().groupChat(text || '', to || '', !!withLocation); setTimeout(poll, 350); },
+    chatSeen() { const l = OR.group.chatList(), t = l.length ? l[l.length - 1].t : 0; if (t && N().groupChatSeen) N().groupChatSeen(t); setTimeout(poll, 300); },
+    // the ticks on my message: 1 sent, 2 arrived with everyone it was for, 3 everyone has read it
+    ticks(m) {
+      const who = state.riders.filter(r => m.to ? r.id === m.to : true);
+      if (!who.length) return 1;
+      if (who.every(r => (r.cs || 0) >= m.t)) return 3;
+      if (who.every(r => (r.cr || 0) >= m.t)) return 2;
+      return 1;
+    },
     shareText(code) {
       return 'Join my OpenRoad group ride.\n\nGroup code: ' + OR.group.pretty(code) + '\n\nIn OpenRoad: Rides, Group ride, Join with a code.\nGet OpenRoad for Android: https://github.com/guestymark-SPR/OpenRoad/releases/download/app/OpenRoad.apk';
     }
@@ -67,6 +79,16 @@
       if (seen[m.key]) return; seen[m.key] = 1;
       if (!m.mine && !m.sys && Date.now() - m.t < 60000) OR.toast(m.n + ': ' + m.text, 7000);
     });
+    // new chat messages since the last look, kept on this phone for the group (the newest 400)
+    if (state.on && N().groupChatSince && state.chatLast > chatT) {
+      try {
+        const add = JSON.parse(N().groupChatSince(chatT)); const key = 'chat_' + OR.group.pretty(state.code);
+        const have = OR.store.get(key, []), keys = new Set(have.map(m => m.key));
+        add.forEach(m => { chatT = Math.max(chatT, m.rx || m.t); if (!keys.has(m.key)) { have.push(m); keys.add(m.key); } });
+        have.sort((a, b) => a.t - b.t); OR.store.set(key, have.slice(-400));
+        if (add.some(m => !m.mine)) OR.emit('chat', add);
+      } catch (e) { }
+    }
     // a route someone else shared that we haven't offered yet
     (state.routes || []).forEach(r => { const k = 'r' + r.id + r.t; if (r.id !== state.me && !seen[k]) { seen[k] = 1; OR.emit('groupRoute', r); } });
     OR.emit('group', state);

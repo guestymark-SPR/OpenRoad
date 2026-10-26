@@ -110,10 +110,10 @@ public class MainActivity extends Activity {
         if (code == REQ_PERMS && !bridge.hasLocation()) js("window.onGpsError&&onGpsError('Location permission was refused. Allow it in Settings > Apps > OpenRoad > Permissions.')");
     }
 
-    @Override protected void onResume() { super.onResume(); if (bridge.wantGps) bridge.gpsOn(); }
-    @Override protected void onPause() { super.onPause(); if (!RideService.running) bridge.gpsOff(false); }
+    @Override protected void onResume() { super.onResume(); GroupService.appVisible = true; if (bridge.wantGps) bridge.gpsOn(); }
+    @Override protected void onPause() { super.onPause(); GroupService.appVisible = false; if (!RideService.running) bridge.gpsOff(false); }
 
-    @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); setIntent(i); openFromIntent(i); }
+    @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); setIntent(i); openFromIntent(i); if (i.getBooleanExtra("openChat", false)) js("window.OR&&OR.openChat&&OR.openChat()"); }
 
     // a GPX file opened from Files, email or another app
     private void openFromIntent(Intent i) {

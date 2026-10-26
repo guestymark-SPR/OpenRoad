@@ -46,6 +46,12 @@ public class GroupService extends Service implements LocationListener {
     // routes and regroup points shared by riders (kept by the servers, so latecomers get them), by rider id
     private static final Map<String, JSONObject> routes = new LinkedHashMap<>(), meets = new LinkedHashMap<>();
     private static volatile boolean allThere = false;
+    // chat: every message received or sent this group ride (newest last), and my last 20, kept on the
+    // servers so a rider who had no signal gets them when they reconnect
+    private static final JSONArray chat = new JSONArray();
+    private static final JSONArray myChat = new JSONArray();
+    static volatile long chatSeen = 0, chatGot = 0;
+    static volatile boolean chatVoice = true, appVisible = false;
     private static final Map<String, JSONObject> riders = new LinkedHashMap<>();
     private static final JSONArray msgs = new JSONArray();
     private static final Map<String, String> servers = new LinkedHashMap<>();
@@ -67,6 +73,9 @@ public class GroupService extends Service implements LocationListener {
             JSONArray rs = new JSONArray(); long now = System.currentTimeMillis();
             synchronized (riders) { for (JSONObject r : riders.values()) { JSONObject c = new JSONObject(r.toString()); c.put("age", (now - r.optLong("rx", now)) / 1000); rs.put(c); } }
             o.put("riders", rs); o.put("role", myRole); o.put("allThere", allThere);
+            int unread = 0; long last = 0;
+            synchronized (chat) { for (int i = 0; i < chat.length(); i++) { JSONObject c = chat.getJSONObject(i); last = Math.max(last, c.optLong("rx", c.optLong("t"))); if (!c.optBoolean("mine") && c.optLong("t") > chatSeen) unread++; } }
+            o.put("unread", unread); o.put("chatLast", last); o.put("chatSeen", chatSeen);
             JSONArray rt = new JSONArray(); synchronized (routes) { for (JSONObject r : routes.values()) rt.put(r); } o.put("routes", rt);
             JSONArray mt = new JSONArray(); synchronized (meets) { for (JSONObject r : meets.values()) mt.put(r); } o.put("meets", mt);
             synchronized (msgs) { o.put("msgs", new JSONArray(msgs.toString())); }
@@ -106,6 +115,7 @@ public class GroupService extends Service implements LocationListener {
         if (link != null) link.close();
         synchronized (riders) { riders.clear(); } synchronized (servers) { servers.clear(); } alertState.clear();
         synchronized (routes) { routes.clear(); } synchronized (meets) { meets.clear(); } allThere = false;
+        synchronized (chat) { while (chat.length() > 0) chat.remove(0); } synchronized (myChat) { while (myChat.length() > 0) myChat.remove(0); } chatSeen = 0; chatGot = 0;
         synchronized (msgs) { while (msgs.length() > 0) msgs.remove(0); }
         myId = Util.kvGet(this, "groupRider");
         if (myId == null || myId.length() < 8) { myId = GroupLink.newRiderId(); Util.kvSet(this, "groupRider", myId); }
@@ -141,6 +151,8 @@ public class GroupService extends Service implements LocationListener {
             JSONObject o = new JSONObject(json); String id = o.optString("id");
             if (id.isEmpty()) return;
             if ("r".equals(kind) || "x".equals(kind) || "r-clear".equals(kind) || "x-clear".equals(kind)) { kept(kind, id, o); return; }
+            if ("c".equals(kind)) { if (!id.equals(myId)) chatIn(o); return; }
+            if ("c-clear".equals(kind)) return;
             if (id.equals(myId)) return;
             if ("left".equals(kind)) {
                 JSONObject r; synchronized (riders) { r = riders.remove(id); }
@@ -183,6 +195,84 @@ public class GroupService extends Service implements LocationListener {
         if (route) say(who + " shared a route" + (o.optString("name").isEmpty() ? "" : ": " + o.optString("name")) + ". Open the group page to load it.");
         else { allThere = false; say(who + " set a regroup point" + (o.optString("name").isEmpty() ? "" : " at " + o.optString("name")) + (me != null ? ", " + distWords(o.optDouble("la"), o.optDouble("lo")) + " away." : ".")); }
     }
+    // ---------- chat ----------
+    private void chatIn(JSONObject bundle) throws Exception {
+        JSONArray ms = bundle.optJSONArray("msgs"); if (ms == null) return;
+        String id = bundle.getString("id"), who = bundle.optString("n", "A rider"), col = bundle.optString("c");
+        java.util.List<JSONObject> fresh = new java.util.ArrayList<>();
+        synchronized (chat) {
+            for (int i = 0; i < ms.length(); i++) {
+                JSONObject m = ms.getJSONObject(i); String to = m.optString("to");
+                if (!to.isEmpty() && !to.equals(myId)) continue; // a private message to someone else
+                String key = id + ":" + m.optLong("t");
+                boolean have = false; for (int j = chat.length() - 1; j >= 0 && !have; j--) if (key.equals(chat.getJSONObject(j).optString("key"))) have = true;
+                if (have) continue;
+                JSONObject c = new JSONObject(m.toString()).put("key", key).put("id", id).put("n", who).put("c", col).put("rx", System.currentTimeMillis());
+                fresh.add(c);
+            }
+            for (JSONObject c : fresh) insertSorted(c);
+            while (chat.length() > 400) chat.remove(0);
+        }
+        if (fresh.isEmpty()) return;
+        long newest = 0; for (JSONObject c : fresh) newest = Math.max(newest, c.optLong("t"));
+        chatGot = Math.max(chatGot, newest);
+        lastSent = 0; sendIfDue(true); // tells the sender it arrived (the ticks)
+        for (JSONObject c : fresh) {
+            if (System.currentTimeMillis() - c.optLong("t") > 15 * 60000) continue; // catching up on old ones: no noise
+            String text = c.optString("x"), line = who + (c.optString("to").isEmpty() ? "" : ", privately") + ": " + (text.isEmpty() && c.has("la") ? "shared their location" : text);
+            if (chatVoice) say(line);
+            if (!appVisible) chatNote(line);
+        }
+    }
+    private static void insertSorted(JSONObject c) throws Exception {
+        long t = c.optLong("t"); int at = chat.length();
+        while (at > 0 && chat.getJSONObject(at - 1).optLong("t") > t) at--;
+        if (at == chat.length()) { chat.put(c); return; }
+        JSONArray copy = new JSONArray();
+        for (int i = 0; i < chat.length(); i++) { if (i == at) copy.put(c); copy.put(chat.get(i)); }
+        while (chat.length() > 0) chat.remove(0);
+        for (int i = 0; i < copy.length(); i++) chat.put(copy.get(i));
+    }
+    private final java.util.List<String> noteLines = new java.util.ArrayList<>();
+    private void chatNote(String line) {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel("groupchat") == null) {
+                NotificationChannel ch = new NotificationChannel("groupchat", "Group chat", NotificationManager.IMPORTANCE_HIGH);
+                ch.setDescription("Messages from riders in your group"); nm.createNotificationChannel(ch);
+            }
+            noteLines.add(line); while (noteLines.size() > 6) noteLines.remove(0);
+            Intent open = new Intent(this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT).putExtra("openChat", true);
+            PendingIntent pi = PendingIntent.getActivity(this, 4, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            Notification.InboxStyle st = new Notification.InboxStyle(); for (String l : noteLines) st.addLine(l);
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, "groupchat") : new Notification.Builder(this);
+            b.setSmallIcon(android.R.drawable.sym_action_chat).setContentTitle("Group chat").setContentText(line).setStyle(st).setContentIntent(pi).setAutoCancel(true).setCategory(Notification.CATEGORY_MESSAGE);
+            nm.notify(14, b.build());
+        } catch (Exception ignored) { }
+    }
+    static void clearChatNote(android.content.Context c) { try { ((NotificationManager) c.getSystemService(NOTIFICATION_SERVICE)).cancel(14); GroupService g = self; if (g != null) g.noteLines.clear(); } catch (Exception ignored) { } }
+    static void sendChat(String text, String to, boolean withLocation) {
+        GroupService g = self; if (g == null || g.link == null) return;
+        g.main.post(() -> {
+            try {
+                JSONObject m = new JSONObject().put("t", System.currentTimeMillis()).put("x", clip(text, 500));
+                if (to != null && !to.isEmpty()) m.put("to", to);
+                if (withLocation && g.me != null) m.put("la", Math.round(g.me.getLatitude() * 1e5) / 1e5).put("lo", Math.round(g.me.getLongitude() * 1e5) / 1e5);
+                synchronized (myChat) { myChat.put(m); while (myChat.length() > 20) myChat.remove(0); }
+                JSONObject bundle = new JSONObject().put("id", myId).put("n", myName).put("c", myColour).put("t", m.getLong("t"));
+                synchronized (myChat) { bundle.put("msgs", new JSONArray(myChat.toString())); }
+                g.link.sendKept("c", bundle.toString());
+                JSONObject mine = new JSONObject(m.toString()).put("key", myId + ":" + m.getLong("t")).put("id", myId).put("n", myName).put("c", myColour).put("mine", true);
+                synchronized (chat) { insertSorted(mine); while (chat.length() > 400) chat.remove(0); }
+            } catch (Exception ignored) { }
+        });
+    }
+    static String chatSince(long t) {
+        JSONArray out = new JSONArray();
+        try { synchronized (chat) { for (int i = 0; i < chat.length(); i++) { JSONObject c = chat.getJSONObject(i); if (c.optLong("rx", c.optLong("t")) > t || c.optLong("t") > t) out.put(c); } } } catch (Exception ignored) { }
+        return out.toString();
+    }
+    static void seen(long t) { if (t > chatSeen) { chatSeen = t; GroupService g = self; if (g != null) g.main.post(() -> { g.lastSent = 0; g.sendIfDue(true); }); } }
     static void setRole(String r) { myRole = r == null ? "" : r; GroupService g = self; if (g != null) g.main.post(() -> { g.lastSent = 0; g.sendIfDue(true); }); }
     static void share(String what, String json) {
         GroupService g = self; if (g == null || g.link == null) return;
@@ -222,7 +312,7 @@ public class GroupService extends Service implements LocationListener {
             JSONObject o = new JSONObject().put("id", myId).put("n", myName).put("c", myColour)
                     .put("la", Math.round(me.getLatitude() * 1e6) / 1e6).put("lo", Math.round(me.getLongitude() * 1e6) / 1e6)
                     .put("s", me.hasSpeed() ? Math.round(me.getSpeed() * 10) / 10.0 : 0).put("h", me.hasBearing() ? Math.round(me.getBearing()) : -1)
-                    .put("a", Math.round(me.getAccuracy())).put("t", now).put("b", battery()).put("r", myRole);
+                    .put("a", Math.round(me.getAccuracy())).put("t", now).put("b", battery()).put("r", myRole).put("cr", chatGot).put("cs", chatSeen);
             link.sendPosition(o.toString());
             lastSent = now; lastSentAt = me;
         } catch (Exception ignored) { }

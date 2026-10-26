@@ -105,6 +105,7 @@
       (lost.length ? '<div class="card warnc"><b>' + lost.map(r => esc(r.n)).join(', ') + ' not heard from for 3 minutes or more.</b><p class="small">They may have no signal or have stopped the app. They\'re shown where they were last seen.</p></div>' : '') +
       '<label class="f"><span>My role in the group</span><select id="gRole"><option value="">Rider</option><option value="lead">Leader (out front)</option><option value="sweep">Sweep (back marker)</option></select></label>' +
       roleLine(st) +
+      '<button id="gChat" class="btn wide pri">' + ic('chat') + 'Group chat' + (st.unread ? ' (' + st.unread + ' new)' : '') + '</button>' +
       '<button id="gAll" class="btn wide">' + ic('map') + 'Show everyone on the map</button>' +
       routeSection(st) + meetSection(st) +
       '<h3 class="gh">Riders (' + (rs.length + 1) + ' including you)</h3>' +
@@ -115,6 +116,7 @@
     bindCommon(box);
     $('#gShare', box).onclick = () => OR.share(OR.group.shareText(st.code), 'OpenRoad group ride');
     $('#gAll', box).onclick = showAll;
+    $('#gChat', box).onclick = () => OR.openChat();
     $('#gRole', box).value = G().role || '';
     $('#gRole', box).onchange = e => { OR.group.setRole(e.target.value); OR.toast(e.target.value === 'sweep' ? 'You\'re the sweep. You\'ll hear when anyone drops behind you.' : e.target.value === 'lead' ? 'You\'re the leader. The sweep sees how far ahead you are.' : 'Role set'); };
     bindShared(box, st);
@@ -211,9 +213,10 @@
     OR.sheet('<h2>' + dot(r.c) + ' ' + esc(r.n || 'Rider') + '</h2>' + (i.stale ? '<div class="card warnc"><b>Not heard from for ' + i.seen.replace(' ago', '') + '</b><p class="small">This is where they were last seen.</p></div>' : '') +
       '<div class="stats">' + (i.dist != null ? '<div><b>' + OR.fmtDist(i.dist) + '</b><span>' + i.dir + ' of you</span></div>' : '') +
       '<div><b>' + (i.moving ? OR.speed(r.s) : 0) + '</b><span>' + OR.speedUnit() + '</span></div><div><b>' + i.seen + '</b><span>last update</span></div>' + (r.b >= 0 ? '<div><b>' + r.b + '%</b><span>battery</span></div>' : '') + '</div>' +
-      '<div class="row"><button class="btn pri" data-to="' + r.id + '">Ride to ' + esc(r.n || 'them') + '</button><button class="btn" id="rtAll">Show everyone</button></div>', b => {
+      '<div class="row"><button class="btn" id="rtMsg">' + ic('chat') + 'Message</button><button class="btn pri" data-to="' + r.id + '">Ride to ' + esc(r.n || 'them') + '</button><button class="btn" id="rtAll">Show everyone</button></div>', b => {
       bindCommon(b);
       $('#rtAll', b).onclick = () => { OR.closeSheet(); showAll(); };
+      $('#rtMsg', b).onclick = () => { OR.closeSheet(); OR.chatTo(r.id); };
     });
   });
 

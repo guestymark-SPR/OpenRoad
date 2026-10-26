@@ -54,13 +54,37 @@
       const open = $('#panel').classList.contains('open'), same = b.classList.contains('on');
       if (same && open && innerWidth < 900) $('#panel').classList.remove('open'); else tab(b.dataset.tab);
     });
-    $('#grab').onclick = () => $('#panel').classList.toggle('open');
+    $('#grab').onclick = () => setMenu(menuLevel() === 0 ? 1 : 0);
+    // swipe the menu down to tuck it away (then again to hide it for a full-screen map), up to bring it back
+    [$('#grab'), $('#nav'), $('#views')].forEach(el => {
+      let y0 = null, x0 = 0, top = 0;
+      el.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; top = $('#views').scrollTop; }, { passive: true });
+      el.addEventListener('touchend', e => {
+        if (y0 == null) return; const t = e.changedTouches[0], dy = t.clientY - y0, dx = Math.abs(t.clientX - x0); y0 = null;
+        if (Math.abs(dy) < 60 || dx > Math.abs(dy)) return;
+        if (el.id === 'views' && (dy < 0 || top > 0)) return; // in the list, only a pull down from the very top hides it
+        const l = menuLevel();
+        if (dy > 0 && l < 2) setMenu(l + 1); else if (dy < 0 && l > 0) setMenu(l - 1);
+      }, { passive: true });
+    });
+    $('#menuBtn').innerHTML = ic('menu'); $('#menuBtn').onclick = () => setMenu(innerWidth < 900 ? 1 : 0);
+    $('#fullBtn').innerHTML = ic('full'); $('#fullBtn').onclick = () => setMenu(menuLevel() === 2 ? 0 : 2);
     tab('plan', true);
   }
+  // 0: menu open, 1: just the tab bar, 2: hidden (full-screen map)
+  function menuLevel() { const b = document.body.classList; return b.contains('menu-2') ? 2 : innerWidth < 900 ? ($('#panel').classList.contains('open') ? 0 : 1) : b.contains('menu-1') ? 1 : 0; }
+  function setMenu(l) {
+    const b = document.body.classList;
+    b.toggle('menu-2', l === 2); b.toggle('menu-1', l === 1);
+    $('#panel').classList.toggle('open', l === 0);
+    if (l === 2) $('#results').hidden = true;
+    setTimeout(() => OR.map && OR.map.resize(), 260);
+  }
+  OR.setMenu = setMenu;
   function tab(t, quiet) {
     $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + t));
-    if (!quiet) $('#panel').classList.add('open');
+    if (!quiet) setMenu(0);
     $('#views').scrollTop = 0;
     if (t === 'rides') renderRides(); if (t === 'more') renderMore(); if (t === 'trips' && OR.renderTrips) OR.renderTrips();
   }
@@ -717,7 +741,7 @@
     sheet('<h2>Ride options</h2><div class="tiles">' +
       (r ? '<button class="tile" id="roSkip">' + badge('skip', '#ff6a1f') + '<span>Skip next stop</span></button><button class="tile" id="roView">' + badge('map', '#1e88e5') + '<span>Route overview</span></button><button class="tile" id="roWx">' + badge('cloud', '#1e88e5') + '<span>Weather ahead</span></button>' : '') +
       '<button class="tile" id="roFuel">' + badge('fuel', '#e53935') + '<span>Fuel nearby</span></button><button class="tile" id="roCafe">' + badge('cup', '#8d5a3b') + '<span>Cafés nearby</span></button><button class="tile" id="roStay">' + badge('bed', '#7e57c2') + '<span>Stays nearby</span></button>' +
-      (OR.group && OR.group.state.on ? '<button class="tile" id="roGroup">' + badge('group', '#e53935') + '<span>Group</span></button>' : '') + '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button></div>' +
+      (OR.group && OR.group.state.on ? '<button class="tile" id="roGroup">' + badge('group', '#e53935') + '<span>Group</span></button><button class="tile" id="roChat">' + badge('chat', '#0e9f57') + '<span>Group chat</span></button>' : '') + '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button></div>' +
       (OR.ride.leanL || OR.ride.leanR ? '<p class="small muted">Lean so far: ' + Math.round(OR.ride.leanL) + '° left, ' + Math.round(OR.ride.leanR) + '° right (estimated).</p>' : ''), b => {
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();
@@ -733,6 +757,7 @@
       on('roIce', () => sheet('<div class="ice"><pre>' + esc(OR.iceText()) + '</pre></div>'));
       on('roFill', () => OR.fillUpSheet());
       on('roGroup', () => OR.groupSheet());
+      on('roChat', () => OR.openChat());
     });
   }
 

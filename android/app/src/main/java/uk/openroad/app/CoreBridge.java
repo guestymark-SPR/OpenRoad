@@ -97,6 +97,10 @@ class CoreBridge {
     @JavascriptInterface public void groupSay(String kind, String text) { onMain(() -> { try { ctx.startService(new Intent(ctx, GroupService.class).setAction(GroupService.ACTION_SAY).putExtra("kind", kind).putExtra("text", text)); } catch (Exception ignored) { } }); }
     @JavascriptInterface public String groupState() { return GroupService.state(); }
     @JavascriptInterface public void groupRole(String role) { GroupService.setRole(role); }
+    @JavascriptInterface public void groupChat(String text, String to, boolean withLocation) { GroupService.sendChat(text, to, withLocation); }
+    @JavascriptInterface public String groupChatSince(double t) { return GroupService.chatSince((long) t); }
+    @JavascriptInterface public void groupChatSeen(double t) { GroupService.seen((long) t); GroupService.clearChatNote(ctx); }
+    @JavascriptInterface public void groupChatVoice(boolean on) { GroupService.chatVoice = on; }
     @JavascriptInterface public void groupShare(String what, String json) { if ("r".equals(what) || "x".equals(what)) GroupService.share(what, json); }
     // crash detection (runs while recording a ride or in a group ride)
     @JavascriptInterface public void crashConfig(String json) { Util.kvSet(ctx, "crash", json); }
