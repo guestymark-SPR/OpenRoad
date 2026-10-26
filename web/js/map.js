@@ -46,7 +46,21 @@
     return out;
   }
 
+  // Satellite view: Esri World Imagery under OpenRoad's roads and labels (needs a signal)
+  const SAT = { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: 19,
+    attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' };
+  const FILLS = ['landuse', 'wood', 'grass', 'park', 'water', 'building'];
   OR.buildStyle = function (mode) {
+    const st = buildBase(mode);
+    if (OR.cfg.mapType !== 'satellite') return st;
+    st.sources.sat = SAT;
+    st.layers = st.layers.filter(l => FILLS.indexOf(l.id) < 0);
+    st.layers.splice(1, 0, { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-brightness-max': mode === 'night' ? 0.7 : 1 } });
+    st.layers.forEach(l => { if (/^(r|rc)-(minor|track|tertiary)$/.test(l.id)) l.paint['line-opacity'] = 0.75; });
+    return st;
+  };
+  OR.setMapType = function (t) { OR.cfg.mapType = t; OR.saveCfg(); if (OR.map) { OR.map.setStyle(OR.buildStyle(OR.map.__mode), { diff: false }); } };
+  function buildBase(mode) {
     const c = PAL[mode] || PAL.day;
     return {
       version: 8, name: 'OpenRoad ' + mode, glyphs: GLYPHS,
@@ -89,7 +103,7 @@
           paint: { 'text-color': c.text, 'text-halo-color': c.halo, 'text-halo-width': 2, 'text-opacity': 0.75 } }
       ]
     };
-  };
+  }
 
   // ---------- day / night ----------
   // Sunrise and sunset (NOAA approximation), used for the Auto theme.
@@ -142,7 +156,7 @@
     L({ id: 'ov-done', type: 'line', source: 'ov-done', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9aa3ab', 'line-width': z([5, 4, 14, 9]) } });
     L({ id: 'ov-rideview', type: 'line', source: 'ov-rideview', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#7c3aed', 'line-width': z([5, 3, 14, 7]) } });
     L({ id: 'ov-track', type: 'line', source: 'ov-track', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1fa0ff', 'line-width': z([5, 2, 14, 5]), 'line-opacity': 0.85 } });
-    L({ id: 'ov-pois', type: 'circle', source: 'ov-pois', paint: { 'circle-radius': z([6, 5, 14, 9]), 'circle-color': ['match', ['get', 'kind'], 'fuel', '#e5243b', 'stay', '#7c3aed', 'camp', '#16a34a', '#0ea5e9'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
+    L({ id: 'ov-pois', type: 'circle', source: 'ov-pois', paint: { 'circle-radius': z([6, 5, 14, 9]), 'circle-color': ['match', ['get', 'kind'], 'fuel', '#c62828', 'stay', '#6d4bb3', 'camp', '#0b6b3a', 'view', '#0e7490', 'pass', '#7a5c2e', 'bikeshop', '#334155', 'cam', '#f5c518', 'wx', '#2563eb', '#0e7490'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
     L({ id: 'ov-pois-l', type: 'symbol', source: 'ov-pois', minzoom: 10, layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, 1.2], 'text-anchor': 'top', 'text-optional': true },
       paint: { 'text-color': night ? '#e6e9ec' : '#222', 'text-halo-color': night ? '#000' : '#fff', 'text-halo-width': 1.6 } });
   }

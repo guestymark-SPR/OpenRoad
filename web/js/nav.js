@@ -32,7 +32,11 @@
     OR.pos = p;
     if (!marker && OR.map) marker = new maplibregl.Marker({ element: markerEl(), rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat([p.lng, p.lat]).addTo(OR.map);
     if (marker) { marker.setLngLat([p.lng, p.lat]); marker.setRotation(p.heading || 0); }
-    if (ride.on) step(p);
+    if (ride.on) {
+      const l = OR.leanFrom ? OR.leanFrom(p) : null;
+      if (l != null) { if (l > ride.leanR) ride.leanR = l; if (-l > ride.leanL) ride.leanL = -l; ride.lean = l; }
+      step(p);
+    }
     OR.emit('fix', p);
   }
 
@@ -74,13 +78,18 @@
       if (said < 1 && toTurn <= far && toTurn > near * 1.8 && prevLen > far * 0.6 && m.alert) { OR.say('In ' + OR.spokenDist(toTurn) + ', ' + m.alert); ride.spoken[k] = 1; }
       else if (said < 2 && toTurn <= near) { OR.say(m.pre); ride.spoken[k] = 2; }
     }
+    ride.limit = OR.limitAt(ride.limits, ride.along);
+    for (const c of ride.cams || []) {
+      const d = c.at - ride.along;
+      if (d > 0 && d < Math.max(300, v * 20) && !c.said) { c.said = true; const lim = OR.limitSign(ride.limit); OR.say('Speed camera ahead' + (lim ? ', limit ' + lim : '')); }
+    }
     const isEnd = k === route.man.length - 1;
     if (isEnd && remain < 35 && !ride.arrived) { ride.arrived = true; OR.say(m.pre || 'You have arrived'); OR.emit('arrived'); }
     // travelled part in grey
     const done = route.shape.slice(0, ride.seg + 1); done.push([p.lng, p.lat]);
     OR.setData('done', { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: done } }] });
     const eta = new Date(Date.now() + timeLeft(route, ride.along) * 1000);
-    OR.emit('ride', { m, next: route.man[k + 1], toTurn, remain, eta, k });
+    OR.emit('ride', { m, next: route.man[k + 1], toTurn, remain, eta, k, limit: ride.limit });
     camera(p, toTurn);
   }
   function timeLeft(route, along) {
@@ -96,6 +105,7 @@
         const r = await OR.rerouteFrom([p.lng, p.lat, p.heading], ride.route, ride.along);
         ride.route = r; ride.seg = 0; ride.along = 0; ride.spoken = {}; ride.off = 0;
         OR.setData('route', { type: 'FeatureCollection', features: [OR.routeGeo(r)] });
+        ride.limits = null; ride.cams = []; loadRideData(r);
         OR.emit('rerouted', r);
       } catch (e) { offlineHint(p, L); }
       ride.rerouting = false; OR.emit('rerouting', false);
@@ -155,7 +165,10 @@
     try { if (on && navigator.wakeLock) navigator.wakeLock.request('screen').then(w => wake = w).catch(() => { }); else if (wake) { wake.release(); wake = null; } } catch (e) { }
   }
   OR.startRide = function (route) {
-    Object.assign(ride, { on: true, route: route || null, follow: true, seg: 0, along: 0, spoken: {}, off: 0, arrived: false, pts: [], times: [], dist: 0, moving: 0, max: 0, start: Date.now(), lastT: 0 });
+    Object.assign(ride, { on: true, route: route || null, follow: true, seg: 0, along: 0, spoken: {}, off: 0, arrived: false, pts: [], times: [], dist: 0, moving: 0, max: 0, start: Date.now(), lastT: 0,
+      limits: route && route.limits || null, limit: null, cams: [], leanL: 0, leanR: 0, lean: 0 });
+    if (OR.resetLean) OR.resetLean();
+    if (route) loadRideData(route);
     OR.setData('done', null); OR.setData('track', null);
     OR.startGps(); screenOn(true);
     if (A && A.rideStart) A.rideStart(route ? route.name : 'Free ride');
@@ -166,6 +179,30 @@
     } else OR.say('Recording your ride');
     OR.emit('ridestart', route);
   };
+  // Skip the next stop or via point and re-plan from here (needs a signal)
+  OR.skipNextStop = async function () {
+    const r = ride.route; if (!r || !OR.pos) return false;
+    const at = w => { let best = 1e12, a = 0; for (let i = 0; i < r.shape.length - 1; i++) { const q = OR.projSeg([w.lng, w.lat], r.shape[i], r.shape[i + 1]); if (q.d < best) { best = q.d; a = r.cum[i] + q.t * (r.cum[i + 1] - r.cum[i]); } } return a; };
+    const idx = r.wps.findIndex((w, i) => i > 0 && i < r.wps.length - 1 && at(w) > ride.along + 50);
+    if (idx < 0) { OR.toast('There are no more stops before the destination'); return false; }
+    const name = r.wps[idx].name;
+    const copy = Object.assign({}, r, { wps: r.wps.filter((_, i) => i !== idx) });
+    ride.rerouting = true; OR.emit('rerouting', true);
+    try {
+      const nr = await OR.rerouteFrom([OR.pos.lng, OR.pos.lat, OR.pos.heading], copy, ride.along);
+      ride.route = nr; ride.seg = 0; ride.along = 0; ride.spoken = {}; ride.off = 0; ride.limits = null; ride.cams = [];
+      OR.setData('route', { type: 'FeatureCollection', features: [OR.routeGeo(nr)] }); loadRideData(nr);
+      OR.say('Skipped ' + (name || 'the next stop')); OR.emit('rerouted', nr); return true;
+    } catch (e) { OR.toast('Could not skip: ' + e.message, 5000); return false; }
+    finally { ride.rerouting = false; OR.emit('rerouting', false); }
+  };
+
+  // speed limits and (UK/Ireland only) speed cameras along the route, fetched once when the ride starts
+  function loadRideData(route) {
+    if (!OR.online()) return;
+    if (!ride.limits && OR.speedLimits) OR.speedLimits(route).then(l => { if (ride.route === route) { ride.limits = l; route.limits = l; } }).catch(() => { });
+    if (OR.camerasAlong && OR.cfg.cameras !== false) OR.camerasAlong(route).then(c => { if (ride.route === route) ride.cams = c; }).catch(() => { });
+  }
   OR.stopRide = function () {
     if (!ride.on) return null;
     OR.pullNativeTrack();
@@ -174,7 +211,7 @@
     OR.store.set('rideInProgress', null);
     let saved = null;
     if (ride.pts.length > 5 && ride.dist > 200) {
-      saved = { id: OR.uid(), start: ride.start, end: Date.now(), dist: ride.dist, moving: ride.moving, max: ride.max,
+      saved = { id: OR.uid(), start: ride.start, end: Date.now(), dist: ride.dist, moving: ride.moving, max: ride.max, leanL: Math.round(ride.leanL), leanR: Math.round(ride.leanR),
         name: ride.route ? ride.route.name : 'Ride on ' + new Date(ride.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }),
         pts: OR.encodePoly(ride.pts, 6), t0: ride.times[0], dt: ride.times.map((t, i) => i ? Math.round((t - ride.times[i - 1]) / 1000) : 0) };
       OR.rides.add(saved);

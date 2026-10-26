@@ -73,6 +73,7 @@ public class MainActivity extends Activity {
     private static final int REQ_PERMS = 7, REQ_FILE = 42, REQ_SMS = 8;
 
     private WebView web;
+    private WebView printView; // kept so it isn't collected while printing
     private LocationManager lm;
     private boolean wantGps = false;
     private ValueCallback<Uri[]> fileCallback;
@@ -618,6 +619,21 @@ public class MainActivity extends Activity {
         }
         @JavascriptInterface public void openUrl(String url) {
             runOnUiThread(() -> { try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url))); } catch (Exception ignored) { } });
+        }
+
+        // trip sheets: Android's print screen, where "Save as PDF" is one of the printers
+        @JavascriptInterface public void printHtml(final String title, final String html) {
+            runOnUiThread(() -> {
+                final WebView pw = new WebView(MainActivity.this);
+                printView = pw;
+                pw.setWebViewClient(new WebViewClient() {
+                    @Override public void onPageFinished(WebView view, String url) {
+                        android.print.PrintManager pm = (android.print.PrintManager) getSystemService(PRINT_SERVICE);
+                        pm.print(title, view.createPrintDocumentAdapter(title), new android.print.PrintAttributes.Builder().setMediaSize(android.print.PrintAttributes.MediaSize.ISO_A4).build());
+                    }
+                });
+                pw.loadDataWithBaseURL("file:///android_asset/", html, "text/html", "utf-8", null);
+            });
         }
 
         // updates

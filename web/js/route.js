@@ -95,7 +95,11 @@
     const cum = OR.cumulative(shape);
     for (const m of man) m.at = cum[m.idx];
     const dist = cum[cum.length - 1];
-    return Object.assign({
+    // the main numbered roads, longest first (A537, M6, N4, D901…), shown as sign-style chips
+    const refLen = {};
+    for (const m of man) for (const n of (m.street || '').split(' / ')) { const t = n.trim(); if (/^[A-Z]{1,3}\d{1,4}[A-Z]?$/.test(t)) refLen[t] = (refLen[t] || 0) + m.len; }
+    const roads = Object.keys(refLen).sort((a, b) => refLen[b] - refLen[a]).slice(0, 4);
+    return Object.assign({ roads,
       id: OR.uid(), shape, cum, man, legEnds: legEnds.map(i => cum[i]), dist, time: trip.summary.time,
       twist: OR.bendiness(shape, man), mwayPct: dist ? Math.round(100 * Math.min(mway, dist) / dist) : 0, created: Date.now()
     }, meta || {});
@@ -129,41 +133,45 @@
   const STYLES = {
     fast: { label: 'Fastest', tries: [{ highways: 1, alternates: 2 }] },
     scenic: { label: 'No motorways', tries: [{ highways: 0, alternates: 2 }] },
-    twisty: { label: 'Twisty roads', tries: [{ highways: 0, alternates: 2 }, { highways: 0, shortest: true }] }
+    twisty: { label: 'Twisty', cap: 1.6, tries: [{ highways: 0, alternates: 2 }, { highways: 0, shortest: true }] },
+    extra: { label: 'Extra twisty', cap: 2.3, tries: [{ highways: 0, alternates: 3 }, { highways: 0, shortest: true }, { highways: 0.2, shortest: true }] }
   };
   OR.STYLES = STYLES;
 
-  // Plan the route: returns up to 3 options, best first for the chosen style.
-  OR.planRoute = async function () {
-    const wps = OR.plan.wps;
+  // Plan options for these points in a riding style: up to 3, best first for that style.
+  async function planOptions(wps, styleKey) {
     if (wps.length < 2) throw new Error('Add a start and a destination');
     if (wps.length > MAX_LOC) throw new Error('Too many points (' + wps.length + '). OpenRoad plans up to ' + MAX_LOC + ': remove some via points.');
-    const style = STYLES[OR.cfg.style] || STYLES.twisty, multi = wps.length > 2;
-    const results = [];
-    const errs = [];
+    const style = STYLES[styleKey] || STYLES.twisty, multi = wps.length > 2;
+    const results = [], errs = [];
     await Promise.all(style.tries.map(async t => {
       const o = Object.assign({}, t); if (multi) o.alternates = 0; // alternatives only work point to point
       try {
         const trips = await routeTrips(wps, o);
-        trips.forEach((tr, k) => results.push(OR.buildRoute(tr, { mode: OR.cfg.style, variant: (o.shortest ? 'Shortest quiet roads' : k ? 'Alternative ' + k : style.label) })));
+        trips.forEach((tr, k) => results.push(OR.buildRoute(tr, { mode: styleKey, variant: (o.shortest ? 'Quiet back roads' : k ? 'Alternative ' + k : style.label) })));
       } catch (e) { errs.push(e.message); }
     }));
     if (!results.length) throw new Error(errs[0] || 'No route found');
-    // remove near-duplicates
     const uniq = [];
     for (const r of results) if (!uniq.some(u => Math.abs(u.dist - r.dist) < 300 && Math.abs(u.time - r.time) < 60)) uniq.push(r);
     const fastest = Math.min.apply(null, uniq.map(r => r.time));
     let opts = uniq;
-    if (OR.cfg.style === 'twisty') {
+    if (style.cap) {
       // most bends first, but not if it takes far longer than the quickest option found
-      opts = uniq.filter(r => r.time <= fastest * 1.6).sort((a, b) => b.twist - a.twist);
+      opts = uniq.filter(r => r.time <= fastest * style.cap).sort((a, b) => b.twist - a.twist);
       opts = opts.concat(uniq.filter(r => opts.indexOf(r) < 0));
     } else opts.sort((a, b) => a.time - b.time);
     opts = opts.slice(0, 3);
     opts.forEach(r => { r.wps = wps.map(w => Object.assign({}, w)); r.name = r.name || defaultName(wps); });
+    return opts;
+  }
+  OR.planRoute = async function () {
+    const opts = await planOptions(OR.plan.wps, OR.cfg.style);
     OR.plan.options = opts; OR.plan.choice = 0; OR.plan.route = opts[0];
     return opts;
   };
+  OR.planWaypoints = async (wps, styleKey) => (await planOptions(wps, styleKey || OR.cfg.style))[0];
+  OR.planOptions = planOptions;
   function defaultName(wps) { return (wps[0].name || 'Start') + ' to ' + (wps[wps.length - 1].name || 'End'); }
 
   // Re-plan from where the bike is now to the remaining stops (used when off route).

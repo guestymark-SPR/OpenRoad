@@ -6,6 +6,11 @@ Free motorbike navigation for the UK and Europe, built on open data. Sister app 
 
 ## What it does
 
+- **Trip planner**: plan a tour day by day: rides, ferry and tunnel crossings (common Channel and North Sea crossings built in), hotels near where each day ends, tolls and other costs, weather for each day, totals with fuel worked out from your mpg, split per rider. Export as PDF, GPX or text.
+- **Round trips**: a loop of the length and direction you choose.
+- **While riding**: speed limit sign, UK and Ireland speed camera warnings, ride options (skip next stop, weather ahead, fuel, cafés, stays), lean angle estimate.
+- **Satellite map**, plus viewpoints, mountain passes and motorbike shops nearby.
+
 - **Route planner** with three riding styles: *Twisty roads*, *No motorways* and *Fastest*. Up to three options are shown with miles, time, a bendiness score and how much is motorway. Tap the map to add via points or stops; drag them to change the route.
 - **Turn-by-turn ride mode**: big arrow and distance, spoken directions through your helmet headset (music is turned down while it speaks), automatic rerouting when you go off route, re-centre and overview.
 - **GPX**: import routes and tracks (follow a track exactly, or plan through its points), export any route or ride.
@@ -20,7 +25,10 @@ Free motorbike navigation for the UK and Europe, built on open data. Sister app 
 | Map tiles | [OpenFreeMap](https://openfreemap.org) (OpenMapTiles schema) |
 | Routing and turn instructions | [Valhalla](https://github.com/valhalla/valhalla) motorcycle costing on the FOSSGIS public server |
 | Place search | [Photon](https://photon.komoot.io) by Komoot |
-| Fuel, stays, cafés | OpenStreetMap via the [Overpass API](https://overpass-api.de) |
+| Fuel, stays, cafés, cameras | OpenStreetMap via the [Overpass API](https://overpass-api.de) and mirrors |
+| Speed limits | Valhalla `trace_attributes` |
+| Weather | [Open-Meteo](https://open-meteo.com) |
+| Satellite | Esri World Imagery |
 | Offline packs | Built from [Geofabrik](https://download.geofabrik.de) extracts with [Planetiler](https://github.com/onthegomap/planetiler) |
 
 Map data © OpenStreetMap contributors. Route planning and search need a signal; maps and saved routes work offline.
