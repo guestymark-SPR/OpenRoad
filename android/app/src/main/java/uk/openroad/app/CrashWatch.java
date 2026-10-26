@@ -203,7 +203,10 @@ public class CrashWatch implements SensorEventListener {
         } catch (Exception ignored) { }
         String rider = s.optString("rider", ""); if (rider.isEmpty()) rider = "The rider";
         String m = "OpenRoad crash alert: " + rider + " may have come off the motorbike. The phone felt a hard impact and the bike stopped, and nobody cancelled the alarm.";
-        if (l != null) m += String.format(Locale.UK, " Position at %tH:%<tM: https://maps.google.com/?q=%.5f,%.5f", new java.util.Date(l.getTime()), l.getLatitude(), l.getLongitude());
+        if (l != null) {
+            m += String.format(Locale.UK, " Position at %tH:%<tM: https://maps.google.com/?q=%.5f,%.5f", new java.util.Date(l.getTime()), l.getLatitude(), l.getLongitude());
+            String g = OsGrid.ref(l.getLatitude(), l.getLongitude()); if (g != null) m += " (OS grid ref " + g + ")";
+        }
         String extra = s.optString("medical", "");
         if (!extra.isEmpty()) m += " Medical: " + extra;
         return m + " If you can't reach them, call 999 (112 in Europe).";

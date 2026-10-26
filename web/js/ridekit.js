@@ -139,6 +139,32 @@
     found.sort((a, b) => Math.abs(a.dist - metres) / metres - Math.abs(b.dist - metres) / metres || b.twist - a.twist);
     return found;
   };
+  // a loop that gets you back by a time: plan by a distance guessed from your pace, then adjust once
+  OR.roundTripByTime = async function (start, seconds, dir) {
+    if (seconds < 1800) throw new Error('That\'s less than half an hour: pick a later time.');
+    const est = r => OR.myTime ? OR.myTime(r.time, true) : r.time;
+    const rides = OR.rides.list().filter(r => r.moving > 1800).slice(0, 20);
+    const pace = rides.length >= 2 ? rides.reduce((s, r) => s + r.dist, 0) / rides.reduce((s, r) => s + r.moving, 0) / OR.MI * 3600 : 32; // mph on your rides
+    let miles = Math.max(15, seconds / 3600 * pace * 0.85);
+    let all = [];
+    for (let round = 0; round < 2; round++) {
+      const found = await OR.roundTrip(start, Math.min(400, miles), dir).catch(() => []);
+      all = all.concat(found);
+      const fit = all.filter(r => est(r) <= seconds * 1.03);
+      const best = (fit.length ? fit : all).slice().sort((a, b) => Math.abs(est(a) - seconds) - Math.abs(est(b) - seconds))[0];
+      if (!best) break;
+      const ratio = est(best) / seconds;
+      if (ratio > 0.82 && ratio <= 1.03) break;
+      miles = miles / ratio * 0.95;
+    }
+    if (!all.length) throw new Error('No loop found from here. Try another direction (loops over the sea cannot be routed).');
+    const back = r => new Date(Date.now() + est(r) * 1000);
+    const fits = all.filter(r => est(r) <= seconds * 1.03).sort((a, b) => est(b) - est(a));
+    const over = all.filter(r => est(r) > seconds * 1.03).sort((a, b) => est(a) - est(b));
+    const out = fits.concat(over);
+    out.forEach(r => { r.variant = Math.round(r.dist / OR.MI) + ' mi, back about ' + OR.clock(back(r)) + (est(r) > seconds * 1.03 ? ' (later than you asked)' : ''); r.backBy = back(r).getTime(); });
+    return out;
+  };
   function compass(b) { const n = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west']; return n[Math.round(((b % 360) + 360) % 360 / 45) % 8]; }
 
   // ---------- lean angle (estimated from GPS speed and how fast the heading turns) ----------

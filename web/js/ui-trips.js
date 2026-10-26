@@ -133,6 +133,21 @@
     });
     // the night
     const hot = day.hotel;
+    // daylight: sunrise and sunset where the day ends, and a warning if you'd still be riding after dark
+    const sunAt = end || OR.dayStart && OR.dayStart(day);
+    if (sunAt) {
+      const sd = OR.dayDate(t, di), sun = OR.sunTimes(sunAt.lat, sunAt.lng, sd);
+      if (sun && sun.rise && sun.set) {
+        // times on a trip day are local where you are: UK and Ireland on UK time, the rest of western Europe an hour ahead
+        const tz = (OR.inUK(sunAt.lng, sunAt.lat) || (sunAt.lng < -5.4 && sunAt.lat > 51.3 && sunAt.lat < 55.5)) ? 'Europe/London' : 'Europe/Paris';
+        const hm = x => { const q = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(x); return +q.find(z => z.type === 'hour').value * 60 + +q.find(z => z.type === 'minute').value; };
+        const clk = m => String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+        const setM = hm(sun.set), riseM = hm(sun.rise), startM = d.timeline.length ? d.timeline[0].at : null;
+        const late = d.timeline.length && d.arrive > setM, early = startM != null && startM < riseM;
+        h += '<li class="step sun' + (late || early ? ' dark' : '') + '"><span class="when"></span><div class="what">' + ic('sun') + '<div><b>Sunrise ' + clk(riseM) + ', sunset ' + clk(setM) + (tz === 'Europe/Paris' ? ' (local time)' : '') + '</b>' +
+          (late ? '<span class="warn">You\'d arrive about ' + OR.minToClock(d.arrive) + ', ' + OR.fmtTime((d.arrive - setM) * 60) + ' after sunset. Leave earlier or shorten the day.</span>' : early ? '<span class="warn">You\'d set off before sunrise.</span>' : d.timeline.length ? '<span>Riding finishes ' + OR.fmtTime((setM - d.arrive) * 60) + ' before sunset.</span>' : '') + '</div></div></li>';
+      }
+    }
     h += '<li class="step night"><span class="when">' + (d.timeline.length ? OR.minToClock(d.arrive) : '') + '</span><div class="what">' + ic('bed') + '<div>' +
       (hot ? '<b>' + esc(hot.name) + '</b><span>' + (num(hot.cost) ? '<b>' + OR.money({ [hot.cur || 'GBP']: num(hot.cost) }, t) + '</b>' : '<span class="warn">No price yet</span>') + (hot.ref ? ', booking ' + esc(hot.ref) : '') + '</span>' +
         '<div class="row">' + (hot.phone ? '<a class="btn small ghost" href="tel:' + esc(hot.phone.replace(/\s/g, '')) + '">Call</a>' : '') + (hot.web ? '<a class="btn small ghost" target="_blank" href="' + esc(/^https?:/.test(hot.web) ? hot.web : 'https://' + hot.web) + '">Website</a>' : '') +

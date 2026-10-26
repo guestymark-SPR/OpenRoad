@@ -262,11 +262,28 @@
     OR.plan.wps.push({ lng: OR.pos.lng, lat: OR.pos.lat, name: 'My position', type: 'break' }, { lng: ll[0], lat: ll[1], name: name, type: 'break' });
     changed(true); tab('plan'); return true;
   };
+  // where am I: for telling the emergency services, a breakdown company or the group
+  OR.whereAmI = async function () {
+    if (!OR.pos) return toast('Waiting for your position');
+    const p = OR.pos, g = OR.osGrid ? OR.osGrid(p.lat, p.lng) : null;
+    sheet('<h2>' + ic('near') + 'Where am I</h2><div class="where"><div><span>Near</span><b id="whName">Looking up…</b></div>' + (g ? '<div><span>OS grid reference</span><b class="grid">' + g.ref + '</b></div>' : '') +
+      '<div><span>Latitude, longitude</span><b>' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) + '</b></div></div>' +
+      '<p class="small">Emergency: <b>999</b> in the UK, <b>112</b> anywhere in Europe (it works in the UK too). Read them the ' + (g ? 'grid reference' : 'latitude and longitude') + '.</p>' +
+      '<div class="row"><a class="btn go" href="tel:' + (g ? '999' : '112') + '">Call ' + (g ? '999' : '112') + '</a><button class="btn" id="whShare">' + ic('share') + 'Send my position</button></div>', b => {
+      OR.reverseName(p.lng, p.lat).then(n => { const el = $('#whName', b); if (el) el.textContent = n || 'Unknown road'; });
+      $('#whShare', b).onclick = () => OR.share('My position: https://maps.google.com/?q=' + p.lat.toFixed(5) + ',' + p.lng.toFixed(5) + (g ? ' (OS grid ref ' + g.ref + ')' : ''), 'My position');
+    });
+  };
   function clearRouteExtras() { OR.setData('gaps', null); OR.setData('pois', null); extras = {}; }
 
   // ---------- plan view ----------
   let showAllWps = false;
   let planning = false, planErr = '', planMode = 'ab', loopFrom = null, loopMiles = OR.store.get('loopMiles', 80), loopDir = 'any', extras = {};
+  let loopBy = OR.store.get('loopBy', 'dist'), backBy = null;
+  // "back by": the time to be home, by default 3 hours from now rounded to the quarter hour
+  function backByTime() { if (backBy && backBy > Date.now() + 20 * 60000) return backBy; const d = new Date(Date.now() + 3 * 3600000); d.setMinutes(Math.round(d.getMinutes() / 15) * 15, 0, 0); return d.getTime(); }
+  function backByValue() { const d = new Date(backByTime()); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  function timeNote() { const mins = Math.round((backByTime() - Date.now()) / 60000); return mins < 30 ? 'That\'s too soon for a loop.' : 'About ' + OR.fmtTime(mins * 60) + ' from now, including your usual stops.'; }
   OR.setPlanMode = m => { planMode = m; renderPlan(); };
   function styleSeg() {
     const keys = ['twisty', 'extra', 'scenic', 'fast'];
@@ -287,7 +304,10 @@
       const from = loopFrom || (OR.pos ? { lng: OR.pos.lng, lat: OR.pos.lat, name: 'My position' } : null);
       h += '<div class="card"><div class="row-l"><span class="lbl">Start and finish</span><b>' + esc(from ? from.name : 'Tap the map or search for a place') + '</b></div>' +
         (OR.pos ? '<button class="btn small ghost" id="loopHere">Use my position</button>' : '') + '</div>' +
-        '<label class="range"><span>Length <b id="loopMiOut">' + loopMiles + ' miles</b></span><input type="range" id="loopMi" min="20" max="300" step="10" value="' + loopMiles + '"></label>' +
+        '<div class="seg" id="loopBy"><button data-b="dist" class="' + (loopBy === 'dist' ? 'on' : '') + '">By distance</button><button data-b="time" class="' + (loopBy === 'time' ? 'on' : '') + '">By time</button></div>' +
+        (loopBy === 'time' ? '<div class="backby"><label class="f"><span>Back by</span><input type="time" id="loopBack" value="' + backByValue() + '"></label><div class="chips hrs">' + [1, 2, 3, 4, 5].map(h => '<button class="btn small" data-h="' + h + '">' + h + ' h</button>').join('') + '</div></div>' +
+          '<p class="small muted" id="loopTimeNote">' + timeNote() + '</p>'
+          : '<label class="range"><span>Length <b id="loopMiOut">' + loopMiles + ' miles</b></span><input type="range" id="loopMi" min="20" max="300" step="10" value="' + loopMiles + '"></label>') +
         '<div class="dirs8">' + ['NW', 'N', 'NE', 'W', 'any', 'E', 'SW', 'S', 'SE'].map(d => '<button data-d="' + d + '" class="' + (loopDir === d ? 'on' : '') + '">' + (d === 'any' ? 'Any' : d) + '</button>').join('') + '</div>' +
         '<button class="btn wide pri" id="loopGo"' + (from ? '' : ' disabled') + '>' + (planning ? 'Finding loops…' : 'Make a loop') + '</button>';
       if (!loopFrom && !OR.pos) h += '<p class="hint">Tap the map where the loop should start and choose "Round trip from here".</p>';
@@ -336,6 +356,9 @@
     on('loop', () => { if (wps.length) { wps.push(Object.assign({}, wps[0], { type: 'break' })); fixTypes(); changed(wps.length >= 2); } });
     on('clr', () => { OR.plan.wps = []; planErr = ''; changed(); });
     on('loopHere', () => { loopFrom = { lng: OR.pos.lng, lat: OR.pos.lat, name: 'My position' }; renderPlan(); });
+    $$('#loopBy button', v).forEach(b => b.onclick = () => { loopBy = b.dataset.b; OR.store.set('loopBy', loopBy); renderPlan(); });
+    const lb = $('#loopBack', v); if (lb) lb.onchange = () => { const [h, m] = lb.value.split(':').map(Number); const d = new Date(); d.setHours(h, m, 0, 0); if (d < Date.now()) d.setDate(d.getDate() + 1); backBy = d.getTime(); $('#loopTimeNote', v).textContent = timeNote(); };
+    $$('.hrs [data-h]', v).forEach(b => b.onclick = () => { backBy = Date.now() + (+b.dataset.h) * 3600000; lb.value = backByValue(); $('#loopTimeNote', v).textContent = timeNote(); });
     const mi = $('#loopMi', v); if (mi) mi.oninput = () => { loopMiles = +mi.value; $('#loopMiOut', v).textContent = loopMiles + ' miles'; OR.store.set('loopMiles', loopMiles); };
     $$('.dirs8 button', v).forEach(b => b.onclick = () => { loopDir = b.dataset.d; $$('.dirs8 button', v).forEach(x => x.classList.toggle('on', x === b)); });
     on('loopGo', doLoop);
@@ -383,7 +406,7 @@
     const from = loopFrom || (OR.pos ? { lng: OR.pos.lng, lat: OR.pos.lat, name: 'My position' } : null); if (!from || planning) return;
     planning = true; planErr = ''; clearRouteExtras(); renderPlan();
     try {
-      const opts = await OR.roundTrip([from.lng, from.lat], loopMiles, loopDir);
+      const opts = loopBy === 'time' ? await OR.roundTripByTime([from.lng, from.lat], (backByTime() - Date.now()) / 1000, loopDir) : await OR.roundTrip([from.lng, from.lat], loopMiles, loopDir);
       opts.forEach(o => { o.name = 'Round trip from ' + from.name; o.wps[0].name = from.name; o.wps[o.wps.length - 1].name = from.name; });
       OR.plan.options = opts.slice(0, 3); OR.plan.choice = 0; OR.plan.route = opts[0];
       OR.plan.wps = opts[0].wps.map(w => Object.assign({}, w)); OR.savePlan(); drawWaypoints();
@@ -587,20 +610,21 @@
   const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['chat', 'chat', 'Chat settings', 'Quick messages, read aloud and notifications', '#0e9f57'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety', 'Crash alert, check-in, speed and break warnings', '#e53935'],
     ['ice', 'helmet', 'Emergency card', 'Your ICE details, kept on this phone', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
     ['settings', 'gear', 'Units, look and routing', 'Miles or km, day and night colours, tolls and ferries', '#5d6d7e'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, turn alerts on your watch', '#1565c0'],
+    ['phrases', 'chat', 'Phrasebook', 'French, Dutch and German for fuel, garages, hotels and the police, spoken aloud', '#1e88e5'],
     ['papers', 'id', 'Papers', 'Licence, V5C, insurance, MOT and breakdown cover', '#00897b'],
     ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
   function renderMore() {
     const v = $('#v-more');
     if (!morePage) {
       const sec = (title, ids) => '<h3 class="grp">' + title + '</h3><div class="menu">' + ids.map(id => PAGES.find(p => p[0] === id)).map(p => '<button data-p="' + p[0] + '">' + badge(p[1], p[4]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
-      v.innerHTML = '<h2 class="vh">Settings</h2>' + sec('Riding', ['safety', 'voice', 'chat']) + sec('Maps', ['maps', 'settings']) + sec('You', ['ice', 'papers']) + sec('App', ['about']);
+      v.innerHTML = '<h2 class="vh">Settings</h2>' + sec('Riding', ['safety', 'voice', 'chat']) + sec('Maps', ['maps', 'settings']) + sec('You and abroad', ['ice', 'papers', 'phrases']) + sec('App', ['about']);
       $$('.menu button', v).forEach(b => b.onclick = () => { morePage = b.dataset.p; renderMore(); $('#views').scrollTop = 0; });
       return;
     }
     const p = PAGES.find(x => x[0] === morePage);
     v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'Settings</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
+    ({ phrases: p => OR.pagePhrases(p), voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
   }
   // pages that now have their own tab
   OR.openMore = p => {
@@ -728,7 +752,7 @@
       field('iMed', 'Medical notes (allergies, conditions, medication)', ice.medical) + '<div class="two">' + field('iCN', 'Emergency contact', ice.contactName) + field('iCP', 'Contact number', ice.contactPhone, 'tel') + '</div>' +
       '<button id="iceShow" class="btn wide pri">Show the card full screen</button><p class="small muted">Kept only on this phone.</p>';
     keep(box, 'iName', ice, 'name'); keep(box, 'iBlood', ice, 'blood'); keep(box, 'iReg', ice, 'reg'); keep(box, 'iMed', ice, 'medical'); keep(box, 'iCN', ice, 'contactName'); keep(box, 'iCP', ice, 'contactPhone');
-    $('#iceShow', box).onclick = () => sheet('<div class="ice"><pre>' + esc(OR.iceText()) + '</pre>' + (ice.contactPhone ? '<a class="btn wide pri" href="tel:' + esc(ice.contactPhone.replace(/\s/g, '')) + '">Call ' + esc(ice.contactName || 'contact') + '</a>' : '') + '</div>');
+    $('#iceShow', box).onclick = () => sheet('<div class="ice"><pre>' + esc(OR.iceText()) + (OR.pos && OR.osGrid && OR.osGrid(OR.pos.lat, OR.pos.lng) ? '\nNow at OS grid ref ' + OR.osGrid(OR.pos.lat, OR.pos.lng).ref : '') + '</pre>' + (ice.contactPhone ? '<a class="btn wide pri" href="tel:' + esc(ice.contactPhone.replace(/\s/g, '')) + '">Call ' + esc(ice.contactName || 'contact') + '</a>' : '') + '</div>');
   }
   OR.on('checkin', () => { if (morePage === 'safety' && $('#morePage')) pageSafety($('#morePage')); });
   OR.on('checkinDue', () => {
@@ -859,7 +883,7 @@
     sheet('<h2>Ride options</h2><div class="tiles">' +
       (r ? '<button class="tile" id="roSkip">' + badge('skip', '#ff6a1f') + '<span>Skip next stop</span></button><button class="tile" id="roView">' + badge('map', '#1e88e5') + '<span>Route overview</span></button><button class="tile" id="roWx">' + badge('cloud', '#1e88e5') + '<span>Weather ahead</span></button>' : '') +
       '<button class="tile" id="roFuel">' + badge('fuel', '#e53935') + '<span>Fuel nearby</span></button><button class="tile" id="roCafe">' + badge('cup', '#8d5a3b') + '<span>Cafés nearby</span></button><button class="tile" id="roStay">' + badge('bed', '#7e57c2') + '<span>Stays nearby</span></button>' +
-      (OR.group && OR.group.state.on ? '<button class="tile" id="roGroup">' + badge('group', '#e53935') + '<span>Group</span></button><button class="tile" id="roChat">' + badge('chat', '#0e9f57') + '<span>Group chat</span></button>' : '') + '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button><button class="tile" id="roPapers">' + badge('id', '#00897b') + '<span>My papers</span></button><button class="tile" id="roSpeedo">' + badge('lean', '#1565c0') + '<span>Speedo check</span></button></div>' +
+      (OR.group && OR.group.state.on ? '<button class="tile" id="roGroup">' + badge('group', '#e53935') + '<span>Group</span></button><button class="tile" id="roChat">' + badge('chat', '#0e9f57') + '<span>Group chat</span></button>' : '') + '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button><button class="tile" id="roPapers">' + badge('id', '#00897b') + '<span>My papers</span></button><button class="tile" id="roWhere">' + badge('near', '#e53935') + '<span>Where am I</span></button><button class="tile" id="roPhrase">' + badge('chat', '#1e88e5') + '<span>Phrasebook</span></button><button class="tile" id="roSpeedo">' + badge('lean', '#1565c0') + '<span>Speedo check</span></button></div>' +
       (OR.ride.leanL || OR.ride.leanR ? '<p class="small muted">Lean so far: ' + Math.round(OR.ride.leanL) + '° left, ' + Math.round(OR.ride.leanR) + '° right (estimated).</p>' : ''), b => {
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();
@@ -875,6 +899,8 @@
       on('roIce', () => sheet('<div class="ice"><pre>' + esc(OR.iceText()) + '</pre></div>'));
       on('roFill', () => OR.fillUpSheet());
       on('roPapers', () => OR.showPapers());
+      on('roWhere', () => OR.whereAmI());
+      on('roPhrase', () => OR.openMore('phrases'));
       on('roSpeedo', () => OR.speedoSheet());
       on('roGroup', () => OR.groupSheet());
       on('roChat', () => OR.openChat());

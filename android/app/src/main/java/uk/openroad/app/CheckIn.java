@@ -121,7 +121,7 @@ public class CheckIn extends BroadcastReceiver {
             }
         } catch (Exception ignored) { }
         String s = "OpenRoad safety check-in: " + rider + " has not checked in as planned while out on the motorbike.";
-        if (t > 0) s += String.format(Locale.UK, " Last known position at %tH:%<tM: https://maps.google.com/?q=%.5f,%.5f", new java.util.Date(t), lat, lon);
+        if (t > 0) { s += String.format(Locale.UK, " Last known position at %tH:%<tM: https://maps.google.com/?q=%.5f,%.5f", new java.util.Date(t), lat, lon); String g = OsGrid.ref(lat, lon); if (g != null) s += " (OS grid ref " + g + ")"; }
         else s += " No GPS position was available.";
         return s;
     }

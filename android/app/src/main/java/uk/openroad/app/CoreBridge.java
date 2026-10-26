@@ -64,6 +64,7 @@ class CoreBridge {
     @JavascriptInterface public void fetchTextH(int id, String url, String method, String body, String type, String headers) { Util.fetch(id, url, method, body, type, headers, js); }
     @JavascriptInterface public void speak(String text) { Speech.get(ctx).speak(text); }
     @JavascriptInterface public void stopSpeak() { Speech.get(ctx).stop(); }
+    @JavascriptInterface public void speakIn(String text, String lang) { Speech.get(ctx).speakIn(text, lang, js); }
     @JavascriptInterface public void startGps() { onMain(this::gpsOn); }
     @JavascriptInterface public void stopGps() { onMain(() -> gpsOff(true)); }
 

@@ -670,3 +670,10 @@ body.riding #radarChip{top:calc(150px + var(--safe-t))}
 .sp-live b{font-size:44px;line-height:1.1}.sp-live small{color:var(--ink-2)}.sp-live.ok{box-shadow:inset 0 0 0 3px var(--green)}
 .sp-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
 .sp-keys button{min-height:64px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:24px;font-weight:800}
+
+/* ---------- back by, where am I, phrasebook, daylight ---------- */
+.backby{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}.backby .f{flex:0 0 140px;margin:0}.chips.hrs{margin:0}.chips.hrs .btn{min-height:46px}
+.where{display:flex;flex-direction:column;gap:8px;margin:6px 0 10px}.where>div{background:var(--surface);border-radius:14px;padding:10px 14px;box-shadow:0 1px 0 var(--line)}
+.where span{display:block;font-size:13px;color:var(--ink-3)}.where b{font-size:20px}.where b.grid{font-size:30px;letter-spacing:.06em}
+.phbig{padding:18px 6px 6px}.phbig .phl{font-size:30px;font-weight:800;line-height:1.25;margin:0 0 12px}.phbig .phe{color:var(--ink-2);font-size:16px}
+.step.sun .what svg{color:#f59f00}.step.sun.dark .what{background:color-mix(in srgb,#f59f00 12%,transparent);border-radius:10px}

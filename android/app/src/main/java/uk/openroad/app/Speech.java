@@ -63,5 +63,21 @@ final class Speech {
         } catch (Exception ignored) { }
         tts.speak(text, TextToSpeech.QUEUE_ADD, null, "or" + System.nanoTime());
     }
+    // a phrase in another language (phrasebook), on its own voice so directions stay in English
+    private TextToSpeech other; private String otherLang = "";
+    void speakIn(final String text, final String tag, final Tiles.Js js) {
+        main.post(() -> {
+            Runnable go = () -> {
+                int r = other.setLanguage(Locale.forLanguageTag(tag));
+                if (r == TextToSpeech.LANG_MISSING_DATA || r == TextToSpeech.LANG_NOT_SUPPORTED) { if (js != null) js.run("window.onPhraseVoice&&onPhraseVoice('missing')"); return; }
+                other.speak(text, TextToSpeech.QUEUE_FLUSH, null, "ph" + System.nanoTime());
+            };
+            if (other == null || !tag.equals(otherLang)) {
+                if (other != null) other.shutdown();
+                otherLang = tag;
+                other = new TextToSpeech(ctx, st -> { if (st == TextToSpeech.SUCCESS) go.run(); });
+            } else go.run();
+        });
+    }
     private void release() { try { if (Build.VERSION.SDK_INT >= 26 && focusReq != null) audio.abandonAudioFocusRequest(focusReq); } catch (Exception ignored) { } }
 }
