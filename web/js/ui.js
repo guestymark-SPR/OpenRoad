@@ -517,19 +517,23 @@
     v.innerHTML = '<h2 class="vh">Rides</h2><button id="freeRide" class="btn wide go">' + ic('rides') + 'Record a ride</button>' +
       '<button id="groupRide" class="btn wide grp">' + ic('group') + (OR.group && OR.group.state.on ? 'Group ride: ' + OR.group.state.riders.length + ' other' + (OR.group.state.riders.length === 1 ? '' : 's') + ' riding' : 'Group ride') + '</button>' +
       '<div class="stats"><div><b>' + season.length + '</b><span>rides in ' + yr + '</span></div><div><b>' + OR.fmtDist(tot.d) + '</b><span>ridden</span></div><div><b>' + OR.fmtTime(tot.t) + '</b><span>moving</span></div>' + (tot.l ? '<div><b>' + tot.l + '°</b><span>best lean</span></div>' : '') + '</div>' +
+      (list.length ? '<button id="seasonBtn" class="btn wide">' + ic('star') + 'Your riding in numbers</button>' : '') +
       (list.length ? '<div class="list">' + list.map(r => '<div class="li"><b>' + esc(r.name) + '</b><span>' +
         new Date(r.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + '</span>' +
         '<div class="kv"><span><b>' + OR.fmtDist(r.dist) + '</b>distance</span><span><b>' + OR.fmtTime(r.moving) + '</b>moving</span><span><b>' + (r.moving ? OR.speed(r.dist / r.moving) : 0) + '</b>avg ' + OR.speedUnit() + '</span><span><b>' + OR.speed(r.max) + '</b>max ' + OR.speedUnit() + '</span>' +
         (r.leanL || r.leanR ? '<span><b>' + (r.leanL || 0) + '° / ' + (r.leanR || 0) + '°</b>lean L / R</span>' : '') + '</div>' +
-        '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="route" data-id="' + r.id + '">Save as route</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
+        '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small" data-a="replay" data-id="' + r.id + '">Replay</button><button class="btn small" data-a="card" data-id="' + r.id + '">Picture</button><button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="route" data-id="' + r.id + '">Save as route</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
         : '<div class="empty">' + ic('rides', 'big') + '<p>Every ride is recorded with distance, time, speeds and an estimate of your lean angle. Recording carries on with the screen off in the Android app.</p></div>') +
       '<p class="small muted">Lean angle is estimated from GPS speed and how sharply you turn, so treat it as a guide rather than a measurement.</p>';
     $('#freeRide', v).onclick = () => startRide(null);
     $('#groupRide', v).onclick = () => OR.openMore('group');
+    const ss = $('#seasonBtn', v); if (ss) ss.onclick = () => OR.seasonStats(yr);
     $$('button[data-a]', v).forEach(b => b.onclick = async () => {
       const r = OR.rides.get(b.dataset.id); if (!r) return; const pts = OR.rides.pts(r);
       if (b.dataset.a === 'show') { OR.setData('rideview', { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pts } }] }); OR.map.fitBounds(OR.bbox(pts), { padding: 60 }); if (innerWidth < 900) $('#panel').classList.remove('open'); }
       if (b.dataset.a === 'gpx') OR.saveFile(OR.fileName(r.name) + '.gpx', OR.toGpx({ name: r.name, pts, times: OR.rides.times(r) }));
+      if (b.dataset.a === 'replay') OR.replayRide(r);
+      if (b.dataset.a === 'card') OR.rideCard(r);
       if (b.dataset.a === 'route') { try { const rt = await OR.routeFromTrack(pts, r.name); OR.routes.save(rt); OR.toast('Saved to Saved routes'); } catch (e) { OR.toast('Could not make a route: ' + e.message, 6000); } }
       if (b.dataset.a === 'del' && confirm('Delete this ride?')) { OR.rides.del(r.id); renderRides(); }
     });

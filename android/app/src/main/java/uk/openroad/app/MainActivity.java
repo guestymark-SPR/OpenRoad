@@ -193,6 +193,29 @@ public class MainActivity extends Activity {
                 return "Saved to " + f.getPath();
             } catch (Exception e) { return "Could not save the file: " + e.getMessage(); }
         }
+        // a ride picture: saved to Pictures/OpenRoad, and offered to WhatsApp, Facebook and so on if share is true
+        @JavascriptInterface public String saveImage(String name, String base64, boolean share) {
+            try {
+                byte[] bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues v = new ContentValues();
+                    v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+                    v.put(MediaStore.MediaColumns.MIME_TYPE, "image/png");
+                    v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/OpenRoad");
+                    final Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, v);
+                    if (uri == null) throw new Exception("no storage");
+                    try (OutputStream o = getContentResolver().openOutputStream(uri)) { o.write(bytes); }
+                    if (share) runOnUiThread(() -> {
+                        Intent i = new Intent(Intent.ACTION_SEND).setType("image/png").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        try { startActivity(Intent.createChooser(i, "Share your ride")); } catch (Exception ignored) { }
+                    });
+                    return share ? "" : "Saved to Pictures/OpenRoad/" + name;
+                }
+                File f = new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), name);
+                try (OutputStream o = new FileOutputStream(f)) { o.write(bytes); }
+                return "Saved to " + f.getPath() + (share ? " (sharing pictures needs Android 10 or newer)" : "");
+            } catch (Exception e) { return "Could not save the picture: " + e.getMessage(); }
+        }
         @JavascriptInterface public void shareText(String text, String title) {
             runOnUiThread(() -> {
                 Intent i = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text).putExtra(Intent.EXTRA_SUBJECT, title);

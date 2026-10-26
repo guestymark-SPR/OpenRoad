@@ -469,3 +469,19 @@ body.riding #menuBtn{display:none}
 #radarChip{position:fixed;z-index:18;left:50%;transform:translateX(-50%);top:calc(84px + var(--safe-t));display:flex;gap:6px;align-items:center;background:#1e88e5;color:#fff;border-radius:22px;padding:5px 6px 5px 14px;font-weight:700;box-shadow:var(--shadow)}
 #radarChip button{width:34px;height:34px;border-radius:17px;border:0;background:rgba(255,255,255,.2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px}#radarChip svg{width:18px;height:18px;stroke:#fff}
 .li.great{display:flex;flex-direction:column;gap:4px}
+
+/* ---------- replay, share card, season ---------- */
+.rp-dot{width:40px;height:40px;border-radius:20px;background:#ff6a1f;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
+.rp-dot svg{width:26px;height:26px;stroke:#fff}.rp-dot svg .d{fill:#fff;opacity:.3}
+#replayBar{position:fixed;z-index:30;left:10px;right:10px;bottom:calc(10px + var(--safe-b));background:var(--sheet);border-radius:18px;box-shadow:var(--shadow);padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+@media (min-width:900px){ #replayBar{left:auto;width:440px} }
+.rp-info{display:flex;flex-direction:column}.rp-info span{font-size:14px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+#rpPos{width:100%;accent-color:#ff6a1f}
+.rp-btns{display:flex;gap:6px;flex-wrap:wrap}
+.cardimg{width:100%;border-radius:14px;display:block;margin:6px 0 10px;box-shadow:var(--shadow)}
+.mbars{display:flex;gap:4px;align-items:flex-end;height:130px;margin:6px 0 10px}
+.mb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:2px}
+.mb i{width:100%;background:#0e9f57;border-radius:5px 5px 0 0;min-height:2px}
+.mb b{font-size:10.5px;color:var(--ink-2)}.mb span{font-size:12px;color:var(--ink-2);font-weight:700}
+.flags{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.flags span{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:5px 10px;font-size:14px;color:var(--ink)}
+.bendy{margin:4px 0;padding-left:20px}
