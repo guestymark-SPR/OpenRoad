@@ -691,3 +691,6 @@ body.riding #radarChip{top:calc(150px + var(--safe-t))}
 
 .besttime{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;border-radius:14px;padding:10px 12px;margin:8px 0;background:color-mix(in srgb,#0e9f57 10%,var(--surface));border:1.5px solid color-mix(in srgb,#0e9f57 40%,var(--line))}
 .besttime>b{display:flex;gap:6px;align-items:center;width:100%}.besttime svg{width:20px;height:20px}.besttime span{flex:1;font-size:14px}
+
+.placebtn{justify-content:flex-start;margin:0 0 8px}.chip{display:inline-flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:4px 4px 4px 12px;font-weight:700;font-size:14px}
+.chip .mini{width:28px;height:28px;border:0;background:transparent;display:flex;align-items:center;justify-content:center}.chip .mini svg{width:16px;height:16px}
