@@ -370,3 +370,27 @@ h3 svg{width:20px;height:20px;vertical-align:-4px;margin-right:4px;color:var(--g
 .pb-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}.pb-h b{font-size:16px}
 .pb-h .btn svg{width:18px;height:18px}
 .stamp{color:var(--ink-2);line-height:1.45}.stamp svg{width:16px;height:16px;vertical-align:-3px;margin-right:4px;color:var(--warn)}
+
+/* ---------- group ride ---------- */
+.btn.grp{background:#e53935;color:#fff;border-color:#e53935;margin-top:8px}.btn.grp svg .d{fill:#fff;opacity:.3}.btn.grp svg{stroke:#fff}
+.grpfab{position:relative;color:#e53935}.grpfab::after{content:attr(data-n);position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#e53935;color:#fff;font:700 12px/20px var(--font,sans-serif);text-align:center;padding:0 4px;border:2px solid var(--surface)}
+.grpfab.alert::after{background:#f5c518;color:#111}
+.rdot{display:inline-block;width:16px;height:16px;border-radius:50%;background:var(--c);border:3px solid #fff;box-shadow:0 0 0 1.5px var(--c);flex:0 0 16px;vertical-align:-2px}
+.gcard{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:16px;padding:12px 14px;margin:6px 0 12px;background:var(--surface)}
+.gcard>div{flex:1;min-width:0;display:flex;flex-direction:column}.gcode{font-size:21px;white-space:nowrap;letter-spacing:.04em;font-variant-numeric:tabular-nums}
+.gst{font-size:13px;font-weight:600}.gst.ok{color:#0e9f57}.gst.bad{color:#c62828}.gst.wait{color:var(--ink-2)}
+.gh{font-size:15px;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-2)}
+.riders{display:flex;flex-direction:column;gap:8px}
+.rider{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid var(--line);border-radius:14px;background:var(--surface)}
+.rider .ri{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.rider .ri b{font-size:16px}.rider .ri span{font-size:13px;color:var(--ink-2)}
+.rider .rb{display:flex;flex-direction:column;gap:6px}.rider.lost{border-color:#f5c518;background:color-mix(in srgb,#f5c518 10%,var(--surface))}
+.rider .lostx{color:#a15c00!important;font-weight:600}
+.tiles.qm{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+.gmsgs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.gmsgs li{display:flex;gap:8px;align-items:center;font-size:14px}.gmsgs li span{flex:1}.gmsgs time{font-size:12px;color:var(--ink-2)}
+.gmsgs li.sys{color:var(--ink-2);font-size:13px}.gmsgs li.mine b{color:var(--ink-2)}
+.swatches{display:flex;gap:10px;flex-wrap:wrap;padding:4px 0}
+.sw{width:34px;height:34px;border-radius:50%;background:var(--c);border:3px solid var(--surface);box-shadow:0 0 0 2px var(--line);cursor:pointer;padding:0}
+.sw.on{box-shadow:0 0 0 3px var(--c),0 0 0 5px var(--ink)}
+.joinrow{display:flex;gap:8px;align-items:flex-end;margin-top:12px}.joinrow .f{flex:1;margin:0}.joinrow .btn{margin-bottom:1px}
+.card.note{margin-top:14px}

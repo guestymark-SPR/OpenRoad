@@ -81,5 +81,9 @@
             android:name=".RideService"
             android:exported="false"
             android:foregroundServiceType="location" />
+        <service
+            android:name=".GroupService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
     </application>
 </manifest>

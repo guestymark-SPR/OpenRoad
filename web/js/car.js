@@ -10,6 +10,7 @@
     OR.initMap();
     OR.map.setPitch(0);
     OR.startGps();
+    OR.groupBoot(); // riders in your group show on the car map too
     send({ state: 'ready' });
   }
   // the area of the car screen not covered by Android Auto's cards (in CSS pixels)

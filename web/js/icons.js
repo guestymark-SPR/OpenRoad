@@ -5,6 +5,11 @@
   const I = {
     // a cruiser, side on
     moto: '<circle cx="5" cy="16.5" r="3.3"/><circle cx="19" cy="16.5" r="3.3"/><circle class="d" cx="5" cy="16.5" r="3.3"/><circle class="d" cx="19" cy="16.5" r="3.3"/><path class="d" d="M9 13.2h5l1.2 2.2H9.6z"/><path d="M5 16.5 8.6 12.6h5.6l1.6 2.6H19"/><path d="M19 16.5 15.8 7.2"/><path d="M14.2 7h3.3"/><path d="M9.4 12.4c.9-2.2 2.6-3 4.6-2.7l2.1.3"/><path d="M2.4 11.6c1.6-.9 3.6-1 5.3-.4l.9 1.4"/><path d="M8.6 18h5.6"/>',
+    // three riders together (group ride)
+    group: '<circle class="d" cx="12" cy="8" r="3.2"/><circle cx="12" cy="8" r="3.2"/><path class="d" d="M6.5 19.5c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6z"/><path d="M6.5 19.5c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6z"/><circle cx="5" cy="10" r="2.3"/><circle cx="19" cy="10" r="2.3"/><path d="M1.8 18c0-2.4 1.5-4 3.6-4.2M22.2 18c0-2.4-1.5-4-3.6-4.2"/>',
+    check: '<circle class="d" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="8.5"/><path d="m8 12.3 2.7 2.7L16.2 9.4"/>',
+    // a speech bubble (group message)
+    chat: '<path class="d" d="M4 5.5h16v10H10l-4 3.5v-3.5H4z"/><path d="M4 5.5h16v10H10l-4 3.5v-3.5H4z"/><path d="M8 9.5h8M8 12.5h5"/>',
     // a rider leaning into a bend (lean angle)
     lean: '<path class="d" d="M3.5 18.5a8.5 8.5 0 0 1 17 0z"/><path d="M3.5 18.5a8.5 8.5 0 0 1 17 0"/><path d="M12 18.5 16.5 10"/><circle cx="12" cy="18.5" r="1.6"/><path d="M3 18.5h18M5.2 13.4l1.6.9M12 10v1.8M18.8 13.4l-1.6.9"/>',
     plan: '<path class="d" d="M4 6.5 9 4.5l6 2 5-2v13l-5 2-6-2-5 2z"/><path d="M4 6.5 9 4.5l6 2 5-2v13l-5 2-6-2-5 2z"/><path d="M7 15.5c2.2 0 2-4.5 5-4.5s2.4-3.5 5-3.5" stroke-dasharray="0.1 2.6"/>',

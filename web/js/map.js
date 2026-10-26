@@ -143,7 +143,7 @@
 
   // ---------- overlays (route, alternatives, ride track, points of interest) ----------
   const EMPTY = { type: 'FeatureCollection', features: [] };
-  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY };
+  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY };
   OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); };
   function addOverlays() {
     const m = OR.map, night = m.__mode === 'night';
@@ -163,6 +163,11 @@
     L({ id: 'ov-wx', type: 'symbol', source: 'ov-wx', layout: { 'icon-image': 'pin-wx', 'icon-anchor': 'bottom', 'icon-size': z([6, 0.7, 12, 0.9]), 'icon-allow-overlap': true,
       'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-anchor': 'top', 'text-offset': [0, 0.2], 'text-allow-overlap': true },
       paint: { 'text-color': '#fff', 'text-halo-color': '#1e88e5', 'text-halo-width': 2.4 } });
+    // group riders: a dot in each rider's colour with their name; grey and faded when not heard from lately
+    L({ id: 'ov-riders-h', type: 'circle', source: 'ov-riders', paint: { 'circle-radius': z([6, 11, 14, 15]), 'circle-color': ['case', ['get', 'stale'], '#8a949c', ['get', 'c']], 'circle-opacity': 0.25 } });
+    L({ id: 'ov-riders', type: 'circle', source: 'ov-riders', paint: { 'circle-radius': z([6, 7, 14, 10]), 'circle-color': ['case', ['get', 'stale'], '#8a949c', ['get', 'c']], 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } });
+    L({ id: 'ov-riders-t', type: 'symbol', source: 'ov-riders', layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 14, 'text-anchor': 'bottom', 'text-offset': [0, -1.1], 'text-allow-overlap': true },
+      paint: { 'text-color': '#fff', 'text-halo-color': ['case', ['get', 'stale'], '#5c666e', ['get', 'c']], 'text-halo-width': 2.6 } });
     L({ id: 'ov-cams', type: 'symbol', source: 'ov-cams', minzoom: 9, layout: { 'icon-image': 'pin-cam', 'icon-anchor': 'bottom', 'icon-size': 0.85, 'icon-allow-overlap': true } });
   }
 

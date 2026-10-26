@@ -15,10 +15,11 @@
     OR.initMap();
     document.documentElement.dataset.theme = OR.themeNow();
     // the fixed buttons get the same icon set as everything else
-    [['#locBtn', 'locate'], ['#layersBtn', 'layers'], ['#northBtn', 'north'], ['#qGo', 'search'], ['#hMore', 'menu']].forEach(([sel, n]) => { const el = $(sel); if (el) el.innerHTML = ic(n); });
+    [['#locBtn', 'locate'], ['#layersBtn', 'layers'], ['#northBtn', 'north'], ['#qGo', 'search'], ['#hMore', 'menu'], ['#groupBtn', 'group']].forEach(([sel, n]) => { const el = $(sel); if (el) el.innerHTML = ic(n); });
     $('#top .logo').innerHTML = ic('moto');
     bindTop(); bindNav(); bindHud(); bindMapTaps();
     renderAll();
+    OR.groupBoot && OR.groupBoot();
     OR.recoverRide();
     drawWaypoints();
     OR.on('style', () => { if (OR.plan.route) showOptions(); });
@@ -116,6 +117,8 @@
   let popup = null;
   function bindMapTaps() {
     OR.map.on('click', e => {
+      const rider = OR.map.getLayer('ov-riders') && OR.map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]], { layers: ['ov-riders', 'ov-riders-t'] });
+      if (rider && rider.length) { OR.emit('riderTap', rider[0].properties.id); return; }
       if (OR.ride.on) return;
       const hit = OR.map.queryRenderedFeatures(e.point, { layers: ['ov-pois', 'ov-alts'].filter(l => OR.map.getLayer(l)) });
       if (hit.length && hit[0].layer.id === 'ov-alts') { const i = hit[0].properties.i; if (i != null) chooseOption(+i); return; }
@@ -208,6 +211,14 @@
     if (replan) doPlan();
   }
   OR.planChanged = changed;
+  // a route from where I am to a point (used for riding to a group rider)
+  OR.routeTo = function (ll, name) {
+    if (!OR.pos) { OR.toast('Waiting for your position'); return false; }
+    planMode = 'ab';
+    OR.plan.wps.length = 0;
+    OR.plan.wps.push({ lng: OR.pos.lng, lat: OR.pos.lat, name: 'My position', type: 'break' }, { lng: ll[0], lat: ll[1], name: name, type: 'break' });
+    changed(true); tab('plan'); return true;
+  };
   function clearRouteExtras() { OR.setData('gaps', null); OR.setData('pois', null); extras = {}; }
 
   // ---------- plan view ----------
@@ -474,6 +485,7 @@
     const yr = new Date().getFullYear(), season = list.filter(r => new Date(r.start).getFullYear() === yr);
     const tot = season.reduce((a, r) => ({ d: a.d + r.dist, t: a.t + r.moving, l: Math.max(a.l, r.leanL || 0, r.leanR || 0) }), { d: 0, t: 0, l: 0 });
     v.innerHTML = '<h2 class="vh">Rides</h2><button id="freeRide" class="btn wide go">' + ic('rides') + 'Record a ride</button>' +
+      '<button id="groupRide" class="btn wide grp">' + ic('group') + (OR.group && OR.group.state.on ? 'Group ride: ' + OR.group.state.riders.length + ' other' + (OR.group.state.riders.length === 1 ? '' : 's') + ' riding' : 'Group ride') + '</button>' +
       '<div class="stats"><div><b>' + season.length + '</b><span>rides in ' + yr + '</span></div><div><b>' + OR.fmtDist(tot.d) + '</b><span>ridden</span></div><div><b>' + OR.fmtTime(tot.t) + '</b><span>moving</span></div>' + (tot.l ? '<div><b>' + tot.l + '°</b><span>best lean</span></div>' : '') + '</div>' +
       (list.length ? '<div class="list">' + list.map(r => '<div class="li"><b>' + esc(r.name) + '</b><span>' +
         new Date(r.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + '</span>' +
@@ -483,6 +495,7 @@
         : '<div class="empty">' + ic('rides', 'big') + '<p>Every ride is recorded with distance, time, speeds and an estimate of your lean angle. Recording carries on with the screen off in the Android app.</p></div>') +
       '<p class="small muted">Lean angle is estimated from GPS speed and how sharply you turn, so treat it as a guide rather than a measurement.</p>';
     $('#freeRide', v).onclick = () => startRide(null);
+    $('#groupRide', v).onclick = () => OR.openMore('group');
     $$('button[data-a]', v).forEach(b => b.onclick = async () => {
       const r = OR.rides.get(b.dataset.id); if (!r) return; const pts = OR.rides.pts(r);
       if (b.dataset.a === 'show') { OR.setData('rideview', { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pts } }] }); OR.map.fitBounds(OR.bbox(pts), { padding: 60 }); if (innerWidth < 900) $('#panel').classList.remove('open'); }
@@ -496,7 +509,7 @@
   let morePage = null;
   const field = (id, label, val, type, ph) => '<label class="f"><span>' + label + '</span><input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '"' + (type === 'number' ? ' inputmode="decimal" step="any"' : '') + '></label>';
   OR.field = field;
-  const PAGES = [['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety check-in', 'Texts your contact if you don\'t check in', '#e53935'],
+  const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety check-in', 'Texts your contact if you don\'t check in', '#e53935'],
     ['ice', 'helmet', 'Emergency card', 'Your ICE details, kept on this phone', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
     ['settings', 'gear', 'Settings', 'Units, voice, avoid tolls and ferries', '#5d6d7e'], ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
   function renderMore() {
@@ -509,7 +522,7 @@
     const p = PAGES.find(x => x[0] === morePage);
     v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'More</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
+    ({ group: p => OR.pageGroup(p), bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
   }
   OR.openMore = p => { morePage = p; tab('more'); renderMore(); };
   function keep(box, id, obj, key, num, after) { const el = $('#' + id, box); el.onchange = () => { obj[key] = num ? (el.value === '' ? '' : parseFloat(el.value)) : el.value.trim(); OR.saveCfg(); if (after) after(); }; }
@@ -672,7 +685,7 @@
     sheet('<h2>Ride options</h2><div class="tiles">' +
       (r ? '<button class="tile" id="roSkip">' + badge('skip', '#ff6a1f') + '<span>Skip next stop</span></button><button class="tile" id="roView">' + badge('map', '#1e88e5') + '<span>Route overview</span></button><button class="tile" id="roWx">' + badge('cloud', '#1e88e5') + '<span>Weather ahead</span></button>' : '') +
       '<button class="tile" id="roFuel">' + badge('fuel', '#e53935') + '<span>Fuel nearby</span></button><button class="tile" id="roCafe">' + badge('cup', '#8d5a3b') + '<span>Cafés nearby</span></button><button class="tile" id="roStay">' + badge('bed', '#7e57c2') + '<span>Stays nearby</span></button>' +
-      '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button></div>' +
+      (OR.group && OR.group.state.on ? '<button class="tile" id="roGroup">' + badge('group', '#e53935') + '<span>Group</span></button>' : '') + '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button></div>' +
       (OR.ride.leanL || OR.ride.leanR ? '<p class="small muted">Lean so far: ' + Math.round(OR.ride.leanL) + '° left, ' + Math.round(OR.ride.leanR) + '° right (estimated).</p>' : ''), b => {
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();
@@ -687,6 +700,7 @@
       on('roFuel', () => findNearby('fuel', here())); on('roCafe', () => findNearby('cafe', here())); on('roStay', () => findNearby('stay', here()));
       on('roIce', () => sheet('<div class="ice"><pre>' + esc(OR.iceText()) + '</pre></div>'));
       on('roFill', () => OR.fillUpSheet());
+      on('roGroup', () => OR.groupSheet());
     });
   }
 

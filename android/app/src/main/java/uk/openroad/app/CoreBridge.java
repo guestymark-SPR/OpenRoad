@@ -80,4 +80,19 @@ class CoreBridge {
     @JavascriptInterface public String rideTrack(String since) { return RideService.pointsSince(Long.parseLong(since)); }
     @JavascriptInterface public String mapPacks() { return Tiles.get(ctx).packsJson(); }
     @JavascriptInterface public String cacheInfo() { return Tiles.get(ctx).cacheInfo(); }
+    // group ride: positions shared with the group, kept going by GroupService with the screen off
+    @JavascriptInterface public String groupNewCode() { return GroupLink.newCode(); }
+    @JavascriptInterface public boolean groupCodeOk(String code) { return GroupLink.clean(code).length() >= 12; }
+    @JavascriptInterface public void groupStart(String code, String name, String colour, boolean voice, double splitMi, String units) {
+        Util.kvSet(ctx, "groupUnits", units == null ? "mi" : units);
+        onMain(() -> {
+            try {
+                Intent i = new Intent(ctx, GroupService.class).setAction(GroupService.ACTION_START).putExtra("code", code).putExtra("name", name).putExtra("colour", colour).putExtra("voice", voice).putExtra("splitMi", splitMi);
+                if (Build.VERSION.SDK_INT >= 26) ctx.startForegroundService(i); else ctx.startService(i);
+            } catch (Exception e) { js.run("window.onGroupError&&onGroupError(" + JSONObject.quote(String.valueOf(e.getMessage())) + ")"); }
+        });
+    }
+    @JavascriptInterface public void groupStop() { onMain(() -> { try { ctx.startService(new Intent(ctx, GroupService.class).setAction(GroupService.ACTION_STOP)); } catch (Exception ignored) { } }); }
+    @JavascriptInterface public void groupSay(String kind, String text) { onMain(() -> { try { ctx.startService(new Intent(ctx, GroupService.class).setAction(GroupService.ACTION_SAY).putExtra("kind", kind).putExtra("text", text)); } catch (Exception ignored) { } }); }
+    @JavascriptInterface public String groupState() { return GroupService.state(); }
 }
