@@ -47,8 +47,7 @@ jobs:
       - name: Build with Planetiler
         run: |
           curl -fsSL -o planetiler.jar https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
-          java -Xmx10g -jar planetiler.jar --area=${{ matrix.country }} --download --output=src.mbtiles --force \
-            --nodemap-type=array --storage=mmap --maxzoom=14
+          java -Xmx12g -jar planetiler.jar --area=${{ matrix.country }} --download --output=src.mbtiles --force --maxzoom=14
           ls -la src.mbtiles
       - name: Make OpenRoad pack(s)
         run: |
