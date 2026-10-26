@@ -26,7 +26,7 @@
       body = (m.to ? '<span class="cm-priv">' + ic('chat') + (mine ? 'Private to ' + esc(nameOf(m.to)) : 'Private to you') + '</span>' : '') + (m.x ? '<span class="cm-text">' + linkify(m.x) + '</span>' : '');
       if (m.la != null) body += '<button class="cm-loc" data-la="' + m.la + '" data-lo="' + m.lo + '" data-n="' + esc(mine ? 'You' : m.n) + '">' + OR.badge('near', '#e53935') + '<span><b>' + (mine ? 'Your' : esc(m.n) + '\'s') + ' location</b><small>Tap to show on the map' + (OR.pos ? ' · ' + OR.fmtDist(OR.dist([OR.pos.lng, OR.pos.lat], [m.lo, m.la])) + ' away' : '') + '</small></span></button>';
     }
-    return '<div class="cm ' + (mine ? 'me' : 'them') + '"><div class="cm-b">' + head + body + '<span class="cm-t">' + time + (mine && m.kind === 'chat' ? tick(OR.group.ticks(m)) : '') + '</span></div></div>';
+    return '<div class="cm ' + (mine ? 'cmine' : 'ctheirs') + '"><div class="cm-b">' + head + body + '<span class="cm-t">' + time + (mine && m.kind === 'chat' ? tick(OR.group.ticks(m)) : '') + '</span></div></div>';
   }
   function draw(force) {
     if (!box) return;

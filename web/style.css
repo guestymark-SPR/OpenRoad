@@ -432,12 +432,12 @@ body.riding #menuBtn{display:none}
 .ch-vol.off{opacity:.6}
 .ch-t{flex:1;display:flex;flex-direction:column}.ch-t b{font-size:18px}.ch-t small{opacity:.85;font-size:13px}
 #chatList{flex:1;overflow:auto;padding:10px 10px 6px;display:flex;flex-direction:column;gap:4px;overscroll-behavior:contain}
-.cm{display:flex}.cm.me{justify-content:flex-end}
+.cm{display:flex}.cm.cmine{justify-content:flex-end}
 .cm-b{max-width:82%;padding:6px 10px 5px;border-radius:12px;background:var(--surface);box-shadow:0 1px 1px rgba(0,0,0,.12);display:flex;flex-direction:column;gap:2px;font-size:16px;line-height:1.35;color:var(--ink)}
-.cm.me .cm-b{background:#d9fdd3;border-top-right-radius:4px}
-[data-theme=night] .cm.me .cm-b{background:#005c4b;color:#e9edef}
-[data-theme=night] .cm.them .cm-b{background:#202c33;color:#e9edef}
-.cm.them .cm-b{border-top-left-radius:4px}
+.cm.cmine .cm-b{background:#d9fdd3;border-top-right-radius:4px}
+[data-theme=night] .cm.cmine .cm-b{background:#005c4b;color:#e9edef}
+[data-theme=night] .cm.ctheirs .cm-b{background:#202c33;color:#e9edef}
+.cm.ctheirs .cm-b{border-top-left-radius:4px}
 .cm-who{font-size:13.5px}
 .cm-text{white-space:normal;word-wrap:break-word}
 .cm-t{align-self:flex-end;font-size:11.5px;opacity:.65;display:flex;gap:4px;align-items:center}
