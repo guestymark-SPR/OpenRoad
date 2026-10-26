@@ -56,6 +56,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="openroad" android:host="join" />
+                <data android:scheme="openroad" android:host="event" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -97,6 +98,7 @@
             android:exported="false"
             android:foregroundServiceType="location" />
         <receiver android:name=".CrashWatch$OkReceiver" android:exported="false" />
+        <receiver android:name=".EventLink$Remind" android:exported="false" />
         <service
             android:name=".GroupService"
             android:exported="false"

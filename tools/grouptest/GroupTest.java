@@ -34,11 +34,17 @@ public class GroupTest {
             waitFor("late", "Mark", 12);
             boolean ok6 = has("late", "r {\"id\":\"aaaaaa000001\",\"route\":\"abc");
             mark.clearKept("r"); waitFor("dave", "r-clear", 10); boolean ok7 = has("dave", "r-clear {\"id\":\"aaaaaa000001\"}");
+            // an event kept by a quick visitor stays after they disconnect quietly
+            GroupLink host = new GroupLink(code, "eeeeee000005", one, L("host"));
+            Thread.sleep(3000); host.sendKept("e", "{\"id\":\"eeeeee000005\",\"title\":\"Sunday run\"}"); Thread.sleep(800); host.closeQuiet(); Thread.sleep(1500);
+            GroupLink guest = new GroupLink(code, "ffffff000006", one, L("guest"));
+            waitFor("guest", "Sunday run", 12);
+            boolean ok8 = has("guest", "e {\"id\":\"eeeeee000005\",\"title\":\"Sunday run\"}"); guest.closeQuiet();
             boolean ok1 = has("dave", "p {\"id\":\"aaaaaa000001\",\"n\":\"Mark\""), ok2 = has("mark", "m {\"id\":\"bbbbbb000002\""), ok3 = !got.containsKey("other"), ok4 = has("late", "Mark");
             mark.close(); waitFor("dave", "left {\"id\":\"aaaaaa000001\"}", 10);
             boolean ok5 = has("dave", "left {\"id\":\"aaaaaa000001\"}");
-            System.out.println(server + ": dave sees Mark " + ok1 + " | Mark hears Dave " + ok2 + " | other group sees nothing " + ok3 + " | late joiner gets kept position " + ok4 + " | leaving clears it " + ok5 + " | late joiner gets 40 kB shared route " + ok6 + " | route cleared " + ok7);
-            if (!(ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7)) fails++;
+            System.out.println(server + ": dave sees Mark " + ok1 + " | Mark hears Dave " + ok2 + " | other group sees nothing " + ok3 + " | late joiner gets kept position " + ok4 + " | leaving clears it " + ok5 + " | late joiner gets 40 kB shared route " + ok6 + " | route cleared " + ok7 + " | event kept after a quick look " + ok8);
+            if (!(ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7 && ok8)) fails++;
             dave.close(); other.close(); late.close(); Thread.sleep(1500);
         }
         System.out.println(fails == 0 ? "ALL PASSED" : fails + " SERVER(S) FAILED");

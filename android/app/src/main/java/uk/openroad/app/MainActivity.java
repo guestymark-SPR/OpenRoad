@@ -117,12 +117,13 @@ public class MainActivity extends Activity {
     @Override protected void onResume() { super.onResume(); GroupService.appVisible = true; if (bridge.wantGps) bridge.gpsOn(); }
     @Override protected void onPause() { super.onPause(); GroupService.appVisible = false; if (!RideService.running) bridge.gpsOff(false); }
 
-    @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); setIntent(i); openFromIntent(i); if (i.getBooleanExtra("openChat", false)) js("window.OR&&OR.openChat&&OR.openChat()"); }
+    @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); setIntent(i); openFromIntent(i); if (i.getBooleanExtra("openChat", false)) js("window.OR&&OR.openChat&&OR.openChat()"); if (i.getBooleanExtra("openEvents", false)) js("window.OR&&OR.openMore&&OR.openMore('group')"); }
 
     // a GPX file opened from Files, email or another app
     private void openFromIntent(Intent i) {
         if (i == null || i.getData() == null || i.getBooleanExtra("handled", false)) return;
         Uri d = i.getData();
+        if ("openroad".equals(d.getScheme()) && "event".equals(d.getHost())) { i.putExtra("handled", true); js("window.onEventLink&&onEventLink(" + JSONObject.quote(d.toString()) + ")"); return; }
         if ("openroad".equals(d.getScheme()) || ("https".equals(d.getScheme()) && d.getPath() != null && d.getPath().startsWith("/OpenRoad/join"))) {
             i.putExtra("handled", true);
             js("window.onJoinLink&&onJoinLink(" + JSONObject.quote(d.toString()) + ")");

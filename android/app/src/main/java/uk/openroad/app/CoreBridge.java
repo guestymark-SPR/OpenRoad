@@ -98,6 +98,8 @@ class CoreBridge {
     @JavascriptInterface public void groupStop() { onMain(() -> { try { ctx.startService(new Intent(ctx, GroupService.class).setAction(GroupService.ACTION_STOP)); } catch (Exception ignored) { } }); }
     @JavascriptInterface public void groupSay(String kind, String text) { onMain(() -> { try { ctx.startService(new Intent(ctx, GroupService.class).setAction(GroupService.ACTION_SAY).putExtra("kind", kind).putExtra("text", text)); } catch (Exception ignored) { } }); }
     @JavascriptInterface public String groupState() { return GroupService.state(); }
+    @JavascriptInterface public void eventPeek(String code, String kind, String json) { EventLink.peek(ctx, code, kind, json, js::run); }
+    @JavascriptInterface public void eventRemind(String id, double at, String title, String text) { EventLink.remind(ctx, id, (long) at, title, text); }
     @JavascriptInterface public void groupRole(String role) { GroupService.setRole(role); }
     @JavascriptInterface public void groupChat(String text, String to, boolean withLocation) { GroupService.sendChat(text, to, withLocation); }
     @JavascriptInterface public String groupChatSince(double t) { return GroupService.chatSince((long) t); }

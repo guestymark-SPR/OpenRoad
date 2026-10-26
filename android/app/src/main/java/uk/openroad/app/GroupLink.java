@@ -74,6 +74,12 @@ public class GroupLink {
         for (Conn k : conns) k.closeGracefully(new String[]{base + "/p/" + riderId, base + "/r/" + riderId, base + "/x/" + riderId, base + "/c/" + riderId, base + "/h/" + riderId});
     }
     public String topicBase() { return base; }
+    /** Disconnect without removing anything kept (used for a quick look at an event). */
+    public void closeQuiet() {
+        running = false;
+        for (Conn k : conns) k.closeGracefully(new String[0]);
+    }
+    public boolean anyOnline() { for (Conn k : conns) if (k.out != null) return true; return false; }
 
     private void publish(String topic, String json, boolean retain) {
         byte[] body;

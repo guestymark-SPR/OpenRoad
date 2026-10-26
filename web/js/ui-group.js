@@ -82,6 +82,7 @@
       '<div class="card note"><b>How it works</b><p class="small">Starting a group gives you a code to send to your mates. Anyone with the code can see the group, so only share it with the people riding. ' +
       'Positions are encrypted with the code on your phone before they leave it, and pass through free public relay servers (HiveMQ and EMQX), which can\'t read them. Those servers are free test services with no guarantee they\'ll always be up, so the app uses both at once. ' +
       'It sends your position every 5 seconds when moving and every 30 seconds when stopped, using about 1 to 3 MB of data an hour. Leaving the group removes your position.</p></div>';
+    { const ev = document.createElement('div'); ev.innerHTML = OR.eventsHtml ? OR.eventsHtml() : ''; box.insertBefore(ev, box.querySelector('.card.note')); OR.bindEvents && OR.bindEvents(ev); }
     const save = () => { g.name = $('#gName', box).value.trim().slice(0, 24); g.splitMi = parseFloat($('#gSplit', box).value); OR.saveCfg(); };
     $('#gName', box).onchange = save; $('#gSplit', box).onchange = save;
     $$('.sw', box).forEach(s => s.onclick = () => { $$('.sw', box).forEach(x => x.classList.remove('on')); s.classList.add('on'); g.colour = s.dataset.c; OR.saveCfg(); });
@@ -150,7 +151,7 @@
       $('#jGo', b).onclick = () => { const n = $('#jName', b).value.trim().slice(0, 24); if (!n) return OR.toast('Put your name in first'); g.name = n; OR.saveCfg(); OR.closeSheet(); go(); };
     });
   };
-  window.onQrScanned = text => { if (text == null) return; OR.joinFromCode(OR.group.codeFrom(text)); };
+  window.onQrScanned = text => { if (text == null) return; if (/event\//i.test(text)) return OR.showEvent(OR.group.codeFrom(text), true); OR.joinFromCode(OR.group.codeFrom(text)); };
   window.onJoinLink = url => OR.joinFromCode(OR.group.codeFrom(decodeURIComponent(url)));
 
   // ---------- roles ----------
