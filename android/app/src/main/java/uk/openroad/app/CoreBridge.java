@@ -101,6 +101,7 @@ class CoreBridge {
     @JavascriptInterface public String groupChatSince(double t) { return GroupService.chatSince((long) t); }
     @JavascriptInterface public void groupChatSeen(double t) { GroupService.seen((long) t); GroupService.clearChatNote(ctx); }
     @JavascriptInterface public void groupChatVoice(boolean on) { GroupService.chatVoice = on; }
+    @JavascriptInterface public void groupChatNotify(boolean on) { GroupService.chatNotify = on; }
     @JavascriptInterface public void groupShare(String what, String json) { if ("r".equals(what) || "x".equals(what)) GroupService.share(what, json); }
     // crash detection (runs while recording a ride or in a group ride)
     @JavascriptInterface public void crashConfig(String json) { Util.kvSet(ctx, "crash", json); }

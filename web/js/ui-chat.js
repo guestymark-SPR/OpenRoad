@@ -57,14 +57,16 @@
       box.innerHTML = '<div class="ch-top"><button class="ch-back" id="chatBack" aria-label="Close">' + ic('back') + '</button><div class="ch-t"><b>Group chat</b><small id="chatSub"></small></div>' +
         '<button class="ch-vol" id="chatVol" aria-label="Read messages aloud"></button></div>' +
         '<div id="chatList"></div>' +
-        '<div class="ch-quick">' + OR.QUICK.map(q => '<button data-q="' + q[0] + '">' + q[1] + '</button>').join('') + '</div>' +
-        '<div class="ch-bar"><button id="chatTo" class="ch-to"></button><div class="ch-row"><button id="chatLoc" class="ch-ic" aria-label="Send my location">' + ic('near') + '</button>' +
+        '<div id="chatPresets" class="ch-presets"></div>' +
+        '<div class="ch-bar"><div class="ch-tools"><button id="chatTo" class="ch-to"></button><button id="chatPre" class="ch-to">Quick messages ▴</button></div><div class="ch-row"><button id="chatLoc" class="ch-ic" aria-label="Send my location">' + ic('near') + '</button>' +
         '<textarea id="chatIn" rows="1" maxlength="500" placeholder="Message"></textarea><button id="chatSend" class="ch-send" aria-label="Send">' + ic('send') + '</button></div></div>';
       document.body.appendChild(box);
       $('#chatBack', box).onclick = OR.closeChat;
-      const vol = () => { const g = OR.cfg.group || {}; $('#chatVol', box).innerHTML = ic(g.chatVoice === false ? 'mute' : 'vol'); $('#chatVol', box).classList.toggle('off', g.chatVoice === false); };
-      $('#chatVol', box).onclick = () => { const g = OR.cfg.group = OR.cfg.group || {}; g.chatVoice = g.chatVoice === false; OR.saveCfg(); if (OR.native.groupChatVoice) OR.native.groupChatVoice(g.chatVoice); vol(); OR.toast(g.chatVoice ? 'New messages will be read out' : 'Messages won\'t be read out'); };
-      vol();
+      const vol = () => { const c = OR.chatCfg(); $('#chatVol', box).innerHTML = ic(c.voice ? 'vol' : 'mute'); $('#chatVol', box).classList.toggle('off', !c.voice); };
+      $('#chatVol', box).onclick = () => { const c = OR.chatCfg(); c.voice = !c.voice; OR.saveCfg(); OR.chatApply(); vol(); OR.toast(c.voice ? 'New messages will be read out' : 'Messages won\'t be read out'); };
+      vol(); OR.chatVolUi = vol;
+      $('#chatPre', box).onclick = () => setPresets(!presetsOpen);
+      $('#chatIn', box).addEventListener('focus', () => { if (innerHeight < 700) setPresets(false); });
       const input = $('#chatIn', box);
       const grow = () => { input.style.height = 'auto'; input.style.height = Math.min(120, input.scrollHeight) + 'px'; };
       input.oninput = grow;
@@ -72,11 +74,7 @@
       $('#chatSend', box).onclick = send;
       input.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } };
       $('#chatLoc', box).onclick = () => { if (!OR.pos) return OR.toast('Waiting for your position'); OR.group.chatSend('', to, true); setTimeout(() => draw(true), 450); };
-      $$('.ch-quick button', box).forEach(b => b.onclick = () => {
-        const q = OR.QUICK.find(k => k[0] === b.dataset.q);
-        if (q[0] === 'help' && !confirm('Tell the group you need help? They\'ll get your position.')) return;
-        OR.group.say(q[0]); setTimeout(() => draw(true), 450);
-      });
+
       $('#chatTo', box).onclick = () => {
         const rs = OR.group.state.riders;
         OR.sheet('<h2>Send to</h2><div class="list">' + '<button class="li pick" data-to="">' + ic('group') + '<b>Everyone in the group</b></button>' +
@@ -87,15 +85,32 @@
       };
     }
     box.hidden = false; document.body.classList.add('chatting');
+    drawPresets(); setPresets(OR.chatCfg().showPresets);
     draw(true);
   };
+  // the ready-made messages: big buttons, easy with gloves. "Need help" also sends your position.
+  let presetsOpen = true;
+  function drawPresets() {
+    const el = $('#chatPresets', box), list = OR.chatCfg().presets;
+    el.innerHTML = list.map((t, i) => '<button data-p="' + i + '">' + esc(t) + '</button>').join('') + '<button data-p="help" class="sos">Need help</button>';
+    $$('button', el).forEach(b => b.onclick = () => {
+      if (b.dataset.p === 'help') { if (!confirm('Tell the group you need help? They\'ll get your position.')) return; OR.group.say('help'); }
+      else OR.group.chatSend(list[+b.dataset.p], to, false);
+      b.classList.add('sent'); setTimeout(() => b.classList.remove('sent'), 700);
+      setTimeout(() => draw(true), 450);
+    });
+  }
+  function setPresets(open) { presetsOpen = open; $('#chatPresets', box).hidden = !open; $('#chatPre', box).textContent = 'Quick messages ' + (open ? '▾' : '▴'); }
+  OR.chatPresetsChanged = () => { if (box) drawPresets(); };
   OR.closeChat = () => { if (box) box.hidden = true; document.body.classList.remove('chatting'); };
   OR.chatTo = id => { to = id || ''; OR.openChat(); };
 
   // keep the chat, the chat button and its unread badge up to date
   OR.on('group', st => {
     const cb = $('#chatBtn');
-    if (cb) { cb.hidden = !st.on; cb.dataset.n = st.unread || ''; cb.classList.toggle('has', !!st.unread); if (!cb.onclick) { cb.innerHTML = ic('chat'); cb.onclick = OR.openChat; } }
+    if (cb) { cb.hidden = !st.on; cb.dataset.n = st.unread || ''; cb.classList.toggle('has', !!st.unread); if (!cb.onclick) { cb.innerHTML = ic('chat') + '<span>Chat</span>'; cb.onclick = OR.openChat; } }
+    const hc = $('#hChat');
+    if (hc) { hc.hidden = !st.on; hc.dataset.n = st.unread || ''; hc.classList.toggle('has', !!st.unread); if (!hc.onclick) { hc.innerHTML = ic('chat'); hc.onclick = OR.openChat; } }
     if (box && !box.hidden) draw();
     if (!st.on && box) OR.closeChat();
   });

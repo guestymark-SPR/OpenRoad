@@ -485,3 +485,23 @@ body.riding #menuBtn{display:none}
 .mb b{font-size:10.5px;color:var(--ink-2)}.mb span{font-size:12px;color:var(--ink-2);font-weight:700}
 .flags{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}.flags span{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:5px 10px;font-size:14px;color:var(--ink)}
 .bendy{margin:4px 0;padding-left:20px}
+
+/* chat: quick message buttons, labelled chat button, settings */
+.ch-presets{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px 8px 2px;flex:none;max-height:38vh;overflow:auto}
+.ch-presets[hidden]{display:none}
+.ch-presets button{min-height:52px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:16px;font-weight:700;padding:4px 6px;line-height:1.15;transition:background .2s}
+.ch-presets button.sos{background:#c62828;color:#fff;border-color:#c62828}
+.ch-presets button.sent{background:#d9fdd3;border-color:#0e9f57}
+@media (min-width:600px){ .ch-presets{grid-template-columns:repeat(4,1fr)} }
+.ch-tools{display:flex;justify-content:space-between}
+.chatfab{width:auto!important;padding:0 14px!important;gap:6px;background:#0e9f57!important;color:#fff!important;font-weight:800;font-size:15px;border-radius:28px!important}
+.chatfab svg{stroke:#fff}.chatfab svg .d{fill:#fff;opacity:.3}
+.chathb{position:relative;color:#0e9f57}.chathb.has::after{content:attr(data-n);position:absolute;top:-6px;right:-6px;min-width:22px;height:22px;border-radius:11px;background:#0e9f57;color:#fff;font:700 13px/22px var(--font,sans-serif);text-align:center;padding:0 4px;border:2px solid var(--surface)}
+.chathb[hidden]{display:none}
+.presets{display:flex;flex-direction:column;gap:6px;margin:6px 0}
+.pr{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:4px 6px 4px 12px}
+.pr span{flex:1;font-weight:700}
+.pr button{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);display:flex;align-items:center;justify-content:center}
+.pr button:disabled{opacity:.3}.pr button svg{width:18px;height:18px}
+.chatfab.has::after{background:#e53935!important}
+#fabs{align-items:flex-end}

@@ -51,7 +51,7 @@ public class GroupService extends Service implements LocationListener {
     private static final JSONArray chat = new JSONArray();
     private static final JSONArray myChat = new JSONArray();
     static volatile long chatSeen = 0, chatGot = 0;
-    static volatile boolean chatVoice = true, appVisible = false;
+    static volatile boolean chatVoice = true, chatNotify = true, appVisible = false;
     private static final Map<String, JSONObject> riders = new LinkedHashMap<>();
     private static final JSONArray msgs = new JSONArray();
     private static final Map<String, String> servers = new LinkedHashMap<>();
@@ -221,7 +221,7 @@ public class GroupService extends Service implements LocationListener {
             if (System.currentTimeMillis() - c.optLong("t") > 15 * 60000) continue; // catching up on old ones: no noise
             String text = c.optString("x"), line = who + (c.optString("to").isEmpty() ? "" : ", privately") + ": " + (text.isEmpty() && c.has("la") ? "shared their location" : text);
             if (chatVoice) say(line);
-            if (!appVisible) chatNote(line);
+            if (!appVisible && chatNotify) chatNote(line);
         }
     }
     private static void insertSorted(JSONObject c) throws Exception {

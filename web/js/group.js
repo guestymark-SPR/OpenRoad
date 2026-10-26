@@ -7,6 +7,17 @@
   OR.GROUP_LOST = 180; // seconds without news before a rider shows as lost
   OR.QUICK = [['fuel', 'Stopping for fuel', 'fuel', '#e53935'], ['stop', 'Pulling over', 'park', '#1565c0'], ['wait', 'Wait for me', 'time', '#ef8f00'],
     ['lost', 'I\'m lost', 'near', '#8e24aa'], ['ok', 'All good', 'check', '#0e9f57'], ['go', 'Setting off', 'moto', '#00897b'], ['help', 'Need help', 'helmet', '#c62828']];
+  // ready-made chat messages, one tap to send (changed in More, Chat)
+  OR.CHAT_PRESETS = ['Yes', 'No', 'OK 👍', 'Stop', 'Food?', 'Need fuel', 'Coffee?', 'Toilet stop', 'Wait for me', 'Slow down', 'Where are you?', 'On my way', 'All good', 'Lost', 'Setting off'];
+  OR.chatCfg = () => {
+    const c = OR.cfg.chat = OR.cfg.chat || {};
+    if (c.voice === undefined) c.voice = !(OR.cfg.group && OR.cfg.group.chatVoice === false);
+    if (c.notify === undefined) c.notify = true;
+    if (c.showPresets === undefined) c.showPresets = true;
+    if (!Array.isArray(c.presets) || !c.presets.length) c.presets = OR.CHAT_PRESETS.slice();
+    return c;
+  };
+  OR.chatApply = () => { const c = OR.chatCfg(), n = OR.native; if (n && n.groupChatVoice) n.groupChatVoice(!!c.voice); if (n && n.groupChatNotify) n.groupChatNotify(!!c.notify); };
   OR.groupAvailable = () => !!(N() && N().groupStart);
   let state = { on: false, riders: [], msgs: [] }, timer = null, seen = {}, chatT = 0;
 
@@ -20,6 +31,7 @@
       g.code = OR.group.pretty(code); OR.saveCfg();
       N().groupStart(g.code, g.name || 'Rider', g.colour || OR.GROUP_COLOURS[0], OR.cfg.voice !== false, parseFloat(g.splitMi) || 2, OR.cfg.units === 'km' ? 'km' : 'mi');
       if (N().groupRole) N().groupRole(g.role || '');
+      OR.chatApply();
       poll(); watch();
     },
     leave() { N().groupStop(); const g = OR.cfg.group || {}; g.code = ''; OR.saveCfg(); setTimeout(poll, 400); },
@@ -108,7 +120,7 @@
   OR.on('style', draw);
   OR.groupBoot = function () {
     if (!OR.groupAvailable()) return;
-    poll(); watch(); // a cheap local call, so it keeps checking (the group may be started from the phone while the car screen is up)
+    OR.chatApply(); poll(); watch(); // a cheap local call, so it keeps checking (the group may be started from the phone while the car screen is up)
     document.addEventListener('visibilitychange', () => { if (!document.hidden && state.on) poll(); });
   };
 })(window.OR);

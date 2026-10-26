@@ -544,7 +544,7 @@
   let morePage = null;
   const field = (id, label, val, type, ph) => '<label class="f"><span>' + label + '</span><input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '"' + (type === 'number' ? ' inputmode="decimal" step="any"' : '') + '></label>';
   OR.field = field;
-  const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety', 'Crash alert, check-in, speed and break warnings', '#e53935'],
+  const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['chat', 'chat', 'Chat settings', 'Quick messages, read aloud and notifications', '#0e9f57'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety', 'Crash alert, check-in, speed and break warnings', '#e53935'],
     ['ice', 'helmet', 'Emergency card', 'Your ICE details, kept on this phone', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
     ['settings', 'gear', 'Settings', 'Units, voice, avoid tolls and ferries', '#5d6d7e'], ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
   function renderMore() {
@@ -557,7 +557,7 @@
     const p = PAGES.find(x => x[0] === morePage);
     v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'More</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ group: p => OR.pageGroup(p), bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
+    ({ group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
   }
   OR.openMore = p => { morePage = p; tab('more'); renderMore(); };
   function keep(box, id, obj, key, num, after) { const el = $('#' + id, box); el.onchange = () => { obj[key] = num ? (el.value === '' ? '' : parseFloat(el.value)) : el.value.trim(); OR.saveCfg(); if (after) after(); }; }
@@ -572,6 +572,30 @@
     const re = () => pageBike(box);
     keep(box, 'bName', b, 'name'); keep(box, 'bTank', b, 'tankL', 1, re); keep(box, 'bMpg', b, 'mpg', 1, re); keep(box, 'bRes', b, 'reserveMi', 1, re);
     $('#filled', box).onclick = () => { OR.filledUp(); re(); };
+  }
+  function pageChat(box) {
+    const c = OR.chatCfg(), on = OR.group && OR.group.state.on;
+    box.innerHTML = (on ? '<button id="pcOpen" class="btn wide pri">' + ic('chat') + 'Open the group chat</button>' : '<p class="small">The chat works in a group ride: start or join one in <b>Group ride</b>, then tap the green <b>Chat</b> button on the map, or the chat button while riding.</p><button id="pcGroup" class="btn wide">' + ic('group') + 'Group ride</button>') +
+      '<h3 class="gh">When a message comes in</h3>' +
+      '<label class="chk"><input type="checkbox" id="pcVoice"' + (c.voice ? ' checked' : '') + '> Read it out (through your intercom or headphones)</label>' +
+      '<label class="chk"><input type="checkbox" id="pcNote"' + (c.notify ? ' checked' : '') + '> Show a notification when OpenRoad isn\'t on screen</label>' +
+      '<label class="chk"><input type="checkbox" id="pcShow"' + (c.showPresets ? ' checked' : '') + '> Show the quick message buttons when the chat opens</label>' +
+      '<h3 class="gh">Quick messages</h3><p class="small muted">One tap sends these. "Need help" is always there and also sends your position.</p>' +
+      '<div class="presets">' + c.presets.map((t, i) => '<div class="pr"><span>' + esc(t) + '</span><button data-up="' + i + '" aria-label="Move up"' + (i ? '' : ' disabled') + '>▲</button><button data-down="' + i + '" aria-label="Move down"' + (i < c.presets.length - 1 ? '' : ' disabled') + '>▼</button><button data-del="' + i + '" aria-label="Remove">' + ic('x') + '</button></div>').join('') + '</div>' +
+      '<div class="joinrow">' + field('pcNew', 'Add a quick message', '', 'text', 'e.g. Pub at 6?') + '<button id="pcAdd" class="btn">Add</button></div>' +
+      '<button id="pcReset" class="btn wide ghost">Put back the standard ones</button>';
+    const save = () => { OR.saveCfg(); OR.chatApply(); OR.chatPresetsChanged && OR.chatPresetsChanged(); pageChat(box); };
+    $('#pcVoice', box).onchange = e => { c.voice = e.target.checked; save(); };
+    $('#pcNote', box).onchange = e => { c.notify = e.target.checked; save(); };
+    $('#pcShow', box).onchange = e => { c.showPresets = e.target.checked; save(); };
+    $$('[data-up]', box).forEach(b => b.onclick = () => { const i = +b.dataset.up; [c.presets[i - 1], c.presets[i]] = [c.presets[i], c.presets[i - 1]]; save(); });
+    $$('[data-down]', box).forEach(b => b.onclick = () => { const i = +b.dataset.down; [c.presets[i + 1], c.presets[i]] = [c.presets[i], c.presets[i + 1]]; save(); });
+    $$('[data-del]', box).forEach(b => b.onclick = () => { c.presets.splice(+b.dataset.del, 1); if (!c.presets.length) c.presets = OR.CHAT_PRESETS.slice(); save(); });
+    const add = () => { const t = $('#pcNew', box).value.trim().slice(0, 40); if (!t) return; c.presets.push(t); save(); };
+    $('#pcAdd', box).onclick = add; $('#pcNew', box).onkeydown = e => { if (e.key === 'Enter') add(); };
+    $('#pcReset', box).onclick = () => { if (confirm('Put back the standard quick messages?')) { c.presets = OR.CHAT_PRESETS.slice(); save(); } };
+    const o = $('#pcOpen', box); if (o) o.onclick = () => OR.openChat();
+    const g = $('#pcGroup', box); if (g) g.onclick = () => OR.openMore('group');
   }
   function pageSafety(box) {
     const ci = OR.cfg.checkin, at = OR.cfg.checkinAt;
