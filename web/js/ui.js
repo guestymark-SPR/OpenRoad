@@ -147,6 +147,8 @@
     OR.map.on('click', e => {
       const rider = OR.map.getLayer('ov-riders') && OR.map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 14], [e.point.x + 14, e.point.y + 14]], { layers: ['ov-riders', 'ov-riders-t'] });
       if (rider && rider.length) { OR.emit('riderTap', rider[0].properties.id); return; }
+      const hz = OR.map.getLayer('ov-haz') && OR.map.queryRenderedFeatures([[e.point.x - 16, e.point.y - 30], [e.point.x + 16, e.point.y + 6]], { layers: ['ov-haz'] });
+      if (hz && hz.length) { OR.emit('hazTap', hz[0].properties.key); return; }
       if (OR.ride.on) return;
       const hit = OR.map.queryRenderedFeatures(e.point, { layers: ['ov-pois', 'ov-alts'].filter(l => OR.map.getLayer(l)) });
       if (hit.length && hit[0].layer.id === 'ov-alts') { const i = hit[0].properties.i; if (i != null) chooseOption(+i); return; }

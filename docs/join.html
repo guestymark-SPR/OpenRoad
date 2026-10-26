@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Join a group ride · OpenRoad</title>
+<style>
+:root{--g:#0b6b3a;--y:#f5c518;--ink:#1c2226;--bg:#eef1ee}
+body{margin:0;font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:460px;margin:0 auto;padding:28px 18px}
+h1{font-size:26px;margin:0 0 6px}.brand{color:var(--g);font-weight:800;letter-spacing:.02em}
+.code{font-size:30px;font-weight:800;letter-spacing:.08em;background:#fff;border-radius:14px;padding:14px;text-align:center;margin:16px 0;border:2px solid var(--y)}
+a.btn{display:block;text-align:center;padding:16px;border-radius:14px;font-weight:800;text-decoration:none;margin:10px 0}
+.pri{background:var(--g);color:#fff}.sec{background:#fff;color:var(--ink);border:1.5px solid #c9d1cc}
+small{color:#5c666e}
+</style></head><body><main>
+<div class="brand">OpenRoad</div>
+<h1>Join the group ride</h1>
+<p>Someone has invited you to ride with their group, so you can see each other on the map, chat and get hazard warnings.</p>
+<div class="code" id="code">…</div>
+<a class="btn pri" id="open" href="#">Open in OpenRoad</a>
+<a class="btn sec" href="https://github.com/guestymark-SPR/OpenRoad/releases/download/app/OpenRoad.apk">Get OpenRoad for Android</a>
+<p><small>Don't have it yet? Install it, open it, then come back and tap "Open in OpenRoad", or in the app go to Rides, Group ride, and type the code above. The code stays on your phone: it's after the # in the link, which browsers never send to the website.</small></p>
+</main>
+<script>
+var c = (location.hash || '').replace('#', '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+var pretty = c.replace(/(.{4})(?=.)/g, '$1-');
+document.getElementById('code').textContent = c.length >= 12 ? pretty : 'No code in this link';
+// Chrome on Android opens the app from an intent: link, and offers the download if it isn't installed
+var apk = 'https://github.com/guestymark-SPR/OpenRoad/releases/download/app/OpenRoad.apk';
+document.getElementById('open').href = 'intent://join/' + pretty + '#Intent;scheme=openroad;package=uk.openroad.app;S.browser_fallback_url=' + encodeURIComponent(apk) + ';end';
+</script></body></html>

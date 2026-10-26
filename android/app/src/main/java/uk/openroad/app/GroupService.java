@@ -52,6 +52,10 @@ public class GroupService extends Service implements LocationListener {
     private static final JSONArray myChat = new JSONArray();
     static volatile long chatSeen = 0, chatGot = 0;
     static volatile boolean chatVoice = true, chatNotify = true, appVisible = false;
+    // hazards riders have marked (gravel, diesel...), kept for 8 hours, and mine to send to the group
+    private static final Map<String, JSONObject> hazards = new LinkedHashMap<>();
+    private static final JSONArray myHazards = new JSONArray();
+    private final Map<String, Boolean> hazWarned = new LinkedHashMap<>();
     private static final Map<String, JSONObject> riders = new LinkedHashMap<>();
     private static final JSONArray msgs = new JSONArray();
     private static final Map<String, String> servers = new LinkedHashMap<>();
@@ -115,6 +119,7 @@ public class GroupService extends Service implements LocationListener {
         if (link != null) link.close();
         synchronized (riders) { riders.clear(); } synchronized (servers) { servers.clear(); } alertState.clear();
         synchronized (routes) { routes.clear(); } synchronized (meets) { meets.clear(); } allThere = false;
+        synchronized (hazards) { hazards.clear(); } synchronized (myHazards) { while (myHazards.length() > 0) myHazards.remove(0); } hazWarned.clear();
         synchronized (chat) { while (chat.length() > 0) chat.remove(0); } synchronized (myChat) { while (myChat.length() > 0) myChat.remove(0); } chatSeen = 0; chatGot = 0;
         synchronized (msgs) { while (msgs.length() > 0) msgs.remove(0); }
         myId = Util.kvGet(this, "groupRider");
@@ -152,7 +157,8 @@ public class GroupService extends Service implements LocationListener {
             if (id.isEmpty()) return;
             if ("r".equals(kind) || "x".equals(kind) || "r-clear".equals(kind) || "x-clear".equals(kind)) { kept(kind, id, o); return; }
             if ("c".equals(kind)) { if (!id.equals(myId)) chatIn(o); return; }
-            if ("c-clear".equals(kind)) return;
+            if ("c-clear".equals(kind) || "h-clear".equals(kind)) return;
+            if ("h".equals(kind)) { hazIn(o); return; }
             if (id.equals(myId)) return;
             if ("left".equals(kind)) {
                 JSONObject r; synchronized (riders) { r = riders.remove(id); }
@@ -273,6 +279,81 @@ public class GroupService extends Service implements LocationListener {
         return out.toString();
     }
     static void seen(long t) { if (t > chatSeen) { chatSeen = t; GroupService g = self; if (g != null) g.main.post(() -> { g.lastSent = 0; g.sendIfDue(true); }); } }
+    // ---------- hazard drops ----------
+    static final String[][] HAZ = {{"gravel", "Gravel"}, {"diesel", "Diesel or oil"}, {"pothole", "Pothole"}, {"mud", "Mud on the road"}, {"roadworks", "Roadworks"}, {"animal", "Animals on the road"},
+            {"crash", "Accident"}, {"flood", "Water on the road"}, {"debris", "Something in the road"}, {"leaves", "Wet leaves"}, {"other", "Hazard"}};
+    static String hazName(String k) { for (String[] h : HAZ) if (h[0].equals(k)) return h[1]; return "Hazard"; }
+    private void hazIn(JSONObject bundle) throws Exception {
+        JSONArray hs = bundle.optJSONArray("hz"); if (hs == null) return;
+        String id = bundle.getString("id"), who = bundle.optString("n", "A rider");
+        synchronized (hazards) {
+            // what this rider has marked now replaces what they had before (so removed ones go)
+            hazards.entrySet().removeIf(e -> e.getValue().optString("id").equals(id));
+            for (int i = 0; i < hs.length(); i++) {
+                JSONObject h = hs.getJSONObject(i);
+                if (System.currentTimeMillis() - h.optLong("t") > 8 * 3600000L) continue;
+                hazards.put(id + ":" + h.optLong("t"), new JSONObject(h.toString()).put("id", id).put("n", who).put("key", id + ":" + h.optLong("t")));
+            }
+        }
+    }
+    static void addHazard(String kind, String note) {
+        GroupService g = self; if (g == null || g.link == null || g.me == null) return;
+        g.main.post(() -> {
+            try {
+                JSONObject h = new JSONObject().put("k", kind).put("x", clip(note, 60)).put("t", System.currentTimeMillis())
+                        .put("la", Math.round(g.me.getLatitude() * 1e5) / 1e5).put("lo", Math.round(g.me.getLongitude() * 1e5) / 1e5);
+                synchronized (myHazards) { myHazards.put(h); while (myHazards.length() > 30) myHazards.remove(0); }
+                g.pushHazards();
+                synchronized (hazards) { hazards.put(myId + ":" + h.getLong("t"), new JSONObject(h.toString()).put("id", myId).put("n", myName).put("key", myId + ":" + h.getLong("t")).put("mine", true)); }
+                g.say(hazName(kind) + " marked. The group will be warned.");
+            } catch (Exception ignored) { }
+        });
+    }
+    static void removeHazard(long t) {
+        GroupService g = self; if (g == null) return;
+        g.main.post(() -> {
+            try {
+                synchronized (myHazards) { for (int i = myHazards.length() - 1; i >= 0; i--) if (myHazards.getJSONObject(i).optLong("t") == t) myHazards.remove(i); }
+                synchronized (hazards) { hazards.remove(myId + ":" + t); }
+                g.pushHazards();
+            } catch (Exception ignored) { }
+        });
+    }
+    private void pushHazards() throws Exception {
+        JSONObject b = new JSONObject().put("id", myId).put("n", myName).put("t", System.currentTimeMillis());
+        synchronized (myHazards) { b.put("hz", new JSONArray(myHazards.toString())); }
+        if (link != null) link.sendKept("h", b.toString());
+    }
+    // warn as I get near a hazard someone else marked: the distance grows with speed (about 12 seconds' warning, at least 250 m)
+    private void hazCheck() {
+        if (me == null) return;
+        float v = me.hasSpeed() ? me.getSpeed() : 0;
+        double warnAt = Math.max(250, v * 12);
+        java.util.List<JSONObject> say = new java.util.ArrayList<>();
+        synchronized (hazards) {
+            for (JSONObject h : hazards.values()) {
+                if (h.optBoolean("mine") || myId.equals(h.optString("id"))) continue;
+                float[] d = new float[1]; Location.distanceBetween(me.getLatitude(), me.getLongitude(), h.optDouble("la"), h.optDouble("lo"), d);
+                String k = h.optString("key"); Boolean was = hazWarned.get(k);
+                boolean ahead = true;
+                if (me.hasBearing() && d[0] > 60) { // only hazards in front of me, not ones on a road I've passed
+                    Location t = new Location(""); t.setLatitude(h.optDouble("la")); t.setLongitude(h.optDouble("lo"));
+                    float diff = Math.abs(((me.bearingTo(t) - me.getBearing()) % 360 + 540) % 360 - 180);
+                    ahead = diff < 70;
+                }
+                if (d[0] < warnAt && ahead && (was == null || !was) && v > 2) { hazWarned.put(k, true); say.add(new JSONObject().putOpt("d", (double) d[0]).putOpt("h", h)); }
+                else if (d[0] > 1000 && was != null && was) hazWarned.put(k, false); // far away again: warn next time round
+            }
+        }
+        for (JSONObject s : say) {
+            JSONObject h = s.optJSONObject("h"); if (h == null) continue;
+            String note = h.optString("x");
+            say(hazName(h.optString("k")) + " ahead" + (note.isEmpty() ? "" : ", " + note) + ", in " + Math.round(s.optDouble("d") / 10) * 10 + " metres. Marked by " + h.optString("n", "a rider") + ".");
+        }
+    }
+    static String hazardsJson() {
+        JSONArray a = new JSONArray(); synchronized (hazards) { for (JSONObject h : hazards.values()) a.put(h); } return a.toString();
+    }
     static void setRole(String r) { myRole = r == null ? "" : r; GroupService g = self; if (g != null) g.main.post(() -> { g.lastSent = 0; g.sendIfDue(true); }); }
     static void share(String what, String json) {
         GroupService g = self; if (g == null || g.link == null) return;
@@ -301,7 +382,7 @@ public class GroupService extends Service implements LocationListener {
     }
 
     // ---------- my position ----------
-    @Override public void onLocationChanged(Location l) { me = l; CrashWatch.fix(l); sendIfDue(false); }
+    @Override public void onLocationChanged(Location l) { me = l; CrashWatch.fix(l); sendIfDue(false); hazCheck(); }
     private void sendIfDue(boolean force) {
         if (link == null || me == null) return;
         long now = System.currentTimeMillis(), since = now - lastSent;

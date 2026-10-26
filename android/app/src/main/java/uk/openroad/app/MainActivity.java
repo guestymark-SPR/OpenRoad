@@ -118,6 +118,12 @@ public class MainActivity extends Activity {
     // a GPX file opened from Files, email or another app
     private void openFromIntent(Intent i) {
         if (i == null || i.getData() == null || i.getBooleanExtra("handled", false)) return;
+        Uri d = i.getData();
+        if ("openroad".equals(d.getScheme()) || ("https".equals(d.getScheme()) && d.getPath() != null && d.getPath().startsWith("/OpenRoad/join"))) {
+            i.putExtra("handled", true);
+            js("window.onJoinLink&&onJoinLink(" + JSONObject.quote(d.toString()) + ")");
+            return;
+        }
         if (!Intent.ACTION_VIEW.equals(i.getAction()) && !Intent.ACTION_SEND.equals(i.getAction())) return;
         i.putExtra("handled", true);
         final Uri u = i.getData();
@@ -132,6 +138,8 @@ public class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int req, int result, Intent data) {
         super.onActivityResult(req, result, data);
+        com.google.zxing.integration.android.IntentResult qr = com.google.zxing.integration.android.IntentIntegrator.parseActivityResult(req, result, data);
+        if (qr != null) { String t = qr.getContents(); js("window.onQrScanned&&onQrScanned(" + (t == null ? "null" : JSONObject.quote(t)) + ")"); return; }
         if (req == REQ_FILE && fileCallback != null) {
             Uri u = result == RESULT_OK && data != null ? data.getData() : null;
             fileCallback.onReceiveValue(u == null ? null : new Uri[]{u});
@@ -215,6 +223,24 @@ public class MainActivity extends Activity {
                 try (OutputStream o = new FileOutputStream(f)) { o.write(bytes); }
                 return "Saved to " + f.getPath() + (share ? " (sharing pictures needs Android 10 or newer)" : "");
             } catch (Exception e) { return "Could not save the picture: " + e.getMessage(); }
+        }
+        // QR codes for group rides
+        @JavascriptInterface public void scanQr() {
+            runOnUiThread(() -> {
+                try {
+                    new com.google.zxing.integration.android.IntentIntegrator(MainActivity.this).setDesiredBarcodeFormats(com.google.zxing.integration.android.IntentIntegrator.QR_CODE)
+                            .setPrompt("Point at the group ride's QR code").setBeepEnabled(false).setOrientationLocked(false).initiateScan();
+                } catch (Exception e) { js("window.onQrScanned&&onQrScanned(null)"); }
+            });
+        }
+        @JavascriptInterface public String qrImage(String text) {
+            try {
+                com.google.zxing.common.BitMatrix m = new com.google.zxing.qrcode.QRCodeWriter().encode(text, com.google.zxing.BarcodeFormat.QR_CODE, 640, 640);
+                android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(m.getWidth(), m.getHeight(), android.graphics.Bitmap.Config.RGB_565);
+                for (int y = 0; y < m.getHeight(); y++) for (int x = 0; x < m.getWidth(); x++) bmp.setPixel(x, y, m.get(x, y) ? 0xFF000000 : 0xFFFFFFFF);
+                java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream(); bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, o);
+                return "data:image/png;base64," + android.util.Base64.encodeToString(o.toByteArray(), android.util.Base64.NO_WRAP);
+            } catch (Exception e) { return ""; }
         }
         @JavascriptInterface public void shareText(String text, String title) {
             runOnUiThread(() -> {

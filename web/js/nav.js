@@ -179,6 +179,15 @@
     } else OR.say('Recording your ride');
     OR.emit('ridestart', route);
   };
+  // put a new route in place mid-ride (catch-up mode, and anything else that re-plans on the move)
+  OR.swapRoute = function (nr, say) {
+    if (!ride.on) return;
+    ride.predAcc += ride.route && ride.route.dist ? ride.route.time * Math.min(1, ride.along / ride.route.dist) : 0;
+    ride.route = nr; ride.seg = 0; ride.along = 0; ride.spoken = {}; ride.off = 0; ride.limits = null; ride.cams = []; ride.arrived = false;
+    OR.setData('route', { type: 'FeatureCollection', features: [OR.routeGeo(nr)] }); loadRideData(nr);
+    if (say) OR.say(say);
+    OR.emit('rerouted', nr);
+  };
   // Skip the next stop or via point and re-plan from here (needs a signal)
   OR.skipNextStop = async function () {
     const r = ride.route; if (!r || !OR.pos) return false;

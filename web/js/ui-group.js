@@ -77,7 +77,8 @@
       '<label class="f"><span>Your colour</span><div class="swatches">' + OR.GROUP_COLOURS.map(c => '<button type="button" class="sw' + (c === (g.colour || OR.GROUP_COLOURS[0]) ? ' on' : '') + '" data-c="' + c + '" style="--c:' + c + '" aria-label="Colour"></button>').join('') + '</div></label>' +
       '<label class="f"><span>Tell me when a rider is more than</span><select id="gSplit">' + [1, 2, 3, 5, 10].map(n => '<option value="' + n + '"' + (n === (parseFloat(g.splitMi) || 2) ? ' selected' : '') + '>' + (OR.cfg.units === 'km' ? Math.round(n * 1.609) + ' km' : n + (n === 1 ? ' mile' : ' miles')) + ' away</option>').join('') + '</select></label>' +
       '<button id="gNew" class="btn wide pri">' + ic('group') + 'Start a new group</button>' +
-      '<div class="joinrow">' + OR.field('gCode', 'Or join with a code', g.lastCode || '', 'text', 'e.g. 7KQ4-9MZT-H2XB') + '<button id="gJoin" class="btn">Join</button></div>' +
+      (OR.native.scanQr ? '<button id="gScan" class="btn wide">' + ic('qr') + 'Scan a QR code to join</button>' : '') +
+      '<div class="joinrow">' + OR.field('gCode', 'Or type the code', g.lastCode || '', 'text', 'e.g. 7KQ4-9MZT-H2XB') + '<button id="gJoin" class="btn">Join</button></div>' +
       '<div class="card note"><b>How it works</b><p class="small">Starting a group gives you a code to send to your mates. Anyone with the code can see the group, so only share it with the people riding. ' +
       'Positions are encrypted with the code on your phone before they leave it, and pass through free public relay servers (HiveMQ and EMQX), which can\'t read them. Those servers are free test services with no guarantee they\'ll always be up, so the app uses both at once. ' +
       'It sends your position every 5 seconds when moving and every 30 seconds when stopped, using about 1 to 3 MB of data an hour. Leaving the group removes your position.</p></div>';
@@ -91,6 +92,7 @@
       OR.toast('Joining the group…'); setTimeout(() => OR.pageGroup(box), 600);
     };
     $('#gNew', box).onclick = () => go(OR.group.newCode());
+    const sc = $('#gScan', box); if (sc) sc.onclick = () => { save(); OR.native.scanQr(); };
     $('#gJoin', box).onclick = () => {
       const c = $('#gCode', box).value;
       if (!OR.group.codeOk(c)) { OR.toast('That code looks too short. It\'s 12 letters and numbers, like 7KQ4-9MZT-H2XB.', 6000); return; }
@@ -101,13 +103,13 @@
     const lost = st.riders.filter(r => OR.riderInfo(r).stale);
     const rs = st.riders.slice().sort((a, b) => (OR.riderInfo(a).dist || 0) - (OR.riderInfo(b).dist || 0));
     box.innerHTML = '<div class="gcard">' + dot(st.colour) + '<div><span class="small">Group code</span><b class="gcode">' + esc(OR.group.pretty(st.code)) + '</b>' + serverLine(st) + '</div>' +
-      '<button id="gShare" class="btn small">' + ic('share') + 'Send code</button></div>' +
+      '<div class="gbtns"><button id="gQr" class="btn small pri">' + ic('qr') + 'QR code</button><button id="gShare" class="btn small">' + ic('share') + 'Send link</button></div></div>' +
       (lost.length ? '<div class="card warnc"><b>' + lost.map(r => esc(r.n)).join(', ') + ' not heard from for 3 minutes or more.</b><p class="small">They may have no signal or have stopped the app. They\'re shown where they were last seen.</p></div>' : '') +
       '<label class="f"><span>My role in the group</span><select id="gRole"><option value="">Rider</option><option value="lead">Leader (out front)</option><option value="sweep">Sweep (back marker)</option></select></label>' +
       roleLine(st) +
       '<button id="gChat" class="btn wide pri">' + ic('chat') + 'Group chat' + (st.unread ? ' (' + st.unread + ' new)' : '') + '</button>' +
       '<button id="gAll" class="btn wide">' + ic('map') + 'Show everyone on the map</button>' +
-      routeSection(st) + meetSection(st) +
+      routeSection(st) + meetSection(st) + hazSection() +
       '<h3 class="gh">Riders (' + (rs.length + 1) + ' including you)</h3>' +
       (rs.length ? '<div class="riders">' + rs.map(riderRow).join('') + '</div>' : '<p class="small muted">Nobody else yet. Send them the code: they open Rides, Group ride, and join with it.</p>') +
       '<h3 class="gh">Quick message to the group</h3>' + quickTiles() + msgList(st) +
@@ -115,13 +117,41 @@
       '<p class="small muted">Messages and warnings are read out, with the screen off too. Turn voice off in Settings to stop them.</p>';
     bindCommon(box);
     $('#gShare', box).onclick = () => OR.share(OR.group.shareText(st.code), 'OpenRoad group ride');
+    $('#gQr', box).onclick = () => OR.showGroupQr();
     $('#gAll', box).onclick = showAll;
     $('#gChat', box).onclick = () => OR.openChat();
     $('#gRole', box).value = G().role || '';
     $('#gRole', box).onchange = e => { OR.group.setRole(e.target.value); OR.toast(e.target.value === 'sweep' ? 'You\'re the sweep. You\'ll hear when anyone drops behind you.' : e.target.value === 'lead' ? 'You\'re the leader. The sweep sees how far ahead you are.' : 'Role set'); };
     bindShared(box, st);
+    const hn = $('#gHazNow', box); if (hn) hn.onclick = () => OR.hazardSheet();
     $('#gLeave', box).onclick = () => { if (!confirm('Leave the group? The others will stop seeing you.')) return; OR.group.leave(); setTimeout(() => OR.pageGroup(box), 700); };
   }
+
+  // ---------- QR codes ----------
+  OR.showGroupQr = function () {
+    const st = OR.group.state; if (!st.on) return;
+    const img = OR.native.qrImage ? OR.native.qrImage(OR.group.joinLink(st.code)) : '';
+    OR.sheet('<h2>' + ic('qr') + 'Scan to join</h2>' + (img ? '<img class="qrimg" src="' + img + '" alt="QR code for the group ride">' : '<p>QR codes need the Android app.</p>') +
+      '<p class="gcode center">' + esc(OR.group.pretty(st.code)) + '</p><p class="small muted center">Riders open OpenRoad, go to Rides, Group ride, and tap "Scan a QR code to join". It joins them straight away. They can also type the code underneath.</p>' +
+      '<button id="qrShare" class="btn wide">' + ic('share') + 'Send the code by message instead</button>', b => { $('#qrShare', b).onclick = () => OR.share(OR.group.shareText(st.code), 'OpenRoad group ride'); });
+  };
+  // join from a scanned code or an opened link, asking for your name first if it isn't set
+  OR.joinFromCode = function (code) {
+    if (!code) return OR.toast('That QR code isn\'t an OpenRoad group ride', 5000);
+    const st = OR.group.state, g = G();
+    if (st.on && OR.group.pretty(st.code) === code) { OR.openMore('group'); return OR.toast('You\'re already in this group'); }
+    const go = () => {
+      if (st.on) OR.group.leave();
+      g.lastCode = code; OR.saveCfg();
+      setTimeout(() => { OR.group.start(code); OR.toast('Joining the group…'); setTimeout(() => OR.openMore('group'), 700); }, st.on ? 800 : 0);
+    };
+    if (g.name) { if (!st.on || confirm('Leave your current group and join ' + code + '?')) go(); return; }
+    OR.sheet('<h2>Join the group ride</h2><p>Group code <b>' + esc(code) + '</b></p>' + OR.field('jName', 'Your name on the map', '', 'text', 'e.g. Mark') + '<button id="jGo" class="btn wide pri">Join</button>', b => {
+      $('#jGo', b).onclick = () => { const n = $('#jName', b).value.trim().slice(0, 24); if (!n) return OR.toast('Put your name in first'); g.name = n; OR.saveCfg(); OR.closeSheet(); go(); };
+    });
+  };
+  window.onQrScanned = text => { if (text == null) return; OR.joinFromCode(OR.group.codeFrom(text)); };
+  window.onJoinLink = url => OR.joinFromCode(OR.group.codeFrom(decodeURIComponent(url)));
 
   // ---------- roles ----------
   // who is further from the leader than me (when I'm the sweep)
@@ -139,6 +169,11 @@
       '<p class="small">' + (b.length ? esc(b.map(r => r.n).join(', ')) + (b.length === 1 ? ' has' : ' have') + ' dropped behind you.' : 'Everyone is between you and the leader.') + '</p></div>';
   }
 
+  function hazSection() {
+    const hz = OR.groupHazards ? OR.groupHazards() : [];
+    return '<h3 class="gh">Hazards</h3>' + (hz.length ? '<div class="list">' + hz.slice().sort((a, b) => b.t - a.t).map(h => '<div class="li"><b>' + ic('warn') + esc((OR.HAZARDS.find(x => x[0] === h.k) || [0, 'Hazard'])[1]) + '</b><span>' + (h.x ? esc(h.x) + ' · ' : '') + (h.mine ? 'you' : esc(h.n)) + ', ' + OR.clock(new Date(h.t)) + (OR.pos ? ' · ' + OR.fmtDist(OR.dist([OR.pos.lng, OR.pos.lat], [h.lo, h.la])) + ' away' : '') + '</span></div>').join('') + '</div>' : '<p class="small muted">None marked. While riding, tap the warning button in the ride bar to mark gravel, diesel, a pothole and so on: riders behind you are warned as they get close.</p>') +
+      '<button class="btn wide" id="gHazNow">' + ic('warn') + 'Mark a hazard here</button>';
+  }
   // ---------- shared routes ----------
   function routeSection(st) {
     const mine = (st.routes || []).find(r => r.id === st.me), others = (st.routes || []).filter(r => r.id !== st.me), plan = OR.plan.route;
@@ -198,9 +233,10 @@
     if (!st.on) return OR.openMore('group');
     const rs = st.riders.slice().sort((a, b) => (OR.riderInfo(a).dist || 0) - (OR.riderInfo(b).dist || 0));
     OR.sheet('<h2>Group ride</h2>' + quickTiles() + (rs.length ? '<div class="riders">' + rs.map(riderRow).join('') + '</div>' : '<p class="small muted">Nobody else in the group yet.</p>') +
-      roleLine(st) + '<button id="gMeetHere" class="btn wide">' + ic('flag') + 'Regroup here</button>' +
+      roleLine(st) + '<button id="gMeetHere" class="btn wide">' + ic('flag') + 'Regroup here</button><button id="gsHaz" class="btn wide">' + ic('warn') + 'Mark a hazard here</button>' +
       '<button id="gsAll" class="btn wide">Show everyone</button><button id="gsMore" class="btn wide ghost">Group page</button>', b => {
       bindCommon(b); bindShared(b, st);
+      $('#gsHaz', b).onclick = () => { OR.closeSheet(); OR.hazardSheet(); };
       $('#gsAll', b).onclick = () => { OR.closeSheet(); showAll(); };
       $('#gsMore', b).onclick = () => { OR.closeSheet(); OR.openMore('group'); };
     });
@@ -213,10 +249,11 @@
     OR.sheet('<h2>' + dot(r.c) + ' ' + esc(r.n || 'Rider') + '</h2>' + (i.stale ? '<div class="card warnc"><b>Not heard from for ' + i.seen.replace(' ago', '') + '</b><p class="small">This is where they were last seen.</p></div>' : '') +
       '<div class="stats">' + (i.dist != null ? '<div><b>' + OR.fmtDist(i.dist) + '</b><span>' + i.dir + ' of you</span></div>' : '') +
       '<div><b>' + (i.moving ? OR.speed(r.s) : 0) + '</b><span>' + OR.speedUnit() + '</span></div><div><b>' + i.seen + '</b><span>last update</span></div>' + (r.b >= 0 ? '<div><b>' + r.b + '%</b><span>battery</span></div>' : '') + '</div>' +
-      '<div class="row"><button class="btn" id="rtMsg">' + ic('chat') + 'Message</button><button class="btn pri" data-to="' + r.id + '">Ride to ' + esc(r.n || 'them') + '</button><button class="btn" id="rtAll">Show everyone</button></div>', b => {
+      '<button class="btn wide go" id="rtChase">' + ic('moto') + 'Catch up with ' + esc(r.n || 'them') + '</button>' + '<div class="row"><button class="btn" id="rtMsg">' + ic('chat') + 'Message</button><button class="btn pri" data-to="' + r.id + '">Ride to ' + esc(r.n || 'them') + '</button><button class="btn" id="rtAll">Show everyone</button></div>', b => {
       bindCommon(b);
       $('#rtAll', b).onclick = () => { OR.closeSheet(); showAll(); };
       $('#rtMsg', b).onclick = () => { OR.closeSheet(); OR.chatTo(r.id); };
+      $('#rtChase', b).onclick = () => OR.catchUp(r.id);
     });
   });
 

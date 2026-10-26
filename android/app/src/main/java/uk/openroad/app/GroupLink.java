@@ -71,7 +71,7 @@ public class GroupLink {
     /** Leave: remove my kept position (and any route or regroup point I shared) from the servers, then disconnect. */
     public void close() {
         running = false;
-        for (Conn k : conns) k.closeGracefully(new String[]{base + "/p/" + riderId, base + "/r/" + riderId, base + "/x/" + riderId, base + "/c/" + riderId});
+        for (Conn k : conns) k.closeGracefully(new String[]{base + "/p/" + riderId, base + "/r/" + riderId, base + "/x/" + riderId, base + "/c/" + riderId, base + "/h/" + riderId});
     }
     public String topicBase() { return base; }
 

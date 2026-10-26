@@ -505,3 +505,18 @@ body.riding #menuBtn{display:none}
 .pr button:disabled{opacity:.3}.pr button svg{width:18px;height:18px}
 .chatfab.has::after{background:#e53935!important}
 #fabs{align-items:flex-end}
+
+/* ---------- hazards, convoy ---------- */
+.hazhb{color:#b25e00}.hazhb[hidden]{display:none}.hazhb svg .d{fill:#f5c518;opacity:.7}
+.hzgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:8px 0 12px}
+.hzgrid button{min-height:58px;border-radius:14px;border:1.5px solid #f5c518;background:color-mix(in srgb,#f5c518 18%,var(--surface));color:var(--ink);font-size:16px;font-weight:800}
+@media (min-width:600px){ .hzgrid{grid-template-columns:repeat(3,1fr)} }
+#convoy{position:absolute;left:10px;right:10px;bottom:calc(96px + var(--safe-b));display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;pointer-events:auto}
+@media (max-width:600px){ #convoy{bottom:calc(170px + var(--safe-b))} }
+.cv{flex:none;display:flex;flex-direction:column;background:var(--sheet);border-left:6px solid var(--c);border-radius:12px;padding:5px 10px;box-shadow:var(--shadow);font-size:13px;color:var(--ink-2)}
+.cv b{font-size:15px;color:var(--ink)}.cv.lost{opacity:.6;border-left-color:#8a949c}.cv.off{border-style:dashed}
+.li b svg{width:18px;height:18px;vertical-align:-3px;margin-right:4px;color:#b25e00}
+
+.gbtns{display:flex;flex-direction:column;gap:6px}
+.qrimg{display:block;width:min(78vw,320px);height:auto;margin:6px auto;border-radius:12px;background:#fff;padding:10px;image-rendering:pixelated}
+.center{text-align:center}.gcode.center{display:block;font-size:24px;font-weight:800;letter-spacing:.06em}

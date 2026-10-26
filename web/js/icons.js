@@ -10,6 +10,8 @@
     check: '<circle class="d" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="8.5"/><path d="m8 12.3 2.7 2.7L16.2 9.4"/>',
     full: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><path class="d" d="M8 8h8v8H8z"/>',
     send: '<path class="d" d="M3.5 11.2 20.5 4l-5.6 16.5-3.6-6.9z"/><path d="M3.5 11.2 20.5 4l-5.6 16.5-3.6-6.9z"/><path d="m11.3 13.6 9.2-9.6"/>',
+    warn: '<path class="d" d="M12 3.5 21.5 20h-19z"/><path d="M12 3.5 21.5 20h-19z"/><path d="M12 9.5v5M12 17.3v.2"/>',
+    qr: '<rect x="3.5" y="3.5" width="7" height="7" rx="1"/><rect x="13.5" y="3.5" width="7" height="7" rx="1"/><rect x="3.5" y="13.5" width="7" height="7" rx="1"/><path class="d" d="M5.5 5.5h3v3h-3zM15.5 5.5h3v3h-3zM5.5 15.5h3v3h-3z"/><path d="M13.5 13.5h3v3M20.5 13.5v.1M13.5 20.5h.1M17 20.5h3.5V17"/>',
     // a speech bubble (group message)
     chat: '<path class="d" d="M4 5.5h16v10H10l-4 3.5v-3.5H4z"/><path d="M4 5.5h16v10H10l-4 3.5v-3.5H4z"/><path d="M8 9.5h8M8 12.5h5"/>',
     // a rider leaning into a bend (lean angle)
@@ -64,7 +66,7 @@
 
   // ---------- colours for places, used on the map and in lists ----------
   OR.POI = {
-    meet: { c: '#d81b60', i: 'flag', label: 'Regroup point' }, fuel: { c: '#e53935', i: 'fuel', label: 'Fuel' }, stay: { c: '#7e57c2', i: 'bed', label: 'Stay' }, camp: { c: '#2e7d32', i: 'tent', label: 'Campsite' },
+    meet: { c: '#d81b60', i: 'flag', label: 'Regroup point' }, hazard: { c: '#f59f00', i: 'warn', label: 'Hazard' }, fuel: { c: '#e53935', i: 'fuel', label: 'Fuel' }, stay: { c: '#7e57c2', i: 'bed', label: 'Stay' }, camp: { c: '#2e7d32', i: 'tent', label: 'Campsite' },
     cafe: { c: '#8d5a3b', i: 'cup', label: 'Café' }, pub: { c: '#ef8f00', i: 'pint', label: 'Pub' }, view: { c: '#00897b', i: 'view', label: 'Viewpoint' },
     pass: { c: '#5d6d7e', i: 'pass', label: 'Mountain pass' }, bikeshop: { c: '#1565c0', i: 'wrench', label: 'Motorbike shop' }, motopark: { c: '#0277bd', i: 'park', label: 'Motorbike parking' },
     cam: { c: '#f9a825', i: 'cam', label: 'Speed camera', dark: true }, wx: { c: '#1e88e5', i: 'cloud', label: 'Weather' }
