@@ -154,9 +154,10 @@
     setTimeout(() => { const el = document.createElement('div'); el.innerHTML = speedoCard(); box.appendChild(el); const rs = el.querySelector('#spReset'); if (rs) rs.onclick = () => { if (confirm('Clear your speedo readings?')) { OR.store.set('speedo', []); OR.pageBike(box); } }; }, 0);
     const b = OR.cfg.bike, prof = OR.BIKES[b.profile], range = OR.fuelRange(), left = OR.fuelLeft();
     const lm = OR.learnedMpg(), pace = OR.pace(), brk = OR.breaks(), mm = OR.monthlyMiles(), costs = OR.runningCosts();
-    let h = '<div id="bikePage"></div>';
+    let h = '<div id="bikePage"></div>' + (OR.bikePhotoCard ? OR.bikePhotoCard() : '');
+    setTimeout(() => OR.bindBikePhoto && OR.bindBikePhoto(box), 0);
     // which bike
-    h += '<div class="bikecard"><div class="bk-h">' + OR.badge('moto', '#0e9f57') + '<div><b>' + esc(prof ? prof.name : (b.name || 'Your bike')) + '</b><span>' + (prof ? 'Set up with Harley-Davidson\'s figures' : 'Choose your bike to load its figures and service schedule') + '</span></div></div>' +
+    h += '<div class="bikecard"><div class="bk-h">' + OR.badge('moto', 'var(--green)') + '<div><b>' + esc(prof ? prof.name : (b.name || 'Your bike')) + '</b><span>' + (prof ? 'Set up with Harley-Davidson\'s figures' : 'Choose your bike to load its figures and service schedule') + '</span></div></div>' +
       '<label class="f"><span>Bike</span><select id="bProf"><option value="">Other (enter your own)</option>' + Object.keys(OR.BIKES).map(k => '<option value="' + k + '"' + (b.profile === k ? ' selected' : '') + '>' + esc(OR.BIKES[k].name) + '</option>').join('') + '</select></label>' +
       (prof ? '<table class="facts">' + prof.facts.map(f => '<tr><td>' + esc(f[0]) + '</td><td>' + esc(f[1]) + '</td></tr>').join('') + '</table><p class="small muted">' + esc(prof.pressureNote) + ' <a href="' + prof.sources[0] + '" target="_blank">Harley spec</a>, <a href="' + prof.sources[1] + '" target="_blank">service intervals</a>.</p>'
         : OR.field('bName', 'Name', b.name, 'text', 'e.g. Low Rider S')) + '</div>';

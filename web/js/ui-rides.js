@@ -73,7 +73,7 @@
     const shot = await mapShot();
     const W = 1080, H = 1350, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
-    g.fillStyle = '#0b6b3a'; g.fillRect(0, 0, W, H);
+    g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--green').trim() || '#0b6b3a'; g.fillRect(0, 0, W, H);
     // the map, cropped to fill the top
     if (shot) {
       const img = await new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = shot; });
