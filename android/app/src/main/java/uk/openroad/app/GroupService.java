@@ -329,7 +329,7 @@ public class GroupService extends Service implements LocationListener {
         if (me == null) return;
         float v = me.hasSpeed() ? me.getSpeed() : 0;
         double warnAt = Math.max(250, v * 12);
-        java.util.List<JSONObject> say = new java.util.ArrayList<>();
+        java.util.List<Object[]> say = new java.util.ArrayList<>();
         synchronized (hazards) {
             for (JSONObject h : hazards.values()) {
                 if (h.optBoolean("mine") || myId.equals(h.optString("id"))) continue;
@@ -341,14 +341,14 @@ public class GroupService extends Service implements LocationListener {
                     float diff = Math.abs(((me.bearingTo(t) - me.getBearing()) % 360 + 540) % 360 - 180);
                     ahead = diff < 70;
                 }
-                if (d[0] < warnAt && ahead && (was == null || !was) && v > 2) { hazWarned.put(k, true); say.add(new JSONObject().putOpt("d", (double) d[0]).putOpt("h", h)); }
+                if (d[0] < warnAt && ahead && (was == null || !was) && v > 2) { hazWarned.put(k, true); say.add(new Object[]{h, (double) d[0]}); }
                 else if (d[0] > 1000 && was != null && was) hazWarned.put(k, false); // far away again: warn next time round
             }
         }
-        for (JSONObject s : say) {
-            JSONObject h = s.optJSONObject("h"); if (h == null) continue;
+        for (Object[] s : say) {
+            JSONObject h = (JSONObject) s[0];
             String note = h.optString("x");
-            say(hazName(h.optString("k")) + " ahead" + (note.isEmpty() ? "" : ", " + note) + ", in " + Math.round(s.optDouble("d") / 10) * 10 + " metres. Marked by " + h.optString("n", "a rider") + ".");
+            say(hazName(h.optString("k")) + " ahead" + (note.isEmpty() ? "" : ", " + note) + ", in " + Math.round((Double) s[1] / 10) * 10 + " metres. Marked by " + h.optString("n", "a rider") + ".");
         }
     }
     static String hazardsJson() {
