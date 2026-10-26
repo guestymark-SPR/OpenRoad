@@ -540,3 +540,13 @@ body.riding #menuBtn{display:none}
 #ghostChip svg{width:20px;height:20px;stroke:#fff}#ghostChip.ahead{background:#0e9f57}#ghostChip.behind{background:#7c3aed}
 .li.cc{display:flex;gap:10px;align-items:flex-start;text-align:left}.li.cc small{display:block;color:var(--ink-2);margin-top:2px}
 .ccn{flex:none;width:26px;height:26px;border-radius:13px;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px}.ccn.g{background:#0e9f57}.ccn.h{background:#ef6c00}
+
+/* ---------- tour diary ---------- */
+.diary{display:flex;flex-direction:column;gap:12px}
+.dday{border:1.5px solid var(--line);border-radius:16px;padding:12px;background:var(--surface)}
+.dd-h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.dd-h b{font-size:18px;color:var(--green-2,#0b6b3a)}.dd-h span{color:var(--ink-2);font-size:14px}
+.dphotos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.dph{aspect-ratio:1;border:0;padding:0;border-radius:10px;overflow:hidden;background:var(--surface-2)}.dph img{width:100%;height:100%;object-fit:cover;display:block}
+.dbig{width:100%;border-radius:12px;display:block;margin-bottom:8px}
+.dnotes{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:12px;padding:10px;font:inherit;background:var(--surface);color:var(--ink)}
+label.btn input[hidden]{display:none}

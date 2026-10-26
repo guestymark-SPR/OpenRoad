@@ -84,7 +84,7 @@
     let h = '<button class="backbtn" id="tBack">' + ic('back') + 'All trips</button>' +
       '<div class="trip-head"><div><h2 class="vh">' + esc(t.name) + '</h2><span class="muted">' + OR.dayDate(t, 0).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) +
       ' to ' + OR.dayDate(t, t.days.length - 1).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.riders + ' rider' + (t.riders > 1 ? 's' : '') + '</span></div>' +
-      '<button class="btn small ghost" id="tEdit">Edit</button></div>' +
+      '<div class="gbtns"><button class="btn small ghost" id="tEdit">Edit</button><button class="btn small pri" id="tDiary">' + ic('trips') + 'Diary</button></div></div>' +
       '<div class="total"><div class="big"><span>Trip total</span><b>' + OR.money(tot.all, t) + '</b>' + (t.riders > 1 ? '<small>' + OR.perRider(tot.all, t) + ' each</small>' : '') + '</div>' +
       '<dl><dt>Riding</dt><dd>' + OR.fmtDist(tot.dist) + ', ' + OR.fmtTime(tot.time) + '</dd><dt>Fuel</dt><dd>' + OR.money(tot.fuel, t) + (tot.litres ? ' (' + Math.round(tot.litres) + ' L)' : '') + '</dd>' +
       '<dt>Crossings</dt><dd>' + OR.money(tot.ferry, t) + '</dd><dt>Hotels</dt><dd>' + OR.money(tot.hotel, t) + '</dd><dt>Other</dt><dd>' + OR.money(tot.other, t) + '</dd></dl></div>';
@@ -160,7 +160,7 @@
   function bindTrip(v, t) {
     const on = (id, fn) => { const e = $('#' + id, v); if (e) e.onclick = fn; };
     on('tBack', () => { openId = null; render(); });
-    on('tEdit', () => editTrip(t)); on('tUpd', () => editTrip(t)); on('tFix', () => editTrip(t)); on('tFix2', () => editTrip(t));
+    on('tEdit', () => editTrip(t)); on('tDiary', () => OR.openDiary(t)); on('tUpd', () => editTrip(t)); on('tFix', () => editTrip(t)); on('tFix2', () => editTrip(t));
     $$('[data-more]', v).forEach(b => b.onclick = () => OR.openMore(b.dataset.more));
     on('addDay', () => { t.days.push(OR.trips.blankDay()); save(t); render(); });
     on('tPdf', () => OR.printHtml(t.name, OR.tripHtml(t)));

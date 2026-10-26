@@ -85,8 +85,10 @@ public class MainActivity extends Activity {
             @Override public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
                 fileCallback = cb;
-                Intent i = new Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
-                try { startActivityForResult(Intent.createChooser(i, "Open a GPX file"), REQ_FILE); } catch (Exception e) { fileCallback = null; return false; }
+                String[] acc = p.getAcceptTypes(); boolean images = acc != null && acc.length > 0 && acc[0] != null && acc[0].startsWith("image");
+                Intent i = new Intent(Intent.ACTION_GET_CONTENT).addCategory(Intent.CATEGORY_OPENABLE).setType(images ? "image/*" : "*/*");
+                if (p.getMode() == FileChooserParams.MODE_OPEN_MULTIPLE) i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                try { startActivityForResult(Intent.createChooser(i, images ? "Choose photos" : "Open a GPX file"), REQ_FILE); } catch (Exception e) { fileCallback = null; return false; }
                 return true;
             }
         });
@@ -143,8 +145,12 @@ public class MainActivity extends Activity {
         com.google.zxing.integration.android.IntentResult qr = com.google.zxing.integration.android.IntentIntegrator.parseActivityResult(req, result, data);
         if (qr != null) { String t = qr.getContents(); js("window.onQrScanned&&onQrScanned(" + (t == null ? "null" : JSONObject.quote(t)) + ")"); return; }
         if (req == REQ_FILE && fileCallback != null) {
-            Uri u = result == RESULT_OK && data != null ? data.getData() : null;
-            fileCallback.onReceiveValue(u == null ? null : new Uri[]{u});
+            Uri[] out = null;
+            if (result == RESULT_OK && data != null) {
+                if (data.getClipData() != null) { out = new Uri[data.getClipData().getItemCount()]; for (int k = 0; k < out.length; k++) out[k] = data.getClipData().getItemAt(k).getUri(); }
+                else if (data.getData() != null) out = new Uri[]{data.getData()};
+            }
+            fileCallback.onReceiveValue(out);
             fileCallback = null;
         }
     }
