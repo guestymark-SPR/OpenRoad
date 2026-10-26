@@ -143,12 +143,18 @@
 
   // ---------- overlays (route, alternatives, ride track, points of interest) ----------
   const EMPTY = { type: 'FeatureCollection', features: [] };
-  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY };
+  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY, trip: EMPTY, tripdays: EMPTY };
   OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); };
   function addOverlays() {
     const m = OR.map, night = m.__mode === 'night';
     for (const id in data) if (!m.getSource('ov-' + id)) m.addSource('ov-' + id, { type: 'geojson', data: data[id] });
     const L = (o) => { if (!m.getLayer(o.id)) m.addLayer(o); };
+    // a whole trip: each day's rides in its own colour, ferries dashed, and a "Day 1" plate where each day ends
+    L({ id: 'ov-trip-c', type: 'line', source: 'ov-trip', filter: ['!=', ['get', 'ferry'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#fff', 'line-width': z([5, 6, 14, 12]), 'line-opacity': ['case', ['get', 'dim'], 0.35, 0.9] } });
+    L({ id: 'ov-trip', type: 'line', source: 'ov-trip', filter: ['!=', ['get', 'ferry'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'c'], 'line-width': z([5, 4, 14, 8]), 'line-opacity': ['case', ['get', 'dim'], 0.35, 1] } });
+    L({ id: 'ov-trip-f', type: 'line', source: 'ov-trip', filter: ['==', ['get', 'ferry'], true], paint: { 'line-color': '#1e88e5', 'line-width': 3, 'line-dasharray': [2, 2] } });
+    L({ id: 'ov-tripdays', type: 'symbol', source: 'ov-tripdays', layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-allow-overlap': true, 'text-anchor': 'bottom', 'text-offset': [0, -0.4] },
+      paint: { 'text-color': '#fff', 'text-halo-color': ['get', 'c'], 'text-halo-width': 3 } });
     L({ id: 'ov-alts', type: 'line', source: 'ov-alts', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': night ? '#7c8790' : '#8f99a3', 'line-width': z([5, 4, 14, 9]), 'line-opacity': 0.75 } });
     L({ id: 'ov-route-c', type: 'line', source: 'ov-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': night ? '#000' : '#5a1a00', 'line-width': z([5, 6, 14, 13]), 'line-opacity': 0.6 } });
     L({ id: 'ov-route', type: 'line', source: 'ov-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ff6a1f', 'line-width': z([5, 4, 14, 9]) } });

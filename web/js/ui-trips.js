@@ -79,7 +79,29 @@
   }
 
   // ---------- one trip ----------
+  // ---------- the trip on the map, beside the list ----------
+  const DAY_COLOURS = ['#ff6a1f', '#1e88e5', '#8e24aa', '#0e9f57', '#d81b60', '#f59f00', '#00897b', '#5d4037'];
+  OR.drawTrip = function (t, focus) {
+    const feats = [], days = [], all = [];
+    t.days.forEach((day, di) => {
+      const c = DAY_COLOURS[di % DAY_COLOURS.length], dim = focus != null && focus !== di;
+      let last = null;
+      day.steps.forEach(s => {
+        if (s.kind === 'ride' && s.route) { const r = OR.unpackRoute(s.route); feats.push({ type: 'Feature', properties: { c, dim }, geometry: { type: 'LineString', coordinates: r.shape } }); if (focus == null || focus === di) all.push(...r.shape); last = r.shape[r.shape.length - 1]; }
+        else if (s.kind === 'ferry' && s.from && s.to) { const l = [[s.from.lng, s.from.lat], [s.to.lng, s.to.lat]]; feats.push({ type: 'Feature', properties: { c, dim, ferry: true }, geometry: { type: 'LineString', coordinates: l } }); if (focus == null || focus === di) all.push(...l); last = l[1]; }
+      });
+      if (last) days.push({ type: 'Feature', properties: { label: 'Day ' + (di + 1), c }, geometry: { type: 'Point', coordinates: last } });
+    });
+    OR.setData('trip', { type: 'FeatureCollection', features: feats }); OR.setData('tripdays', { type: 'FeatureCollection', features: days });
+    if (all.length > 1) {
+      const wide = innerWidth >= 900;
+      OR.map.fitBounds(OR.bbox(all), { padding: wide ? { top: 90, bottom: 50, left: 440, right: 70 } : { top: 120, bottom: Math.round(innerHeight * 0.5), left: 30, right: 30 }, maxZoom: 13, duration: 700 });
+    }
+  };
+  OR.clearTrip = () => { OR.setData('trip', null); OR.setData('tripdays', null); };
+  OR.on('tab', t => { if (t !== 'trips') OR.clearTrip(); });
   function tripPage(v, t) {
+    setTimeout(() => OR.drawTrip(t), 0);
     const c = OR.tripCalc(t), tot = c.tot;
     let h = '<button class="backbtn" id="tBack">' + ic('back') + 'All trips</button>' +
       '<div class="trip-head"><div><h2 class="vh">' + esc(t.name) + '</h2><span class="muted">' + OR.dayDate(t, 0).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) +
@@ -108,7 +130,7 @@
     const end = OR.dayEnd(day);
     let h = '<li class="day" data-d="' + di + '"><div class="day-head"><div><b>' + esc(OR.dayLabel(t, di)) + '</b>' +
       '<input class="day-title" data-d="' + di + '" value="' + esc(day.title) + '" placeholder="Add a title, e.g. Home to Dover"></div>' +
-      '<span class="wxchip" id="wx' + di + '"></span></div>';
+      '<span class="wxchip" id="wx' + di + '"></span><button class="mini dmapbtn" data-dmapshow="' + di + '" aria-label="Show this day on the map">' + ic('map') + '</button></div>';
     h += '<label class="leave">Set off at <input type="time" data-start="' + di + '" value="' + esc(day.startTime || '09:00') + '"></label>';
     h += '<ol class="steps">';
     if (!day.steps.length) h += '<li class="step none"><span class="muted small">Add the day\'s ride below. If you\'re crossing the Channel, add the ride to the port, the crossing, then the ride on the other side.</span></li>';
@@ -174,7 +196,8 @@
 
   function bindTrip(v, t) {
     const on = (id, fn) => { const e = $('#' + id, v); if (e) e.onclick = fn; };
-    on('tBack', () => { openId = null; render(); });
+    on('tBack', () => { openId = null; OR.clearTrip(); render(); });
+    $$('[data-dmapshow]', v).forEach(b => b.onclick = () => { const di = +b.dataset.dmapshow; OR.drawTrip(t, di); $$('[data-dmapshow]', v).forEach(x => x.classList.toggle('on', x === b)); });
     on('tEdit', () => editTrip(t)); on('tDiary', () => OR.openDiary(t)); on('tUpd', () => editTrip(t)); on('tFix', () => editTrip(t)); on('tFix2', () => editTrip(t));
     $$('[data-more]', v).forEach(b => b.onclick = () => OR.openMore(b.dataset.more));
     on('addDay', () => { t.days.push(OR.trips.blankDay()); save(t); render(); });

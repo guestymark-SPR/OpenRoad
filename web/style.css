@@ -677,3 +677,14 @@ body.riding #radarChip{top:calc(150px + var(--safe-t))}
 .where span{display:block;font-size:13px;color:var(--ink-3)}.where b{font-size:20px}.where b.grid{font-size:30px;letter-spacing:.06em}
 .phbig{padding:18px 6px 6px}.phbig .phl{font-size:30px;font-weight:800;line-height:1.25;margin:0 0 12px}.phbig .phe{color:var(--ink-2);font-size:16px}
 .step.sun .what svg{color:#f59f00}.step.sun.dark .what{background:color-mix(in srgb,#f59f00 12%,transparent);border-radius:10px}
+
+/* ---------- see the route while planning ---------- */
+/* phone: on Plan and Trips the list takes the lower half, so the route shows above it */
+@media (max-width:899px){ body.split #panel.open{height:54vh} }
+/* tablet: pop-ups open in the left column, over the list, and the map stays visible and usable on the right */
+@media (min-width:900px){
+  #sheet{background:transparent;pointer-events:none;align-items:stretch;justify-content:flex-start}
+  #sheetBox{pointer-events:auto;position:fixed;left:10px;top:calc(122px + var(--safe-t));bottom:10px;width:400px;max-width:none;max-height:none;border-radius:22px;box-shadow:var(--shadow)}
+}
+.dmapbtn{margin-left:auto;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
+.dmapbtn.on{background:var(--green);color:#fff;border-color:var(--green)}.dmapbtn svg{width:20px;height:20px}

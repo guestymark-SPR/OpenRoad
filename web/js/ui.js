@@ -89,6 +89,8 @@
   function tab(t, quiet) {
     if (t === 'nearby') t = 'plan';
     curTab = t;
+    document.body.classList.toggle('split', t === 'trips' || t === 'plan');
+    OR.emit('tab', t);
     $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
     $('#setBtn').classList.toggle('on', t === 'more');
     $$('.view').forEach(v => v.classList.toggle('on', v.id === 'v-' + t));
