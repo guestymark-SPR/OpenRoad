@@ -2,14 +2,28 @@
 'use strict';
 (function (OR) {
   const A = OR.native;
-  const OVERPASS = 'https://overpass-api.de/api/interpreter';
+  // the main Overpass server is often busy; these public mirrors serve the same OpenStreetMap data
+  const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
-  function overpass(q) {
-    return OR.json(OVERPASS, { method: 'POST', body: 'data=' + encodeURIComponent(q), type: 'application/x-www-form-urlencoded', timeout: 90000 })
-      .then(j => (j.elements || []).map(e => {
+  async function overpass(q) {
+    let last = null;
+    for (const url of OVERPASS) {
+      try {
+        const t = await OR.http(url, { method: 'POST', body: 'data=' + encodeURIComponent(q), type: 'application/x-www-form-urlencoded', timeout: 45000 });
+        let j;
+        try { j = JSON.parse(t); } catch (e) { throw new Error('the server sent an error page'); }
+        // Overpass reports overload and timeouts as a "remark" with no results
+        if (j.remark && !(j.elements || []).length && /error|timeout|runtime|memory/i.test(j.remark)) throw new Error(j.remark.slice(0, 120));
+        return parse(j);
+      } catch (e) { last = e; }
+    }
+    throw new Error((last && last.message ? last.message.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 140) : 'no answer') + (OR.online() ? '' : ' (no signal)'));
+  }
+  function parse(j) {
+    return (j.elements || []).map(e => {
         const t = e.tags || {}, lat = e.lat != null ? e.lat : e.center && e.center.lat, lng = e.lon != null ? e.lon : e.center && e.center.lon;
         return { id: e.type + e.id, lat, lng, tags: t, name: t.name || t.brand || t.operator || '' };
-      }).filter(p => p.lat != null));
+      }).filter(p => p.lat != null);
   }
 
   // ---------- fuel ----------
@@ -25,7 +39,7 @@
   OR.fuelAlong = async function (route) {
     const sample = OR.resample(route.shape, 2500);
     const coords = sample.map(p => p[1].toFixed(5) + ',' + p[0].toFixed(5)).join(',');
-    const list = await overpass('[out:json][timeout:80];nwr["amenity"="fuel"](around:1500,' + coords + ');out center tags;');
+    const list = await overpass('[out:json][timeout:80];nwr["amenity"="fuel"](around:1500,' + coords + ');out tags center;');
     for (const f of list) {
       // where along the route the station is
       let best = { d: 1e12, i: 0, t: 0 };
@@ -66,7 +80,7 @@
   OR.KINDS = KINDS;
   OR.nearby = async function (kind, lng, lat, radiusM) {
     const k = KINDS[kind];
-    const list = await overpass('[out:json][timeout:60];nwr' + k.q + '(around:' + (radiusM || 8000) + ',' + lat.toFixed(5) + ',' + lng.toFixed(5) + ');out center tags 80;');
+    const list = await overpass('[out:json][timeout:60];nwr' + k.q + '(around:' + (radiusM || 8000) + ',' + lat.toFixed(5) + ',' + lng.toFixed(5) + ');out tags center 80;');
     list.forEach(p => { p.kind = kind === 'camp' ? 'camp' : kind; p.d = OR.dist([lng, lat], [p.lng, p.lat]); p.name = p.name || k.label.replace(/s$/, ''); });
     return list.sort((a, b) => a.d - b.d);
   };
