@@ -80,6 +80,7 @@ class CoreBridge {
     @JavascriptInterface public String rideTrack(String since) { return RideService.pointsSince(Long.parseLong(since)); }
     @JavascriptInterface public String mapPacks() { return Tiles.get(ctx).packsJson(); }
     @JavascriptInterface public String cacheInfo() { return Tiles.get(ctx).cacheInfo(); }
+    @JavascriptInterface public void setPacksOnly(boolean on) { Util.kvSet(ctx, "packsOnly", on ? "1" : ""); }
     // group ride: positions shared with the group, kept going by GroupService with the screen off
     @JavascriptInterface public String groupNewCode() { return GroupLink.newCode(); }
     @JavascriptInterface public boolean groupCodeOk(String code) { return GroupLink.clean(code).length() >= 12; }

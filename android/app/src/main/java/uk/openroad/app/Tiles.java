@@ -44,7 +44,9 @@ final class Tiles {
     private final AssetManager assets;
     private final SharedPreferences prefs;
     final File packDir, tileDir;
-    private static class Pack { String id, name; double[] b; int minz = 0, maxz = 14; long size; SQLiteDatabase db; }
+    private static class Pack { String id, name, area; double[] b; int minz = 0, maxz = 14; long size; SQLiteDatabase db; List<double[][]> polys; }
+    static final String POLY_URL = "https://github.com/guestymark-SPR/OpenRoad/releases/download/maps/";
+    private final Context ctx;
     private final List<Pack> packs = new ArrayList<>();
     private long memBytes = 0;
     private static final long MEM_MAX = 48L * 1024 * 1024;
@@ -53,12 +55,13 @@ final class Tiles {
     private final ExecutorService pool = Executors.newFixedThreadPool(4);
 
     private Tiles(Context c) {
-        assets = c.getAssets();
+        ctx = c; assets = c.getAssets();
         prefs = c.getSharedPreferences("net", Context.MODE_PRIVATE);
         packDir = new File(c.getFilesDir(), "maps"); packDir.mkdirs();
         tileDir = new File(c.getFilesDir(), "tiles"); tileDir.mkdirs();
         tileTemplate = prefs.getString("tiles", null);
         openPacks();
+        pool.execute(this::fetchPolys);
     }
 
     WebResourceResponse local(Uri u) {
@@ -85,12 +88,19 @@ final class Tiles {
         String key = z + "/" + x + "/" + y;
         byte[] d = memGet(key);
         if (d != null) return d;
-        d = packTile(z, x, y);
+        List<byte[]> fromPacks = new ArrayList<>();
+        boolean covered = packTiles(z, x, y, fromPacks);
         File f = new File(tileDir, z + "/" + x + "/" + y + ".pbf");
-        if (d == null && f.exists()) { try (InputStream in = new FileInputStream(f)) { d = Util.readBytes(in); } catch (Exception ignored) { } }
-        if (d == null && net) {
-            d = download(z, x, y);
-            if (d != null) { f.getParentFile().mkdirs(); try (OutputStream o = new FileOutputStream(f)) { o.write(d); } catch (Exception ignored) { } }
+        if (!fromPacks.isEmpty() && covered) d = merged(fromPacks);
+        else {
+            // not in a pack, or on the edge of what the packs cover (a border or the coast of a country you
+            // have no pack for): the full map is better, from the phone's saved tiles or the internet
+            if (f.exists()) { try (InputStream in = new FileInputStream(f)) { d = Util.readBytes(in); } catch (Exception ignored) { } }
+            if (d == null && net && (fromPacks.isEmpty() || (!packsOnly() && online()))) {
+                d = download(z, x, y);
+                if (d != null) { f.getParentFile().mkdirs(); try (OutputStream o = new FileOutputStream(f)) { o.write(d); } catch (Exception ignored) { } }
+            }
+            if (d == null && !fromPacks.isEmpty()) d = merged(fromPacks);
         }
         if (d != null) d = gunzip(d);
         if (d != null) memPut(key, d);
@@ -149,38 +159,95 @@ final class Tiles {
                         else if ("bounds".equals(k)) { String[] q = v.split(","); p.b = new double[]{Double.parseDouble(q[0]), Double.parseDouble(q[1]), Double.parseDouble(q[2]), Double.parseDouble(q[3])}; }
                     }
                 }
+                loadPoly(p);
                 packs.add(p);
             } catch (Exception ignored) { }
         }
+        synchronized (mem) { mem.clear(); memBytes = 0; }
     }
 
     private static double tileLon(int x, int z) { return x / Math.pow(2, z) * 360.0 - 180; }
     private static double tileLat(int y, int z) { double n = Math.PI - 2 * Math.PI * y / Math.pow(2, z); return Math.toDegrees(Math.atan(Math.sinh(n))); }
 
-    byte[] packTile(int z, int x, int y) {
+    /** Every pack's copy of this tile goes into out (packs overlap at borders and where a country is split).
+        Returns true if the packs between them cover the whole tile, judged by each country's outline. */
+    boolean packTiles(int z, int x, int y, List<byte[]> out) {
         final double w = tileLon(x, z), e = tileLon(x + 1, z), n = tileLat(y, z), s = tileLat(y + 1, z);
         int tms = (1 << z) - 1 - y;
+        List<Pack> have = new ArrayList<>();
         synchronized (this) {
-            // where packs overlap (borders, split countries) use the one that covers most of this tile
-            List<Pack> cand = new ArrayList<>();
             for (Pack p : packs) {
                 if (z < p.minz || z > p.maxz) continue;
                 if (p.b != null && (e < p.b[0] || w > p.b[2] || n < p.b[1] || s > p.b[3])) continue;
-                cand.add(p);
-            }
-            cand.sort((a, b) -> Double.compare(cover(b, w, e, n, s), cover(a, w, e, n, s)));
-            for (Pack p : cand) {
                 try (Cursor c = p.db.rawQuery("SELECT tile_data FROM tiles WHERE zoom_level=? AND tile_column=? AND tile_row=?",
                         new String[]{String.valueOf(z), String.valueOf(x), String.valueOf(tms)})) {
-                    if (c.moveToFirst()) return c.getBlob(0);
+                    if (c.moveToFirst()) { byte[] d = gunzip(c.getBlob(0)); if (d != null) { out.add(d); have.add(p); } }
                 } catch (Exception ignored) { }
             }
         }
-        return null;
+        if (have.isEmpty()) return false;
+        // corners (just inside) and middle of the tile must each be inside some pack's country outline
+        double dx = (e - w) * 0.02, dy = (n - s) * 0.02;
+        double[][] pts = {{w + dx, n - dy}, {e - dx, n - dy}, {w + dx, s + dy}, {e - dx, s + dy}, {(w + e) / 2, (n + s) / 2}};
+        for (double[] p : pts) { boolean in = false; for (Pack k : have) if (covers(k, p[0], p[1])) { in = true; break; } if (!in) return false; }
+        return true;
     }
-    private static double cover(Pack p, double w, double e, double n, double s) {
-        if (p.b == null) return 1;
-        return Math.max(0, Math.min(e, p.b[2]) - Math.max(w, p.b[0])) * Math.max(0, Math.min(n, p.b[3]) - Math.max(s, p.b[1]));
+    private static boolean covers(Pack p, double lon, double lat) {
+        if (p.b != null && (lon < p.b[0] || lon > p.b[2] || lat < p.b[1] || lat > p.b[3])) return false;
+        if (p.polys == null) return true; // outline not downloaded yet: go by the pack's box, as before
+        for (double[][] r : p.polys) if (inRing(r, lon, lat)) return true;
+        return false;
+    }
+    private static boolean inRing(double[][] r, double x, double y) {
+        boolean c = false;
+        for (int i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][1] > y) != (r[j][1] > y) && x < (r[j][0] - r[i][0]) * (y - r[i][1]) / (r[j][1] - r[i][1]) + r[i][0]) c = !c;
+        return c;
+    }
+    private static byte[] merged(List<byte[]> l) { try { return MvtMerge.merge(l); } catch (Exception e) { return l.get(0); } }
+    private boolean packsOnly() { return "1".equals(Util.kvGet(ctx, "packsOnly")); }
+    private boolean online() {
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+            android.net.NetworkCapabilities nc = cm.getNetworkCapabilities(cm.getActiveNetwork());
+            return nc != null && nc.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET);
+        } catch (Exception e) { return true; }
+    }
+
+    // ---------- country outlines (Geofabrik .poly files, published with the packs) ----------
+    private static String areaOf(String id) { return id.replaceAll("-\\d+$", ""); }
+    private static List<double[][]> parsePoly(String text) {
+        List<double[][]> out = new ArrayList<>(); List<double[]> cur = null; boolean hole = false; int line = 0;
+        for (String raw : text.split("\n")) {
+            String l = raw.trim(); line++;
+            if (line == 1 || l.isEmpty()) continue;
+            if (l.equals("END")) { if (cur != null) { if (!hole && cur.size() > 2) out.add(cur.toArray(new double[0][])); cur = null; } continue; }
+            if (cur == null) { cur = new ArrayList<>(); hole = l.startsWith("!"); continue; }
+            String[] q = l.split("\\s+"); if (q.length < 2) continue;
+            try { cur.add(new double[]{Double.parseDouble(q[0]), Double.parseDouble(q[1])}); } catch (Exception ignored) { }
+        }
+        return out;
+    }
+    private void loadPoly(Pack p) {
+        File f = new File(packDir, areaOf(p.id) + ".poly");
+        if (!f.exists()) return;
+        try (InputStream in = new FileInputStream(f)) { List<double[][]> r = parsePoly(new String(Util.readBytes(in), java.nio.charset.StandardCharsets.UTF_8)); if (!r.isEmpty()) p.polys = r; } catch (Exception ignored) { }
+    }
+    /** Downloads the outline of each country you have a pack for (a few hundred kB at most), once. */
+    void fetchPolys() {
+        List<Pack> need = new ArrayList<>();
+        synchronized (this) { for (Pack p : packs) if (p.polys == null) need.add(p); }
+        boolean got = false;
+        for (Pack p : need) {
+            File f = new File(packDir, areaOf(p.id) + ".poly");
+            if (!f.exists()) {
+                try {
+                    String t = Util.httpText(POLY_URL + areaOf(p.id) + ".poly");
+                    if (t != null && t.contains("END")) { try (OutputStream o = new FileOutputStream(f)) { o.write(t.getBytes(java.nio.charset.StandardCharsets.UTF_8)); } }
+                } catch (Exception ignored) { }
+            }
+            synchronized (this) { loadPoly(p); if (p.polys != null) got = true; }
+        }
+        if (got) synchronized (mem) { mem.clear(); memBytes = 0; }
     }
 
     private static byte[] gunzip(byte[] d) {
@@ -244,7 +311,7 @@ final class Tiles {
                     if (dst.exists()) dst.delete();
                     if (!part.renameTo(dst)) throw new Exception("could not install");
                 }
-                openPacks(); memClear();
+                openPacks(); memClear(); pool.execute(this::fetchPolys);
                 js.run("window.onPackProgress&&onPackProgress(" + JSONObject.quote(safeId) + "," + done + "," + total + ",'done')");
             } catch (Exception e) {
                 part.delete(); openPacks();

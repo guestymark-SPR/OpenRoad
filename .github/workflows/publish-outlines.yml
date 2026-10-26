@@ -1,0 +1,28 @@
+name: Publish country outlines
+
+# The outline of each country (Geofabrik .poly files), so the app knows which parts of the map each
+# offline pack really covers and can join packs cleanly at borders.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['tools/regions.json', '.github/workflows/publish-outlines.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  outlines:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download outlines
+        run: |
+          mkdir -p out
+          for a in $(python3 -c "import json;print(' '.join(json.load(open('tools/regions.json'))))"); do
+            if curl -fsSL -o "out/$a.poly" "https://download.geofabrik.de/europe/$a.poly"; then echo "::notice::$a $(wc -l < out/$a.poly) lines"; else echo "::error::no outline for $a"; rm -f "out/$a.poly"; fi
+          done
+      - name: Add to the maps release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload maps out/*.poly --clobber -R ${{ github.repository }}
