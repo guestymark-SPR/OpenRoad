@@ -1,0 +1,8 @@
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/src/main/assets/
+web/vendor/
+__pycache__/
+*.mbtiles

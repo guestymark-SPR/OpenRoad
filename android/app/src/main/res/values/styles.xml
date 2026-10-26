@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="OpenRoadTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/road_bg</item>
+        <item name="android:statusBarColor">@color/road_bg</item>
+        <item name="android:navigationBarColor">@color/road_bg</item>
+        <item name="android:colorAccent">@color/road_accent</item>
+    </style>
+    <color name="road_bg">#16191C</color>
+    <color name="road_accent">#FF6A1F</color>
+</resources>

@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+def runNumber = Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
+
+android {
+    namespace 'uk.openroad.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'uk.openroad.app'
+        minSdk 24
+        targetSdk 34
+        versionCode runNumber
+        versionName "1.0.${runNumber}"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('openroad-release.jks')
+            storePassword 'openroad'
+            keyAlias 'openroad'
+            keyPassword 'openroad'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}

@@ -1,0 +1,63 @@
+name: Build OpenRoad APK
+
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', 'android/**', '.github/workflows/build-apk.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Bundle the app, map engine and fonts
+        run: bash fetch-assets.sh
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build signed APK
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Name the APK
+        run: |
+          mkdir -p out
+          cp app/build/outputs/apk/release/app-release.apk "out/OpenRoad-1.0.${{ github.run_number }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk out/OpenRoad.apk
+
+      - name: Publish this build (download page for the phone and tablet)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: OpenRoad 1.0.${{ github.run_number }}
+          body: |
+            Open this page on your phone or tablet and tap the .apk below to install or update OpenRoad.
+            ${{ github.event.head_commit.message }}
+          files: android/out/OpenRoad-1.0.${{ github.run_number }}.apk
+
+      - name: Publish to the in-app update channel (release "app")
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MSG: ${{ github.event.head_commit.message }}
+          N: ${{ github.run_number }}
+          R: ${{ github.repository }}
+        run: |
+          NOTES=$(printf '%s' "${MSG:-Improvements and fixes}" | head -1 | cut -c1-300)
+          jq -n --argjson v "$N" --arg n "1.0.$N" --arg notes "$NOTES" --arg apk "https://github.com/$R/releases/download/app/OpenRoad.apk" \
+            '{versionCode:$v,versionName:$n,notes:$notes,apk:$apk}' > out/version.json
+          gh release view app --repo "$R" > /dev/null 2>&1 || gh release create app --repo "$R" --title "OpenRoad (latest)" --notes "The latest OpenRoad app. The app checks here for updates." --latest=false
+          gh release upload app out/OpenRoad.apk out/version.json --repo "$R" --clobber

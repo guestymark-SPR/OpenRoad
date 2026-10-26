@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en-GB" data-theme="day">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>OpenRoad</title>
+<meta name="theme-color" content="#16191c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="map"></div>
+
+<!-- search -->
+<div id="top" class="glass">
+  <button id="menuBtn" class="icon" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
+  <input id="q" type="search" placeholder="Search places or postcodes" autocomplete="off" enterkeyhint="search">
+  <button id="qGo" class="icon" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg></button>
+  <div id="results" hidden></div>
+</div>
+
+<!-- map buttons -->
+<div id="fabs">
+  <button id="locBtn" class="fab glass" aria-label="My position"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+  <button id="northBtn" class="fab glass" aria-label="North up"><svg viewBox="0 0 24 24"><path d="M12 3 17 20 12 16 7 20Z"/></svg></button>
+  <button id="themeBtn" class="fab glass" aria-label="Day or night"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg></button>
+</div>
+
+<!-- main panel -->
+<aside id="panel" class="glass">
+  <div id="grab" aria-label="Expand or collapse"><span></span></div>
+  <nav id="tabs">
+    <button data-tab="plan" class="on">Plan</button><button data-tab="routes">Routes</button><button data-tab="rides">Rides</button>
+    <button data-tab="trip">Trip</button><button data-tab="maps">Maps</button><button data-tab="settings">Settings</button>
+  </nav>
+  <div id="views">
+    <section id="v-plan" class="view on"></section>
+    <section id="v-routes" class="view"></section>
+    <section id="v-rides" class="view"></section>
+    <section id="v-trip" class="view"></section>
+    <section id="v-maps" class="view"></section>
+    <section id="v-settings" class="view"></section>
+  </div>
+</aside>
+
+<!-- riding display -->
+<div id="hud" hidden>
+  <div id="turn" class="glass">
+    <div id="turnIcon"></div>
+    <div id="turnText"><div id="turnDist"></div><div id="turnStreet"></div></div>
+    <div id="thenBox" hidden><span>Then</span><div id="thenIcon"></div></div>
+  </div>
+  <div id="hudNote" class="glass" hidden></div>
+  <div id="hudBar" class="glass">
+    <div class="stat big"><b id="hSpeed">0</b><i id="hSpeedU">mph</i></div>
+    <div class="stat"><b id="hRemain">–</b><i id="hRemainL">to go</i></div>
+    <div class="stat"><b id="hEta">–</b><i id="hEtaL">arrive</i></div>
+    <div class="hudBtns">
+      <button id="hMute" class="hb" aria-label="Voice on or off"></button>
+      <button id="hView" class="hb" aria-label="Overview"><svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2Z M9 4v14 M15 6v14"/></svg></button>
+      <button id="hFuel" class="hb" aria-label="Fuel nearby"><svg viewBox="0 0 24 24"><path d="M4 20V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v15M3 20h12M6 8h6M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8l-3-3"/></svg></button>
+      <button id="hEnd" class="hb end">End</button>
+    </div>
+  </div>
+  <button id="recentre" class="glass" hidden>Re-centre</button>
+</div>
+
+<div id="sheet" hidden><div id="sheetBox" class="glass"></div></div>
+<div id="toast"></div>
+
+<script src="vendor/maplibre-gl.js" onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js';s.onload=function(){window.__mlReady&&__mlReady()};document.head.appendChild(s);var l=document.createElement('link');l.rel='stylesheet';l.href='https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css';document.head.appendChild(l);window.__mlLate=1})()"></script>
+<script src="js/core.js"></script>
+<script src="js/map.js"></script>
+<script src="js/route.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/trip.js"></script>
+<script src="js/offline.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>

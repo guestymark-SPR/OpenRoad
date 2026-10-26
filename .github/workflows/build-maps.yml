@@ -1,0 +1,86 @@
+name: Build map packs
+
+# Builds offline road map packs (OpenMapTiles format, zoom 0-14) from OpenStreetMap with Planetiler,
+# one country per job, and publishes them on the release "maps" with packs.json for the app's list.
+# Country names are Geofabrik ids, e.g. great-britain, france, belgium (see tools/regions.json).
+on:
+  workflow_dispatch:
+    inputs:
+      countries:
+        description: Countries (comma separated Geofabrik ids)
+        default: great-britain,belgium,luxembourg,netherlands
+
+permissions:
+  contents: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.l.outputs.list }}
+    steps:
+      - id: l
+        run: echo "list=$(echo '${{ inputs.countries }}' | tr -d ' ' | jq -Rc 'split(",") | map(select(length>0))')" >> "$GITHUB_OUTPUT"
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view maps --repo ${{ github.repository }} > /dev/null 2>&1 || gh release create maps --repo ${{ github.repository }} --title "OpenRoad map packs" --notes "Offline map packs for the OpenRoad app. Download them from inside the app (Maps tab)." --latest=false
+
+  pack:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        country: ${{ fromJson(needs.setup.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          df -h / | tail -1
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build with Planetiler
+        run: |
+          curl -fsSL -o planetiler.jar https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
+          java -Xmx10g -jar planetiler.jar --area=${{ matrix.country }} --download --output=src.mbtiles --force \
+            --nodemap-type=array --storage=mmap --maxzoom=14
+          ls -la src.mbtiles
+      - name: Make OpenRoad pack(s)
+        run: |
+          NAME=$(jq -r --arg c "${{ matrix.country }}" '.[$c] // ($c | gsub("-";" ") | ascii_upcase)' tools/regions.json)
+          python3 tools/pack.py src.mbtiles "${{ matrix.country }}" "$NAME" out
+          ls -la out
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # remove old parts of this country first (it may now be split differently)
+          for a in $(gh release view maps --repo ${{ github.repository }} --json assets -q '.assets[].name' | grep -E "^${{ matrix.country }}(-[0-9]+)?\.(mbtiles|json)$" || true); do
+            gh release delete-asset maps "$a" --repo ${{ github.repository }} -y
+          done
+          gh release upload maps out/* --repo ${{ github.repository }} --clobber
+
+  catalogue:
+    needs: pack
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write packs.json from every pack on the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          R: ${{ github.repository }}
+        run: |
+          mkdir d && cd d
+          gh release download maps --repo "$R" -p '*.json' --clobber || true
+          rm -f packs.json
+          ls *.json > /dev/null 2>&1 || { echo '{"packs":[]}' > packs.json; }
+          if ls *.json > /dev/null 2>&1 && [ ! -s packs.json ]; then
+            jq -s --arg base "https://github.com/$R/releases/download/maps/" 'map(. + {url: ($base + .id + ".mbtiles")}) | sort_by(.name) | {packs: .}' *.json > packs.json
+          fi
+          cat packs.json
+          gh release upload maps packs.json --repo "$R" --clobber
