@@ -277,3 +277,30 @@ body.riding #toast{top:auto;bottom:calc(120px + var(--safe-b))}
 @media (min-width:900px){ .maplibregl-ctrl-bottom-left{bottom:0;left:430px} }
 body.riding .maplibregl-ctrl-bottom-left{display:none}
 .maplibregl-ctrl-scale{background:var(--sheet)!important;color:var(--ink)!important;border-color:var(--ink-2)!important}
+
+/* ---------- colour and two-tone icons ---------- */
+svg .d{fill:currentColor;fill-opacity:.2;stroke:none}
+.badge{display:inline-flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;border-radius:13px;background:var(--c);
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.14),0 2px 6px color-mix(in srgb,var(--c) 40%,transparent)}
+.badge svg{width:25px;height:25px;color:#fff!important;stroke-width:2}
+.badge svg .d{fill-opacity:.32}
+.tool .badge{width:38px;height:38px;border-radius:11px}.tool .badge svg{width:22px;height:22px}
+.tool{padding:9px 4px 8px;gap:6px}
+.tile{gap:14px}.tile .badge{width:48px;height:48px;border-radius:14px}
+.menu .badge{width:42px;height:42px}
+/* bottom bar: every section keeps its own colour */
+#nav button svg{color:var(--tc);opacity:.85;transition:background .2s}
+#nav button.on{color:var(--tc)}
+#nav button.on svg{opacity:1;background:color-mix(in srgb,var(--tc) 20%,transparent);border-radius:15px;padding:3px 14px;box-sizing:content-box}
+#nav button.on::before{display:none}
+[data-theme=night] #nav button.on{color:color-mix(in srgb,var(--tc) 70%,#fff)}
+#top .logo svg{stroke:var(--yellow);stroke-width:1.9;width:22px;height:22px}
+#top .logo svg .d{fill:var(--yellow);fill-opacity:.35}
+.intro .sign{display:inline-flex;align-items:center;gap:10px}
+.intro .sign svg{width:34px;height:34px;stroke:var(--yellow)}.intro .sign svg .d{fill:var(--yellow);fill-opacity:.35}
+.empty svg.big{color:var(--green-2)}
+.btn.go{background:linear-gradient(180deg,#14864a,var(--green))}
+.stats>div{border-top:4px solid var(--sc,var(--green-2))}
+.stats>div:nth-child(2){--sc:#1e88e5}.stats>div:nth-child(3){--sc:#ef8f00}.stats>div:nth-child(4){--sc:#7e57c2}
+.opt.on .bend{color:var(--ink)}
+.menu button>span.badge{flex:0 0 42px;width:42px}

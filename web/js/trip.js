@@ -79,13 +79,14 @@
     pub: { label: 'Pubs', q: '["amenity"="pub"]' },
     view: { label: 'Viewpoints', q: '["tourism"="viewpoint"]' },
     pass: { label: 'Mountain passes', q: '["mountain_pass"="yes"]' },
-    bikeshop: { label: 'Motorbike shops', q: '["shop"="motorcycle"]' }
+    bikeshop: { label: 'Motorbike shops', q: '["shop"="motorcycle"]' },
+    motopark: { label: 'Motorbike parking', q: '["amenity"="motorcycle_parking"]' }
   };
   OR.KINDS = KINDS;
   OR.nearby = async function (kind, lng, lat, radiusM) {
     const k = KINDS[kind];
     const list = await overpass('[out:json][timeout:60];nwr' + k.q + '(around:' + (radiusM || 8000) + ',' + lat.toFixed(5) + ',' + lng.toFixed(5) + ');out tags center 80;');
-    list.forEach(p => { p.kind = kind === 'camp' ? 'camp' : kind; p.d = OR.dist([lng, lat], [p.lng, p.lat]); p.name = p.name || k.label.replace(/s$/, ''); });
+    list.forEach(p => { p.kind = kind; p.d = OR.dist([lng, lat], [p.lng, p.lat]); p.name = p.name || k.label.replace(/s$/, ''); });
     return list.sort((a, b) => a.d - b.d);
   };
   OR.poiGeo = list => ({ type: 'FeatureCollection', features: list.map(p => ({ type: 'Feature', properties: { id: p.id, name: p.name, kind: p.kind }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } })) });
@@ -93,7 +94,7 @@
     const t = p.tags || {};
     const type = { hotel: 'Hotel', guest_house: t.guest_house === 'bed_and_breakfast' ? 'B&B' : 'Guest house', motel: 'Motel', hostel: 'Hostel', apartment: 'Apartment', chalet: 'Chalet', camp_site: 'Campsite' }[t.tourism]
       || (t.amenity === 'fuel' ? 'Fuel' + (t.brand ? ', ' + t.brand : '') : t.amenity === 'cafe' ? 'Café' : t.amenity === 'pub' ? 'Pub'
-        : t.tourism === 'viewpoint' ? 'Viewpoint' : t.mountain_pass === 'yes' ? 'Mountain pass' + (t.ele ? ', ' + Math.round(t.ele) + ' m' : '') : t.shop === 'motorcycle' ? 'Motorbike shop' : '');
+        : t.tourism === 'viewpoint' ? 'Viewpoint' : t.mountain_pass === 'yes' ? 'Mountain pass' + (t.ele ? ', ' + Math.round(t.ele) + ' m' : '') : t.shop === 'motorcycle' ? 'Motorbike shop' : t.amenity === 'motorcycle_parking' ? 'Motorbike parking' + (t.capacity ? ', ' + t.capacity + ' spaces' : '') + (t.fee === 'no' ? ', free' : t.fee === 'yes' ? ', pay' : '') : '');
     const addr = [t['addr:housenumber'], t['addr:street'], t['addr:city'] || t['addr:town'] || t['addr:village'], t['addr:postcode']].filter(Boolean).join(', ');
     return { type, addr, phone: t.phone || t['contact:phone'] || '', web: t.website || t['contact:website'] || '', hours: t.opening_hours || '', stars: t.stars || '', fuel24: t.opening_hours === '24/7' };
   };

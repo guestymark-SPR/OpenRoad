@@ -201,7 +201,8 @@
   function loadRideData(route) {
     if (!OR.online()) return;
     if (!ride.limits && OR.speedLimits) OR.speedLimits(route).then(l => { if (ride.route === route) { ride.limits = l; route.limits = l; } }).catch(() => { });
-    if (OR.camerasAlong && OR.cfg.cameras !== false) OR.camerasAlong(route).then(c => { if (ride.route === route) ride.cams = c; }).catch(() => { });
+    if (OR.camerasAlong && OR.cfg.cameras !== false) OR.camerasAlong(route).then(c => { if (ride.route === route) { ride.cams = c;
+      OR.setData('cams', { type: 'FeatureCollection', features: c.map(x => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [x.lng, x.lat] } })) }); } }).catch(() => { });
   }
   OR.stopRide = function () {
     if (!ride.on) return null;
@@ -217,7 +218,7 @@
       OR.rides.add(saved);
       OR.cfg.fuelSince = (OR.cfg.fuelSince || 0) + ride.dist; OR.saveCfg();
     }
-    OR.setData('done', null); OR.setData('track', null);
+    OR.setData('done', null); OR.setData('track', null); OR.setData('cams', null);
     OR.map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
     OR.emit('ridestop', saved);
     return saved;

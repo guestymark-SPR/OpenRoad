@@ -2,30 +2,9 @@
 'use strict';
 (function (OR) {
   const $ = OR.$, $$ = OR.$$, esc = OR.esc, A = OR.native;
-  const I = OR.icons = {
-    up: 'M6 15l6-6 6 6', down: 'M6 9l6 6 6-6', x: 'M6 6l12 12M18 6 6 18', back: 'M15 6l-6 6 6 6', chev: 'M9 6l6 6-6 6',
-    vol: 'M4 9v6h4l5 4V5L8 9Z M16 9a4 4 0 0 1 0 6 M18.5 6.5a8 8 0 0 1 0 11', mute: 'M4 9v6h4l5 4V5L8 9Z M16 9l5 6 M21 9l-5 6',
-    plan: 'M5 19c3-1 3-6 7-7s4-6 7-7 M5 19a2 2 0 1 0 0 .1 M19 5a2 2 0 1 0 0 .1',
-    trips: 'M4 7h16v12H4z M9 7V5h6v2 M4 12h16', rides: 'M5 17a3 3 0 1 0 0 .1 M19 17a3 3 0 1 0 0 .1 M5 17l4-8h5l5 8 M9 9l-1-3H6 M14 9l2-3h2',
-    near: 'M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z M12 10a2 2 0 1 0 0 .1', more: 'M5 12h.01 M12 12h.01 M19 12h.01',
-    fuel: 'M4 20V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v15 M3 20h12 M6 8h6 M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8l-3-3',
-    bed: 'M3 18V7 M3 14h18v4 M21 14v-2a3 3 0 0 0-3-3h-7v5 M7 11a1.5 1.5 0 1 0 0 .1', tent: 'M3 20 12 5l9 15Z M12 5v15 M9 20l3-5 3 5',
-    cup: 'M5 8h11v5a5 5 0 0 1-10 0z M16 9h2a2 2 0 0 1 0 4h-2 M8 3v2 M11 3v2', pint: 'M7 4h10l-1.5 16h-7z M7.5 9h9',
-    view: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z M12 12a3 3 0 1 0 0 .1', pass: 'M3 19l6-10 4 6 3-4 5 8z',
-    wrench: 'M14.5 6.5a4 4 0 0 0-5.3 5.3L4 17l3 3 5.2-5.2a4 4 0 0 0 5.3-5.3l-2.5 2.5-2.5-.5-.5-2.5z',
-    bike: 'M5 17a3 3 0 1 0 0 .1 M19 17a3 3 0 1 0 0 .1 M5 17l4-8h5l5 8', shield: 'M12 3l7 3v6c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6z M9 12l2 2 4-4',
-    id: 'M4 6h16v12H4z M8 11a2 2 0 1 0 0 .1 M6 16c.5-1.5 3.5-1.5 4 0 M13 10h4 M13 13h4', map: 'M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2Z M9 4v14 M15 6v14',
-    layers: 'M12 3 3 8l9 5 9-5z M3 13l9 5 9-5', gear: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M19 12l2-1-1-3-2 .2-1.5-1.5L17 4l-3-1-1 2h-2l-1-2-3 1 .5 2.7L6 8.2 4 8 3 11l2 1v0l-2 1 1 3 2-.2 1.5 1.5L7 20l3 1 1-2h2l1 2 3-1-.5-2.7 1.5-1.5 2 .2 1-3z',
-    update: 'M20 12a8 8 0 1 1-2.3-5.7 M20 4v4h-4', locate: 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M12 2v3 M12 19v3 M2 12h3 M19 12h3',
-    north: 'M12 3 17 20 12 16 7 20Z', cloud: 'M7 18a4 4 0 0 1-.5-8 6 6 0 0 1 11.5 1.5A3.5 3.5 0 0 1 17.5 18z',
-    flag: 'M5 21V4 M5 4h12l-2 4 2 4H5', ferry: 'M3 15h18l-3 5H6z M6 15V9h12v6 M12 9V4 M9 6h6', plus: 'M12 5v14M5 12h14',
-    loop: 'M17 2l3 3-3 3 M20 5H9a6 6 0 0 0 0 12h3 M7 22l-3-3 3-3 M4 19h11a6 6 0 0 0 0-12', share: 'M4 12v7h16v-7 M12 3v12 M7 8l5-5 5 5',
-    save: 'M5 3h11l3 3v15H5z M8 3v5h7V3 M8 14h8v7H8z', dl: 'M12 3v12 M7 10l5 5 5-5 M4 19h16', skip: 'M5 5l8 7-8 7z M17 5v14',
-    print: 'M6 9V3h12v6 M6 18H4v-7h16v7h-2 M6 14h12v7H6z', cam: 'M4 7h3l2-2h6l2 2h3v12H4z M12 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
-    star: 'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z', time: 'M12 7v5l3 2 M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z'
-  };
-  const ic = (n, cls) => '<svg viewBox="0 0 24 24"' + (cls ? ' class="' + cls + '"' : '') + ' aria-hidden="true"><path d="' + I[n] + '"/></svg>';
-  OR.ic = ic;
+  const ic = OR.ic;
+  const badge = (i, col) => '<span class="badge" style="--c:' + col + '">' + ic(i) + '</span>';
+  OR.badge = badge;
   // road numbers as sign chips: motorways blue, everything else primary-route green with yellow numbers
   const chip = r => '<span class="ref' + (/^(M|A\(M\))\d/.test(r) || /^E\d/.test(r) ? ' mway' : '') + '">' + esc(r) + '</span>';
   OR.refChip = chip;
@@ -35,6 +14,9 @@
     if (!window.maplibregl) { window.__mlReady = boot; return; }
     OR.initMap();
     document.documentElement.dataset.theme = OR.themeNow();
+    // the fixed buttons get the same icon set as everything else
+    [['#locBtn', 'locate'], ['#layersBtn', 'layers'], ['#northBtn', 'north'], ['#qGo', 'search'], ['#hMore', 'menu']].forEach(([sel, n]) => { const el = $(sel); if (el) el.innerHTML = ic(n); });
+    $('#top .logo').innerHTML = ic('moto');
     bindTop(); bindNav(); bindHud(); bindMapTaps();
     renderAll();
     OR.recoverRide();
@@ -63,9 +45,9 @@
   window.onUpdateState = s => { if (s === 'permission') OR.toast('Allow OpenRoad to install apps, then tap Install update again', 7000); if (s === 'error') OR.toast('The update could not be downloaded'); };
 
   // ---------- navigation ----------
-  const TABS = [['plan', 'Plan', 'plan'], ['trips', 'Trips', 'trips'], ['rides', 'Rides', 'rides'], ['nearby', 'Nearby', 'near'], ['more', 'More', 'more']];
+  const TABS = [['plan', 'Plan', 'plan', '#ff6a1f'], ['trips', 'Trips', 'trips', '#1e88e5'], ['rides', 'Rides', 'moto', '#0e9f57'], ['nearby', 'Nearby', 'near', '#e53935'], ['more', 'More', 'more', '#8e6bd6']];
   function bindNav() {
-    $('#nav').innerHTML = TABS.map(t => '<button data-tab="' + t[0] + '">' + ic(t[2]) + '<span>' + t[1] + '</span></button>').join('');
+    $('#nav').innerHTML = TABS.map(t => '<button data-tab="' + t[0] + '" style="--tc:' + t[3] + '">' + ic(t[2]) + '<span>' + t[1] + '</span></button>').join('');
     $$('#nav button').forEach(b => b.onclick = () => {
       const open = $('#panel').classList.contains('open'), same = b.classList.contains('on');
       if (same && open && innerWidth < 900) $('#panel').classList.remove('open'); else tab(b.dataset.tab);
@@ -281,8 +263,8 @@
         (o.roads && o.roads.length ? '<span class="refs">' + o.roads.map(chip).join('') + '</span>' : '') +
         '<span class="bend"><span class="bar"><i style="width:' + Math.min(100, Math.round(o.twist / 2.2)) + '%"></i></span>' + OR.bendLabel(o.twist) + (o.mwayPct ? ', ' + o.mwayPct + '% motorway' : ', no motorway') + '</span></button>').join('') + '</div>';
       h += '<button class="btn wide go" id="ride">' + ic('rides') + 'Start ride</button>';
-      h += '<div class="tools">' + [['wx', 'cloud', 'Weather'], ['fuelChk', 'fuel', 'Fuel check'], ['stays', 'bed', 'Stays at end'], ['save', 'save', 'Save'], ['toTrip', 'trips', 'Add to trip'], ['gpx', 'dl', 'GPX'], ['shareR', 'share', 'Share']]
-        .concat(A ? [['offl', 'map', 'Save offline']] : []).map(([id, i, l]) => '<button class="tool" id="' + id + '">' + ic(i) + '<span>' + l + '</span></button>').join('') + '</div>';
+      h += '<div class="tools">' + [['wx', 'cloud', 'Weather', '#1e88e5'], ['fuelChk', 'fuel', 'Fuel check', '#e53935'], ['stays', 'bed', 'Stays at end', '#7e57c2'], ['save', 'save', 'Save', '#0e9f57'], ['toTrip', 'trips', 'Add to trip', '#1565c0'], ['gpx', 'dl', 'GPX', '#5d6d7e'], ['shareR', 'share', 'Share', '#00897b']]
+        .concat(A ? [['offl', 'map', 'Save offline', '#ef8f00']] : []).map(([id, i, l, c]) => '<button class="tool" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>').join('') + '</div>';
       h += '<div id="extraOut">' + (extras.html || '') + '</div>';
       h += '<details><summary>Turn-by-turn list (' + r.man.length + ' steps)</summary><ol class="dirs">' + r.man.map(m =>
         '<li>' + OR.arrow(m.type) + '<span>' + esc(m.text) + (m.len > 0 ? '<small>then ' + OR.fmtDist(m.len) + '</small>' : '') + '</span></li>').join('') + '</ol></details>';
@@ -461,10 +443,10 @@
   }
 
   // ---------- nearby ----------
-  const NEAR = [['fuel', 'fuel'], ['stay', 'bed'], ['camp', 'tent'], ['cafe', 'cup'], ['pub', 'pint'], ['view', 'view'], ['pass', 'pass'], ['bikeshop', 'wrench']];
+  const NEAR = ['fuel', 'cafe', 'motopark', 'bikeshop', 'stay', 'camp', 'pub', 'view', 'pass'];
   function renderNearby() {
     $('#v-nearby').innerHTML = '<h2 class="vh">Nearby</h2><p class="muted small">Around your position, or the middle of the map when there\'s no GPS fix.</p><div class="tiles">' +
-      NEAR.map(([k, i]) => '<button class="tile" data-near="' + k + '">' + ic(i) + '<span>' + OR.KINDS[k].label + '</span></button>').join('') + '</div>' +
+      NEAR.map(k => '<button class="tile" data-near="' + k + '">' + badge(OR.POI[k].i, OR.POI[k].c) + '<span>' + OR.KINDS[k].label + '</span></button>').join('') + '</div>' +
       '<p class="small muted">Places come from OpenStreetMap. Prices aren\'t included: use the website or phone number to check and book.</p>';
     $$('[data-near]').forEach(bt => bt.onclick = () => { const c = OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray(); findNearby(bt.dataset.near, c); });
   }
@@ -511,13 +493,13 @@
   let morePage = null;
   const field = (id, label, val, type, ph) => '<label class="f"><span>' + label + '</span><input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '"' + (type === 'number' ? ' inputmode="decimal" step="any"' : '') + '></label>';
   OR.field = field;
-  const PAGES = [['bike', 'bike', 'Bike and fuel', 'Range, mpg and low-fuel warnings'], ['safety', 'shield', 'Safety check-in', 'Texts your contact if you don\'t check in'],
-    ['ice', 'id', 'Emergency card', 'Your ICE details, kept on this phone'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal'],
-    ['settings', 'gear', 'Settings', 'Units, voice, avoid tolls and ferries'], ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from']];
+  const PAGES = [['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['safety', 'shield', 'Safety check-in', 'Texts your contact if you don\'t check in', '#e53935'],
+    ['ice', 'helmet', 'Emergency card', 'Your ICE details, kept on this phone', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
+    ['settings', 'gear', 'Settings', 'Units, voice, avoid tolls and ferries', '#5d6d7e'], ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
   function renderMore() {
     const v = $('#v-more');
     if (!morePage) {
-      v.innerHTML = '<h2 class="vh">More</h2><div class="menu">' + PAGES.map(p => '<button data-p="' + p[0] + '">' + ic(p[1]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
+      v.innerHTML = '<h2 class="vh">More</h2><div class="menu">' + PAGES.map(p => '<button data-p="' + p[0] + '">' + badge(p[1], p[4]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
       $$('.menu button', v).forEach(b => b.onclick = () => { morePage = b.dataset.p; renderMore(); $('#views').scrollTop = 0; });
       return;
     }
@@ -682,9 +664,9 @@
   function rideOptions() {
     const r = OR.ride.route;
     sheet('<h2>Ride options</h2><div class="tiles">' +
-      (r ? '<button class="tile" id="roSkip">' + ic('skip') + '<span>Skip next stop</span></button><button class="tile" id="roView">' + ic('map') + '<span>Route overview</span></button><button class="tile" id="roWx">' + ic('cloud') + '<span>Weather ahead</span></button>' : '') +
-      '<button class="tile" id="roFuel">' + ic('fuel') + '<span>Fuel nearby</span></button><button class="tile" id="roCafe">' + ic('cup') + '<span>Cafés nearby</span></button><button class="tile" id="roStay">' + ic('bed') + '<span>Stays nearby</span></button>' +
-      '<button class="tile" id="roIce">' + ic('id') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + ic('fuel') + '<span>I\'ve filled up</span></button></div>' +
+      (r ? '<button class="tile" id="roSkip">' + badge('skip', '#ff6a1f') + '<span>Skip next stop</span></button><button class="tile" id="roView">' + badge('map', '#1e88e5') + '<span>Route overview</span></button><button class="tile" id="roWx">' + badge('cloud', '#1e88e5') + '<span>Weather ahead</span></button>' : '') +
+      '<button class="tile" id="roFuel">' + badge('fuel', '#e53935') + '<span>Fuel nearby</span></button><button class="tile" id="roCafe">' + badge('cup', '#8d5a3b') + '<span>Cafés nearby</span></button><button class="tile" id="roStay">' + badge('bed', '#7e57c2') + '<span>Stays nearby</span></button>' +
+      '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button></div>' +
       (OR.ride.leanL || OR.ride.leanR ? '<p class="small muted">Lean so far: ' + Math.round(OR.ride.leanL) + '° left, ' + Math.round(OR.ride.leanR) + '° right (estimated).</p>' : ''), b => {
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();
@@ -714,7 +696,7 @@
 
   function intro() {
     OR.store.set('seenIntro', true);
-    sheet('<div class="intro"><div class="sign">OpenRoad</div><ol>' +
+    sheet('<div class="intro"><div class="sign">' + ic('moto') + 'OpenRoad</div><p class="muted">Made for riding: twisty roads, tours across the Channel and your bike\'s fuel range.</p><ol>' +
       '<li><b>Plan</b> from A to B, or make a round trip of the length you want. Choose twisty, extra twisty, no motorways or fastest.</li>' +
       '<li><b>Trips</b> plan a tour day by day: rides, ferries, fuel, hotels and what it all costs.</li>' +
       '<li><b>Ride</b> with big turn arrows, spoken directions through your headset, speed limits and new routes when you go off course.</li>' +

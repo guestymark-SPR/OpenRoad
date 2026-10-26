@@ -143,7 +143,7 @@
 
   // ---------- overlays (route, alternatives, ride track, points of interest) ----------
   const EMPTY = { type: 'FeatureCollection', features: [] };
-  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY };
+  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY };
   OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); };
   function addOverlays() {
     const m = OR.map, night = m.__mode === 'night';
@@ -156,9 +156,11 @@
     L({ id: 'ov-done', type: 'line', source: 'ov-done', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9aa3ab', 'line-width': z([5, 4, 14, 9]) } });
     L({ id: 'ov-rideview', type: 'line', source: 'ov-rideview', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#7c3aed', 'line-width': z([5, 3, 14, 7]) } });
     L({ id: 'ov-track', type: 'line', source: 'ov-track', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1fa0ff', 'line-width': z([5, 2, 14, 5]), 'line-opacity': 0.85 } });
-    L({ id: 'ov-pois', type: 'circle', source: 'ov-pois', paint: { 'circle-radius': z([6, 5, 14, 9]), 'circle-color': ['match', ['get', 'kind'], 'fuel', '#c62828', 'stay', '#6d4bb3', 'camp', '#0b6b3a', 'view', '#0e7490', 'pass', '#7a5c2e', 'bikeshop', '#334155', 'cam', '#f5c518', 'wx', '#2563eb', '#0e7490'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } });
-    L({ id: 'ov-pois-l', type: 'symbol', source: 'ov-pois', minzoom: 10, layout: { 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-offset': [0, 1.2], 'text-anchor': 'top', 'text-optional': true },
-      paint: { 'text-color': night ? '#e6e9ec' : '#222', 'text-halo-color': night ? '#000' : '#fff', 'text-halo-width': 1.6 } });
+    // places as coloured icon pins (fuel, hotels, cafés…), with their names from zoom 11
+    L({ id: 'ov-pois', type: 'symbol', source: 'ov-pois', layout: { 'icon-image': ['concat', 'pin-', ['get', 'kind']], 'icon-anchor': 'bottom', 'icon-size': z([6, 0.75, 13, 1]),
+      'icon-allow-overlap': true, 'text-field': ['step', ['zoom'], '', 11, ['get', 'name']], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-anchor': 'top', 'text-offset': [0, 0.3], 'text-optional': true, 'text-max-width': 9 },
+      paint: { 'text-color': night ? '#eef2f3' : '#1c2226', 'text-halo-color': night ? '#111' : '#fff', 'text-halo-width': 1.6 } });
+    L({ id: 'ov-cams', type: 'symbol', source: 'ov-cams', minzoom: 9, layout: { 'icon-image': 'pin-cam', 'icon-anchor': 'bottom', 'icon-size': 0.85, 'icon-allow-overlap': true } });
   }
 
   OR.initMap = function () {
@@ -171,6 +173,8 @@
     m.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
     m.addControl(new maplibregl.ScaleControl({ unit: OR.cfg.units === 'km' ? 'metric' : 'imperial' }), 'bottom-left');
     m.on('style.load', addOverlays);
+    // icon pins are drawn when the map first needs them (and again after a style change)
+    m.on('styleimagemissing', e => { if (/^pin-/.test(e.id) && OR.pinImage && !m.hasImage(e.id)) m.addImage(e.id, OR.pinImage(e.id.slice(4), 2), { pixelRatio: 2 }); });
     m.on('styledata', () => { if (m.isStyleLoaded()) addOverlays(); });
     m.on('moveend', () => { const c = m.getCenter(); OR.store.set('view', { c: [c.lng, c.lat], z: m.getZoom() }); });
     m.on('error', e => { if (e && e.error && /Failed to fetch|NetworkError/.test(String(e.error.message))) return; console.warn(e && e.error); });

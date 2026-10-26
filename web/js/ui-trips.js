@@ -71,7 +71,7 @@
 
     h += '<ol class="days">' + t.days.map((day, di) => dayHtml(t, day, di, c.days[di])).join('') + '</ol>';
     h += '<button class="btn wide" id="addDay">' + ic('plus') + 'Add day ' + (t.days.length + 1) + '</button>' +
-      '<div class="tools">' + [['tPdf', 'print', 'Save as PDF'], ['tGpx', 'dl', 'GPX for all days'], ['tShare', 'share', 'Share'], ['tDel', 'x', 'Delete trip']].map(([id, i, l]) => '<button class="tool" id="' + id + '">' + ic(i) + '<span>' + l + '</span></button>').join('') + '</div>';
+      '<div class="tools">' + [['tPdf', 'print', 'Save as PDF', '#1e88e5'], ['tGpx', 'dl', 'GPX for all days', '#5d6d7e'], ['tShare', 'share', 'Share', '#00897b'], ['tDel', 'x', 'Delete trip', '#e53935']].map(([id, i, l, c]) => '<button class="tool" id="' + id + '">' + OR.badge(i, c) + '<span>' + l + '</span></button>').join('') + '</div>';
     v.innerHTML = h;
     bindTrip(v, t);
     t.days.forEach((day, di) => loadWeather(t, day, di));
