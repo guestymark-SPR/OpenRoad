@@ -31,7 +31,15 @@ jobs:
           gradle-version: '8.7'
 
       - name: Build signed APK
-        run: gradle assembleRelease --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set +e
+          gradle assembleRelease --no-daemon > build.log 2>&1
+          status=$?
+          # show compile errors as annotations, so they can be read without the full log
+          grep -E "error:|^e: |What went wrong|Could not|AAPT|Execution failed" -A2 build.log | head -60 | sed 's/^/::error::/'
+          tail -5 build.log
+          exit $status
 
       - name: Name the APK
         run: |

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en-GB" data-theme="night">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OpenRoad car</title>
+<link rel="stylesheet" href="vendor/maplibre-gl.css">
+<link rel="stylesheet" href="fonts.css">
+<style>
+  /* The car screen: just the map. Android Auto draws the turn card and buttons on top. */
+  html,body{margin:0;height:100%;overflow:hidden;background:#232b31;font-family:"Overpass","Roboto",sans-serif}
+  #map{position:fixed;inset:0}
+  .maplibregl-ctrl-attrib,.maplibregl-ctrl-scale{display:none}
+  #hud{position:fixed;display:flex;align-items:flex-end;gap:10px;left:16px;bottom:16px;pointer-events:none}
+  #lim{width:70px;height:70px;border-radius:50%;background:#fff;border:8px solid #c62828;color:#111;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:27px;box-sizing:border-box}
+  #spd{background:rgba(35,43,49,.92);color:#fff;border-radius:16px;padding:6px 14px;text-align:center;min-width:80px}
+  #spd b{display:block;font-size:38px;line-height:1.05}#spd i{font-style:normal;font-size:14px;color:#b9c4c9}
+  #spd.over b{color:#ff6b6b}
+  .me{width:56px;height:56px}.me svg{width:56px;height:56px}
+  .me-halo{fill:rgba(29,95,180,.2)}.me-arrow{fill:#1d5fb4;stroke:#fff;stroke-width:2.5}
+  [data-theme=day] #spd{background:rgba(255,255,255,.95);color:#1c2226}
+  #toast{display:none}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="hud"><div id="lim" hidden></div><div id="spd"><b id="spdN">0</b><i id="spdU">mph</i></div></div>
+<div id="toast"></div>
+<script src="vendor/maplibre-gl.js"></script>
+<script src="js/core.js"></script>
+<script src="js/map.js"></script>
+<script src="js/route.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/trip.js"></script>
+<script src="js/ridekit.js"></script>
+<script src="js/trips.js"></script>
+<script src="js/car.js"></script>
+</body>
+</html>

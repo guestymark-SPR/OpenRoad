@@ -42,3 +42,8 @@ android {
         abortOnError false
     }
 }
+
+dependencies {
+    // Android Auto (Android for Cars App Library)
+    implementation 'androidx.car.app:app:1.4.0'
+}
