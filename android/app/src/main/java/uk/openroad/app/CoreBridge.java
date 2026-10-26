@@ -95,4 +95,9 @@ class CoreBridge {
     @JavascriptInterface public void groupStop() { onMain(() -> { try { ctx.startService(new Intent(ctx, GroupService.class).setAction(GroupService.ACTION_STOP)); } catch (Exception ignored) { } }); }
     @JavascriptInterface public void groupSay(String kind, String text) { onMain(() -> { try { ctx.startService(new Intent(ctx, GroupService.class).setAction(GroupService.ACTION_SAY).putExtra("kind", kind).putExtra("text", text)); } catch (Exception ignored) { } }); }
     @JavascriptInterface public String groupState() { return GroupService.state(); }
+    // crash detection (runs while recording a ride or in a group ride)
+    @JavascriptInterface public void crashConfig(String json) { Util.kvSet(ctx, "crash", json); }
+    @JavascriptInterface public String crashState() { return CrashWatch.state(); }
+    @JavascriptInterface public void crashCancel() { CrashWatch.cancel(ctx); }
+    @JavascriptInterface public void crashTest() { CrashWatch.runTest(ctx); }
 }

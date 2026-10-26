@@ -47,6 +47,7 @@ public class GroupService extends Service implements LocationListener {
     private static final JSONArray msgs = new JSONArray();
     private static final Map<String, String> servers = new LinkedHashMap<>();
 
+    private static GroupService self;
     private GroupLink link;
     private PowerManager.WakeLock lock;
     private Location me;
@@ -114,7 +115,8 @@ public class GroupService extends Service implements LocationListener {
                 Location l = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
                 if (l != null && System.currentTimeMillis() - l.getTime() < 120000) me = l;
             } catch (Exception ignored) { }
-            running = true;
+            running = true; self = this;
+            CrashWatch.start(this, "group");
             main.postDelayed(tick, 3000);
         }
         return START_STICKY;
@@ -146,7 +148,8 @@ public class GroupService extends Service implements LocationListener {
                 JSONObject m = new JSONObject().put("key", key).put("id", id).put("n", who).put("c", o.optString("c")).put("k", o.optString("k")).put("text", text).put("t", System.currentTimeMillis());
                 if (o.has("la")) m.put("la", o.getDouble("la")).put("lo", o.getDouble("lo"));
                 synchronized (msgs) { msgs.put(m); while (msgs.length() > 30) msgs.remove(0); }
-                say(who + ": " + text + ("help".equals(o.optString("k")) && me != null && o.has("la") ? ". " + distWords(o.getDouble("la"), o.getDouble("lo")) + " away." : ""));
+                if ("crash".equals(o.optString("k")) || "help".equals(o.optString("k"))) urgent(who, text, o);
+                say(who + ": " + text + (("help".equals(o.optString("k")) || "crash".equals(o.optString("k"))) && me != null && o.has("la") ? ". " + distWords(o.getDouble("la"), o.getDouble("lo")) + " away." : ""));
                 return;
             }
             long t = o.optLong("t");
@@ -168,12 +171,13 @@ public class GroupService extends Service implements LocationListener {
             case "ok": return "all good";
             case "help": return "need help, I've stopped";
             case "go": return "setting off";
+            case "crash": return "may have crashed. Their phone sent an automatic crash alert";
             default: return x == null || x.isEmpty() ? "message" : clip(x, 80);
         }
     }
 
     // ---------- my position ----------
-    @Override public void onLocationChanged(Location l) { me = l; sendIfDue(false); }
+    @Override public void onLocationChanged(Location l) { me = l; CrashWatch.fix(l); sendIfDue(false); }
     private void sendIfDue(boolean force) {
         if (link == null || me == null) return;
         long now = System.currentTimeMillis(), since = now - lastSent;
@@ -199,6 +203,13 @@ public class GroupService extends Service implements LocationListener {
             synchronized (msgs) { msgs.put(m); while (msgs.length() > 30) msgs.remove(0); }
             lastSent = 0; sendIfDue(true);
         } catch (Exception ignored) { }
+    }
+    /** From CrashWatch: tell the group. Returns false if not in a group. */
+    static boolean crashAlert(Location at) {
+        GroupService g = self; if (g == null || !running) return false;
+        if (at != null) g.me = at;
+        g.main.post(() -> g.sendMessage("crash", ""));
+        return true;
     }
     private int battery() {
         try { Intent b = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED)); int l = b.getIntExtra(BatteryManager.EXTRA_LEVEL, -1), s = b.getIntExtra(BatteryManager.EXTRA_SCALE, 100); return l < 0 ? -1 : Math.round(100f * l / s); }
@@ -238,6 +249,25 @@ public class GroupService extends Service implements LocationListener {
         String u = km ? " kilometres" : " miles";
         return d < 0.3 ? (km ? Math.round(d * 1000) + " metres" : Math.round(d * 1760 / 10) * 10 + " yards") : d < 10 ? String.format(Locale.UK, "%.1f", d) + u : Math.round(d) + u;
     }
+    // a crash or help call from a rider: a high-priority notification that opens the app, voice even if muted
+    private void urgent(String who, String text, JSONObject o) {
+        try {
+            NotificationManager nm = getSystemService(NotificationManager.class);
+            if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel("groupsos") == null) {
+                NotificationChannel ch = new NotificationChannel("groupsos", "Group ride: crash and help calls", NotificationManager.IMPORTANCE_HIGH);
+                ch.setDescription("When someone in your group crashes or asks for help");
+                ch.enableVibration(true); ch.setVibrationPattern(new long[]{0, 700, 300, 700, 300, 700});
+                nm.createNotificationChannel(ch);
+            }
+            Intent open = new Intent(this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT).putExtra("groupRider", o.optString("id"));
+            PendingIntent pi = PendingIntent.getActivity(this, 3, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            String where = me != null && o.has("la") ? distWords(o.getDouble("la"), o.getDouble("lo")) + " away. " : "";
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, "groupsos") : new Notification.Builder(this);
+            b.setSmallIcon(android.R.drawable.ic_dialog_alert).setContentTitle(who + " " + text).setContentText(where + "Tap to see where.").setContentIntent(pi).setAutoCancel(true).setCategory(Notification.CATEGORY_ALARM);
+            nm.notify(13 + Math.abs(o.optString("id").hashCode() % 1000), b.build());
+            if (!voice) Speech.get(this).speak(who + " " + text + ". " + where);
+        } catch (Exception ignored) { }
+    }
     private void say(String text) { if (voice) Speech.get(this).speak(text); }
     private void addMsg(JSONObject r, String text) {
         try {
@@ -267,7 +297,8 @@ public class GroupService extends Service implements LocationListener {
     @SuppressWarnings("deprecation") @Override public void onStatusChanged(String p, int s, Bundle b) { }
 
     private void stop() {
-        running = false; main.removeCallbacks(tick);
+        running = false; self = null; main.removeCallbacks(tick);
+        CrashWatch.stop("group");
         Util.kvSet(this, "groupLast", "");
         if (link != null) { link.close(); link = null; }
         synchronized (riders) { riders.clear(); }
@@ -278,7 +309,7 @@ public class GroupService extends Service implements LocationListener {
         stopSelf();
     }
     @Override public void onDestroy() {
-        main.removeCallbacks(tick);
+        main.removeCallbacks(tick); CrashWatch.stop("group"); if (self == this) self = null;
         try { ((LocationManager) getSystemService(LOCATION_SERVICE)).removeUpdates(this); } catch (Exception ignored) { }
         if (lock != null && lock.isHeld()) lock.release();
         super.onDestroy();

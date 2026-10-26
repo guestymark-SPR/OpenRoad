@@ -394,3 +394,14 @@ h3 svg{width:20px;height:20px;vertical-align:-4px;margin-right:4px;color:var(--g
 .sw.on{box-shadow:0 0 0 3px var(--c),0 0 0 5px var(--ink)}
 .joinrow{display:flex;gap:8px;align-items:flex-end;margin-top:12px}.joinrow .f{flex:1;margin:0}.joinrow .btn{margin-bottom:1px}
 .card.note{margin-top:14px}
+
+/* ---------- crash alarm, over the limit ---------- */
+#crashBox{position:fixed;inset:0;z-index:9999;background:#c62828;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;animation:cbp 1s infinite alternate}
+@keyframes cbp{from{background:#c62828}to{background:#8e0000}}
+#crashBox .cb-in{max-width:440px;width:100%;text-align:center}
+#crashBox .cb-t{font-size:28px;font-weight:800;line-height:1.2}
+#crashBox .cb-n{font-size:120px;font-weight:800;line-height:1.1;margin:16px 0;font-variant-numeric:tabular-nums}
+#crashBox .cb-s{font-size:18px;margin-bottom:28px}
+#crashBox .btn{background:#fff;color:#c62828;font-size:26px;font-weight:800;min-height:84px;border:none}
+#limit.over{animation:lim .5s 6 alternate;box-shadow:0 0 0 6px #c62828}
+@keyframes lim{from{transform:scale(1)}to{transform:scale(1.18)}}

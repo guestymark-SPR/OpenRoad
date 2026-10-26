@@ -72,11 +72,13 @@ public class RideService extends Service implements LocationListener {
             lock.acquire();
             try { ((LocationManager) getSystemService(LOCATION_SERVICE)).requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, this, Looper.getMainLooper()); } catch (Exception ignored) { }
             running = true;
+            CrashWatch.start(this, "ride");
         }
         return START_STICKY;
     }
 
     @Override public void onLocationChanged(Location l) {
+        CrashWatch.fix(l);
         synchronized (points) {
             points.add(new double[]{l.getLongitude(), l.getLatitude(), l.hasSpeed() ? l.getSpeed() : 0, l.getAccuracy(), System.currentTimeMillis()});
             if (points.size() > 40000) points.subList(0, 10000).clear();
@@ -101,6 +103,7 @@ public class RideService extends Service implements LocationListener {
 
     private void stop() {
         running = false;
+        CrashWatch.stop("ride");
         try { ((LocationManager) getSystemService(LOCATION_SERVICE)).removeUpdates(this); } catch (Exception ignored) { }
         if (lock != null && lock.isHeld()) lock.release();
         lock = null;
@@ -110,6 +113,7 @@ public class RideService extends Service implements LocationListener {
 
     @Override public void onDestroy() {
         running = false;
+        CrashWatch.stop("ride");
         try { ((LocationManager) getSystemService(LOCATION_SERVICE)).removeUpdates(this); } catch (Exception ignored) { }
         if (lock != null && lock.isHeld()) lock.release();
         super.onDestroy();

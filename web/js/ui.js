@@ -20,6 +20,7 @@
     bindTop(); bindNav(); bindHud(); bindMapTaps();
     renderAll();
     OR.groupBoot && OR.groupBoot();
+    OR.crashSync && OR.crashSync();
     OR.recoverRide();
     drawWaypoints();
     OR.on('style', () => { if (OR.plan.route) showOptions(); });
@@ -509,7 +510,7 @@
   let morePage = null;
   const field = (id, label, val, type, ph) => '<label class="f"><span>' + label + '</span><input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '"' + (type === 'number' ? ' inputmode="decimal" step="any"' : '') + '></label>';
   OR.field = field;
-  const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety check-in', 'Texts your contact if you don\'t check in', '#e53935'],
+  const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety', 'Crash alert, check-in, speed and break warnings', '#e53935'],
     ['ice', 'helmet', 'Emergency card', 'Your ICE details, kept on this phone', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
     ['settings', 'gear', 'Settings', 'Units, voice, avoid tolls and ferries', '#5d6d7e'], ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
   function renderMore() {
@@ -552,8 +553,37 @@
       const d = new Date(); d.setHours(h, m, 0, 0); if (d < Date.now()) d.setDate(d.getDate() + 1);
       if (OR.checkin.armAt(d.getTime())) { OR.toast('Check-in set for ' + OR.clock(d)); pageSafety(box); }
     };
+    safetyExtras(box);
     const ok = $('#ciOk', box); if (ok) ok.onclick = () => { OR.checkin.ok(); pageSafety(box); };
     const off = $('#ciOff', box); if (off) off.onclick = () => { OR.checkin.cancel(); pageSafety(box); };
+  }
+  // crash detection, over-the-limit warning and break reminders, below the check-in
+  function safetyExtras(box) {
+    const s = OR.safetyCfg(), c = OR.crashContact();
+    const el = document.createElement('div');
+    el.innerHTML = '<h3 class="gh">Crash detection</h3>' +
+      '<label class="chk"><input type="checkbox" id="sCrash"' + (s.crash ? ' checked' : '') + '> Watch for a crash while recording a ride or in a group ride</label>' +
+      '<p class="small">If the phone feels a hard impact while you\'re riding and the bike then stops, it alarms for 60 seconds. If you don\'t tap "I\'m OK", ' +
+      (c ? '<b>' + esc(c.name) + '</b> (' + esc(c.phone) + ')' : '<b>your contact</b>') + ' gets a text with your position, and your group is told if you\'re in a group ride.' +
+      (c ? '' : ' <b>Add a contact above (or on the Emergency card) first.</b>') + ' The text includes your blood group and medical notes from the Emergency card, if you\'ve filled them in.</p>' +
+      '<p class="small muted">The phone needs to be on the bike or on you, and works best in a mount. It can\'t catch every crash, and a hard knock while stopped won\'t set it off. ' + (A ? 'Changes apply from your next ride.' : 'Crash detection needs the Android app.') + '</p>' +
+      (A ? '<button id="sCrashTest" class="btn wide ghost">Test the alarm (nothing is sent)</button>' : '') +
+      '<h3 class="gh">Speed limit warning</h3>' +
+      '<label class="f"><span>Chime and say the limit when I\'m</span><select id="sOver"><option value="off">Off</option><option value="any">Over the limit</option><option value="guide">More than 10% + 2 mph over</option></select></label>' +
+      '<p class="small muted">Works on planned routes, where OpenRoad knows the limits (they come from OpenStreetMap and are sometimes missing or out of date). GPS speed is usually a little lower than your speedo shows, because speedos read high.</p>' +
+      '<h3 class="gh">Break reminders</h3>' +
+      '<label class="f"><span>Remind me to stop after</span><select id="sBreak"><option value="0">Off</option><option value="1.5">1½ hours</option><option value="2">2 hours</option><option value="2.5">2½ hours</option><option value="3">3 hours</option></select></label>' +
+      '<p class="small muted">It counts riding time since your last stop of 10 minutes or more, and suggests a café or fuel stop just ahead.</p>';
+    box.appendChild(el);
+    $('#sOver', el).value = s.overLimit; $('#sBreak', el).value = String(s.breakEvery);
+    $('#sCrash', el).onchange = e => {
+      if (e.target.checked && !OR.crashContact()) { OR.toast('Add a contact number first, at the top of this page'); }
+      s.crash = e.target.checked; OR.saveCfg(); OR.crashSync();
+    };
+    $('#sOver', el).onchange = e => { s.overLimit = e.target.value; OR.saveCfg(); };
+    $('#sBreak', el).onchange = e => { s.breakEvery = parseFloat(e.target.value); OR.saveCfg(); };
+    const t = $('#sCrashTest', el); if (t) t.onclick = () => { OR.crashSync(); A.crashTest(); setTimeout(OR.crashPoll, 300); const iv = setInterval(() => { OR.crashPoll(); if (!document.getElementById('crashBox')) clearInterval(iv); }, 1000); };
+    ['cName', 'cPhone'].forEach(id => { const f = $('#' + id, box); if (f) f.addEventListener('change', () => OR.crashSync()); });
   }
   function defaultTime() { const d = new Date(Date.now() + 4 * 3600000); return String(d.getHours()).padStart(2, '0') + ':00'; }
   function pageIce(box) {
@@ -677,6 +707,8 @@
       $('#hRemain').textContent = OR.fmtDist(s.remain); $('#hEta').textContent = OR.clock(s.eta);
     });
     OR.on('rerouting', on => { $('#hudNote').hidden = !on; $('#hudNote').textContent = 'Finding a new route…'; });
+    OR.on('breakDue', b => { const n = $('#hudNote'); n.hidden = false; n.textContent = b.line + (b.pick ? ' Tap to see stops.' : ''); n.onclick = b.pick ? () => { n.hidden = true; n.onclick = null; findNearby(b.pick.kind, [b.pick.lng, b.pick.lat]); } : null; });
+    OR.on('overLimit', () => { const l = $('#limit'); if (l) { l.classList.add('over'); setTimeout(() => l.classList.remove('over'), 4000); } });
     OR.on('arrived', () => { $('#hudNote').hidden = false; $('#hudNote').textContent = 'You\'ve arrived. Tap End to save the ride.'; });
     OR.on('fuel', () => { const l = OR.fuelLeft(); if (OR.ride.on && l != null && l < (OR.cfg.bike.reserveMi || 25) * OR.MI) { $('#hudNote').hidden = false; $('#hudNote').textContent = 'Fuel low: about ' + OR.fmtDist(l) + ' left. Ride options has fuel nearby.'; } });
   }
