@@ -3,7 +3,8 @@
 (function (OR) {
   const VALHALLA = 'https://valhalla1.openstreetmap.de';
   const PHOTON = 'https://photon.komoot.io/api/';
-  const MAX_LOC = 20;
+  const SERVER_MAX = 10; // the FOSSGIS server accepts at most 10 points per request
+  const MAX_LOC = 60;    // longer routes are planned 10 points at a time and joined
 
   // ---------- place search ----------
   OR.search = function (q) {
@@ -51,6 +52,25 @@
       // Valhalla puts a readable reason in the error body
       const m = String(e.message).match(/"error"\s*:\s*"([^"]+)"/); throw new Error(m ? m[1] : e.message);
     });
+  }
+
+  // Plan a route with any number of points: in pieces of up to 10 points that share their end points,
+  // joined into one trip. With 10 or fewer points it is a single request (and can have alternatives).
+  async function routeTrips(wps, o, extra) {
+    if (wps.length <= SERVER_MAX) {
+      const b = body(wps, o); if (extra) extra(b);
+      const j = await valhalla('route', b);
+      return [j.trip].concat((j.alternates || []).map(a => a.trip));
+    }
+    const pieces = [];
+    for (let i = 0; i < wps.length - 1; i += SERVER_MAX - 1) pieces.push(wps.slice(i, i + SERVER_MAX));
+    const trips = [];
+    for (let k = 0; k < pieces.length; k++) {
+      const pw = pieces[k].map((w, i) => i === 0 || i === pieces[k].length - 1 ? Object.assign({}, w, { type: 'break' }) : w);
+      const b = body(pw, Object.assign({}, o, { alternates: 0 })); if (k === 0 && extra) extra(b);
+      trips.push((await valhalla('route', b)).trip);
+    }
+    return [{ units: trips[0].units, summary: { time: trips.reduce((t, x) => t + x.summary.time, 0) }, legs: [].concat.apply([], trips.map(t => t.legs)) }];
   }
 
   // Turn a Valhalla trip into the route OpenRoad navigates on.
@@ -117,15 +137,14 @@
   OR.planRoute = async function () {
     const wps = OR.plan.wps;
     if (wps.length < 2) throw new Error('Add a start and a destination');
-    if (wps.length > MAX_LOC) throw new Error('Too many points: the route server allows ' + MAX_LOC + '. Remove some via points.');
+    if (wps.length > MAX_LOC) throw new Error('Too many points (' + wps.length + '). OpenRoad plans up to ' + MAX_LOC + ': remove some via points.');
     const style = STYLES[OR.cfg.style] || STYLES.twisty, multi = wps.length > 2;
     const results = [];
     const errs = [];
     await Promise.all(style.tries.map(async t => {
       const o = Object.assign({}, t); if (multi) o.alternates = 0; // alternatives only work point to point
       try {
-        const j = await valhalla('route', body(wps, o));
-        const trips = [j.trip].concat((j.alternates || []).map(a => a.trip));
+        const trips = await routeTrips(wps, o);
         trips.forEach((tr, k) => results.push(OR.buildRoute(tr, { mode: OR.cfg.style, variant: (o.shortest ? 'Shortest quiet roads' : k ? 'Alternative ' + k : style.label) })));
       } catch (e) { errs.push(e.message); }
     }));
@@ -149,16 +168,23 @@
 
   // Re-plan from where the bike is now to the remaining stops (used when off route).
   OR.rerouteFrom = async function (pos, route, along) {
-    const rest = [];
-    const ends = route.legEnds || [];
-    route.wps.forEach((w, i) => { if (i === 0) return; const legEnd = ends[i - 1]; if (legEnd == null || legEnd > along + 50) rest.push(w); });
-    if (!rest.length) rest.push(route.wps[route.wps.length - 1]);
+    let rest = [];
+    if (route.mode === 'gpx') {
+      // a followed GPX track: rejoin it and keep to its line, through points every ~5 km of what is left
+      const ahead = []; for (let i = 0; i < route.shape.length; i++) if (route.cum[i] > along + 300) ahead.push(route.shape[i]);
+      rest = OR.resample(ahead.length ? ahead : [route.shape[route.shape.length - 1]], 5000).slice(0, MAX_LOC - 1)
+        .map((p, i, a) => ({ lng: p[0], lat: p[1], name: i === a.length - 1 ? 'Track end' : 'Track', type: i === a.length - 1 ? 'break' : 'through' }));
+    } else {
+      // stops still ahead: where each one sits along the route, compared with where the bike is
+      const at = w => { let best = 1e12, a = 0; for (let i = 0; i < route.shape.length - 1; i++) { const r = OR.projSeg([w.lng, w.lat], route.shape[i], route.shape[i + 1]); if (r.d < best) { best = r.d; a = route.cum[i] + r.t * (route.cum[i + 1] - route.cum[i]); } } return a; };
+      route.wps.forEach((w, i) => { if (i > 0 && (i === route.wps.length - 1 || at(w) > along + 50)) rest.push(w); });
+    }
     const wps = [{ lng: pos[0], lat: pos[1], name: 'Here', type: 'break' }].concat(rest).slice(0, MAX_LOC);
     const t = (STYLES[route.mode] || STYLES.twisty).tries[0];
-    const b = body(wps, Object.assign({}, t, { alternates: 0 }));
-    if (pos[2] != null) b.locations[0].heading = Math.round(pos[2]), b.locations[0].heading_tolerance = 60;
-    const j = await valhalla('route', b);
-    const r = OR.buildRoute(j.trip, { mode: route.mode, name: route.name, variant: 'Rerouted' });
+    const trips = await routeTrips(wps, Object.assign({}, t, { alternates: 0 }), b => {
+      if (pos[2] != null) { b.locations[0].heading = Math.round(pos[2]); b.locations[0].heading_tolerance = 60; }
+    });
+    const r = OR.buildRoute(trips[0], { mode: route.mode, name: route.name, variant: 'Rerouted' });
     r.wps = wps; r.id = route.id; r.originalId = route.originalId || route.id;
     return r;
   };

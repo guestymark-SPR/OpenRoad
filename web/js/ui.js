@@ -24,15 +24,19 @@
     setTimeout(checkUpdate, 4000);
   }
   // the Android app checks GitHub for a newer version (published by the build workflow)
-  function checkUpdate() {
-    if (!A || !A.versionCode || !OR.online()) return;
-    OR.json('https://github.com/guestymark-SPR/OpenRoad/releases/download/app/version.json').then(v => {
-      if (!(v.versionCode > A.versionCode()) || OR.store.get('skipVersion', 0) === v.versionCode) return;
+  // manual = from the Settings button: always answers, and offers a version you skipped before
+  function checkUpdate(manual) {
+    if (!A || !A.versionCode) return;
+    if (manual === true) OR.toast('Checking for updates…');
+    OR.json('https://github.com/guestymark-SPR/OpenRoad/releases/download/app/version.json?t=' + Date.now()).then(v => {
+      if (!(v.versionCode > A.versionCode())) { if (manual === true) OR.toast('You have the latest version (' + A.version() + ')'); return; }
+      if (manual !== true && OR.store.get('skipVersion', 0) === v.versionCode) return;
       sheet('<h2>Update available</h2><p>OpenRoad ' + esc(v.versionName) + ': ' + esc(v.notes || 'improvements and fixes') + '</p><button id="updGo" class="wide pri">Install update</button><button id="updLater" class="wide">Not now</button>',
         b => { $('#updGo', b).onclick = () => { A.installUpdate(v.apk); closeSheet(); OR.toast('Downloading the update…'); };
                $('#updLater', b).onclick = () => { OR.store.set('skipVersion', v.versionCode); closeSheet(); }; });
-    }).catch(() => { });
+    }).catch(e => { if (manual === true) OR.toast('Could not check for updates: ' + (OR.online() ? e.message : 'no signal'), 5000); });
   }
+  OR.checkUpdate = checkUpdate;
   window.onUpdateState = s => { if (s === 'permission') OR.toast('Allow OpenRoad to install apps, then tap Install update again', 7000); if (s === 'error') OR.toast('The update could not be downloaded'); };
   function renderAll() { renderPlan(); renderRoutes(); renderRides(); renderTrip(); renderMaps(); renderSettings(); }
 
@@ -337,7 +341,7 @@
       '<div class="li"><b>' + esc(it.label) + '</b><div class="row">' +
       (it.kind === 'trk' ? '<button data-i="' + i + '" data-m="exact" class="pri">Follow exactly</button><button data-i="' + i + '" data-m="via">Plan through it</button>'
         : '<button data-i="' + i + '" data-m="via" class="pri">Plan through these points</button>') +
-      '</div></div>').join('') + '</div><p class="small muted">"Follow exactly" matches the track to the roads so you get spoken turns on the exact line. "Plan through" routes between up to 20 of its points with your riding style.</p>',
+      '</div></div>').join('') + '</div><p class="small muted">"Follow exactly" matches the track to the roads so you get spoken turns on the exact line. "Plan through" routes between up to 30 of its points with your riding style.</p>',
       box => $$('button[data-i]', box).forEach(b => b.onclick = async () => {
         const it = items[+b.dataset.i]; closeSheet();
         try {
@@ -346,8 +350,8 @@
             OR.routes.save(r); renderRoutes(); loadRoute(r); tab('plan'); OR.toast('Imported and saved to Routes');
           } else {
             let pts = it.d.pts;
-            if (pts.length > 20) { // keep the ends and evenly spread points between
-              const step = (pts.length - 1) / 19; pts = Array.from({ length: 20 }, (_, k) => pts[Math.round(k * step)]);
+            if (pts.length > 30) { // keep the ends and evenly spread points between
+              const step = (pts.length - 1) / 29; pts = Array.from({ length: 30 }, (_, k) => pts[Math.round(k * step)]);
             }
             OR.plan.wps = pts.map((p, i) => ({ lng: p[0], lat: p[1], name: p.name || (i === 0 ? 'Start' : i === pts.length - 1 ? 'End' : 'Point ' + i), type: i === 0 || i === pts.length - 1 ? 'break' : 'through' }));
             changed(true);
@@ -464,6 +468,7 @@
       '<p class="small muted">Spoken directions play through whatever the phone uses for audio, so pair your helmet headset with the phone over Bluetooth.</p>' +
       '<h3>Routing</h3><label class="chk"><input type="checkbox" id="sTolls"' + (c.avoidTolls ? ' checked' : '') + '> Avoid toll roads</label>' +
       '<label class="chk"><input type="checkbox" id="sFerry"' + (c.avoidFerries ? ' checked' : '') + '> Avoid ferries</label>' +
+      (A ? '<h3>Updates</h3><div class="card"><b>OpenRoad ' + esc(A.version()) + '</b><span>The app also checks each time it opens.</span></div><button id="sUpd" class="wide pri">Check for updates</button>' : '') +
       '<h3>About</h3><p class="small">OpenRoad ' + esc(A && A.version ? A.version() : 'web') + '. Free and open. Routing by Valhalla on the FOSSGIS server; search by Photon (Komoot); fuel, stays and cafés from OpenStreetMap via Overpass; map tiles from OpenFreeMap. Map data © OpenStreetMap contributors.</p>' +
       '<p class="small warn">Road data can be out of date. Follow road signs and the law, and keep your eyes on the road: set the route before you ride.</p>' +
       '<button id="sIntro">Show the quick guide</button>';
@@ -475,6 +480,7 @@
     $('#sTolls', v).onchange = e => { c.avoidTolls = e.target.checked; OR.saveCfg(); };
     $('#sFerry', v).onchange = e => { c.avoidFerries = e.target.checked; OR.saveCfg(); };
     $('#sIntro', v).onclick = intro;
+    const upd = $('#sUpd', v); if (upd) upd.onclick = () => checkUpdate(true);
   }
 
   // ---------- ride ----------
