@@ -587,12 +587,13 @@
   const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['chat', 'chat', 'Chat settings', 'Quick messages, read aloud and notifications', '#0e9f57'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety', 'Crash alert, check-in, speed and break warnings', '#e53935'],
     ['ice', 'helmet', 'Emergency card', 'Your ICE details, kept on this phone', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
     ['settings', 'gear', 'Units, look and routing', 'Miles or km, day and night colours, tolls and ferries', '#5d6d7e'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, turn alerts on your watch', '#1565c0'],
+    ['papers', 'id', 'Papers', 'Licence, V5C, insurance, MOT and breakdown cover', '#00897b'],
     ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
   function renderMore() {
     const v = $('#v-more');
     if (!morePage) {
       const sec = (title, ids) => '<h3 class="grp">' + title + '</h3><div class="menu">' + ids.map(id => PAGES.find(p => p[0] === id)).map(p => '<button data-p="' + p[0] + '">' + badge(p[1], p[4]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
-      v.innerHTML = '<h2 class="vh">Settings</h2>' + sec('Riding', ['safety', 'voice', 'chat']) + sec('Maps', ['maps', 'settings']) + sec('You', ['ice']) + sec('App', ['about']);
+      v.innerHTML = '<h2 class="vh">Settings</h2>' + sec('Riding', ['safety', 'voice', 'chat']) + sec('Maps', ['maps', 'settings']) + sec('You', ['ice', 'papers']) + sec('App', ['about']);
       $$('.menu button', v).forEach(b => b.onclick = () => { morePage = b.dataset.p; renderMore(); $('#views').scrollTop = 0; });
       return;
     }
@@ -604,7 +605,7 @@
   // pages that now have their own tab
   OR.openMore = p => {
     if (p === 'group') return tab('group');
-    if (p === 'bike' || p === 'maint') { bikeSeg = p; return tab('bike'); }
+    if (p === 'bike' || p === 'maint' || p === 'papers') { bikeSeg = p; return tab('bike'); }
     morePage = p; tab('more'); renderMore();
   };
   function renderGroupTab() {
@@ -616,9 +617,9 @@
   let bikeSeg = 'bike';
   function renderBike() {
     const v = $('#v-bike'), name = (OR.cfg.bike && OR.cfg.bike.name) || 'My bike';
-    v.innerHTML = '<h2 class="vh">' + esc(name) + '</h2><div class="seg big" id="bikeSeg"><button data-v="bike" class="' + (bikeSeg === 'bike' ? 'on' : '') + '">Bike and fuel</button><button data-v="maint" class="' + (bikeSeg === 'maint' ? 'on' : '') + '">Maintenance</button></div><div id="bikePage"></div>';
+    v.innerHTML = '<h2 class="vh">' + esc(name) + '</h2><div class="seg big" id="bikeSeg"><button data-v="bike" class="' + (bikeSeg === 'bike' ? 'on' : '') + '">Bike and fuel</button><button data-v="maint" class="' + (bikeSeg === 'maint' ? 'on' : '') + '">Maintenance</button><button data-v="papers" class="' + (bikeSeg === 'papers' ? 'on' : '') + '">Papers</button></div><div id="bikePage"></div>';
     $$('#bikeSeg button', v).forEach(b => b.onclick = () => { bikeSeg = b.dataset.v; renderBike(); });
-    (bikeSeg === 'maint' ? OR.pageMaint : OR.pageBike)($('#bikePage', v));
+    (bikeSeg === 'maint' ? OR.pageMaint : bikeSeg === 'papers' ? OR.pagePapers : OR.pageBike)($('#bikePage', v));
   }
   OR.renderBike = renderBike;
   function keep(box, id, obj, key, num, after) { const el = $('#' + id, box); el.onchange = () => { obj[key] = num ? (el.value === '' ? '' : parseFloat(el.value)) : el.value.trim(); OR.saveCfg(); if (after) after(); }; }
@@ -858,7 +859,7 @@
     sheet('<h2>Ride options</h2><div class="tiles">' +
       (r ? '<button class="tile" id="roSkip">' + badge('skip', '#ff6a1f') + '<span>Skip next stop</span></button><button class="tile" id="roView">' + badge('map', '#1e88e5') + '<span>Route overview</span></button><button class="tile" id="roWx">' + badge('cloud', '#1e88e5') + '<span>Weather ahead</span></button>' : '') +
       '<button class="tile" id="roFuel">' + badge('fuel', '#e53935') + '<span>Fuel nearby</span></button><button class="tile" id="roCafe">' + badge('cup', '#8d5a3b') + '<span>Cafés nearby</span></button><button class="tile" id="roStay">' + badge('bed', '#7e57c2') + '<span>Stays nearby</span></button>' +
-      (OR.group && OR.group.state.on ? '<button class="tile" id="roGroup">' + badge('group', '#e53935') + '<span>Group</span></button><button class="tile" id="roChat">' + badge('chat', '#0e9f57') + '<span>Group chat</span></button>' : '') + '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button></div>' +
+      (OR.group && OR.group.state.on ? '<button class="tile" id="roGroup">' + badge('group', '#e53935') + '<span>Group</span></button><button class="tile" id="roChat">' + badge('chat', '#0e9f57') + '<span>Group chat</span></button>' : '') + '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button><button class="tile" id="roPapers">' + badge('id', '#00897b') + '<span>My papers</span></button><button class="tile" id="roSpeedo">' + badge('lean', '#1565c0') + '<span>Speedo check</span></button></div>' +
       (OR.ride.leanL || OR.ride.leanR ? '<p class="small muted">Lean so far: ' + Math.round(OR.ride.leanL) + '° left, ' + Math.round(OR.ride.leanR) + '° right (estimated).</p>' : ''), b => {
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();
@@ -873,6 +874,8 @@
       on('roFuel', () => findNearby('fuel', here())); on('roCafe', () => findNearby('cafe', here())); on('roStay', () => findNearby('stay', here()));
       on('roIce', () => sheet('<div class="ice"><pre>' + esc(OR.iceText()) + '</pre></div>'));
       on('roFill', () => OR.fillUpSheet());
+      on('roPapers', () => OR.showPapers());
+      on('roSpeedo', () => OR.speedoSheet());
       on('roGroup', () => OR.groupSheet());
       on('roChat', () => OR.openChat());
     });

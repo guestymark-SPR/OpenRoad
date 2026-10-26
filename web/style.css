@@ -650,3 +650,23 @@ body.menu-2 .grppill{top:calc(80px + var(--safe-t))}
 .grppill.alert span,.grppill.alert b{color:#15191c}
 #radarChip{top:calc(122px + var(--safe-t));z-index:21}
 body.riding #radarChip{top:calc(150px + var(--safe-t))}
+
+/* ---------- papers, passes, speedo ---------- */
+.ppthumb{flex:0 0 46px;width:46px;height:46px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;overflow:hidden;color:#00897b}
+.ppthumb img{width:100%;height:100%;object-fit:cover}
+.menu small i{font-style:normal;font-weight:700}.menu small i.over{color:var(--bad)}.menu small i.soon{color:var(--warn)}.menu small i.ok{color:var(--ok)}
+.ppgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.pph{aspect-ratio:4/3;border-radius:12px;border:0;padding:0;overflow:hidden;background:var(--surface-2)}.pph img{width:100%;height:100%;object-fit:cover;display:block}
+.pph.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px dashed var(--line);color:var(--ink-2);font-size:13px;font-weight:700;cursor:pointer}
+.ppbig{width:100%;border-radius:12px;display:block;touch-action:pinch-zoom}
+#ppFull{position:fixed;inset:0;z-index:60;background:#fff;color:#111;overflow:auto}
+#ppFull .ppscroll{padding:12px 12px 40px;display:flex;flex-direction:column;gap:18px}
+#ppFull figure{margin:0}#ppFull img{width:100%;display:block;border-radius:8px}#ppFull figcaption{font-size:18px;padding:6px 2px}
+#ppFull .ppx{position:fixed;top:calc(10px + var(--safe-t));right:10px;width:52px;height:52px;border-radius:26px;border:0;background:#15191c;color:#fff;display:flex;align-items:center;justify-content:center;z-index:2}
+#ppFull .ppx svg{stroke:#fff}
+.passes{border-radius:14px;padding:10px 12px;margin:8px 0;background:color-mix(in srgb,#5d6d7e 10%,var(--surface));border:1.5px solid color-mix(in srgb,#5d6d7e 35%,var(--line))}
+.passes>b{display:flex;gap:6px;align-items:center}.passes svg{width:20px;height:20px}.passes ul{margin:6px 0 2px;padding-left:20px}
+.sp-live{display:flex;flex-direction:column;align-items:center;padding:12px;border-radius:16px;background:var(--surface-2);margin:8px 0}
+.sp-live b{font-size:44px;line-height:1.1}.sp-live small{color:var(--ink-2)}.sp-live.ok{box-shadow:inset 0 0 0 3px var(--green)}
+.sp-keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sp-keys button{min-height:64px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:24px;font-weight:800}

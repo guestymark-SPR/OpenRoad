@@ -66,6 +66,7 @@
       OR.group.chatSeen();
       return OR.say(last.length ? last.map(x => x.n + ' said: ' + (x.x || 'shared their location')).join('. ') : 'No messages yet.');
     }
+    if ((m = s.match(/speedo(?: says| reads| shows| is)?\s+(\d{2,3})/))) { const r = OR.speedoRecord(+m[1]); return OR.say(r.error ? r.error : 'Saved. GPS says ' + Math.round(r.pair.gps) + '.'); }
     // places
     if (/\b(fuel|petrol|diesel station|gas station|filling station)\b/.test(s) && /find|need|where|nearest|get|look/.test(s)) return find('fuel', 'fuel');
     if (/\b(coffee|cafe|café|food|eat|tea|lunch|breakfast)\b/.test(s) && !/tell|message/.test(s)) return find('cafe', 'a café');

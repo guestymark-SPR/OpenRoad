@@ -163,4 +163,38 @@
     await Promise.all(roads.map(async g => { const n = await OR.reverseName(g.mid[0], g.mid[1]).catch(() => null); g.name = g.kind + (n ? ' near ' + n.split(',')[0] : ''); }));
     return roads;
   };
+
+  // ---------- mountain passes and hairpins on a route ----------
+  // hairpins: where the road turns back on itself (150° or more within about 100 m), away from junctions
+  OR.hairpins = function (route) {
+    const pts = OR.resample(route.shape, 10), out = [], cum = OR.cumulative(pts);
+    const junc = (route.man || []).map(m => m.at);
+    const nearJunction = d => junc.some(a => Math.abs(a - d) < 35);
+    const h = []; for (let i = 1; i < pts.length; i++) h.push(OR.bearing(pts[i - 1], pts[i]));
+    for (let i = 0; i < h.length - 2; i++) {
+      let turn = 0, sign = 0, j = i + 1;
+      for (; j < h.length && cum[j] - cum[i] <= 100; j++) {
+        let d = h[j] - h[j - 1]; d = ((d + 540) % 360) - 180;
+        if (Math.abs(d) > 60) { turn = 0; break; } // a sharp corner in the data, not a bend
+        turn += d; if (!sign && Math.abs(turn) > 20) sign = Math.sign(turn);
+      }
+      if (Math.abs(turn) >= 150 && !nearJunction(cum[i])) {
+        out.push({ at: cum[Math.floor((i + j) / 2)], p: pts[Math.floor((i + j) / 2)], dir: turn > 0 ? 'right' : 'left' });
+        while (i < h.length - 1 && cum[i] - out[out.length - 1].at < 60) i++; // skip past this one
+      }
+    }
+    return out;
+  };
+  OR.passesAlong = async function (route) {
+    const sample = OR.resample(route.shape, 1500);
+    const coords = sample.map(p => p[1].toFixed(5) + ',' + p[0].toFixed(5)).join(',');
+    const els = await OR.overpassRaw('[out:json][timeout:60];node["mountain_pass"="yes"](around:150,' + coords + ');out;');
+    const seen = {};
+    return els.map(e => {
+      let best = { d: 1e12, i: 0, t: 0 };
+      for (let i = 0; i < route.shape.length - 1; i++) { const r = OR.projSeg([e.lon, e.lat], route.shape[i], route.shape[i + 1]); if (r.d < best.d) best = { d: r.d, i, t: r.t }; }
+      const t = e.tags || {};
+      return { name: t.name || t['name:en'] || 'Mountain pass', ele: parseFloat(t.ele) || null, lng: e.lon, lat: e.lat, off: best.d, at: route.cum[best.i] + best.t * (route.cum[best.i + 1] - route.cum[best.i]) };
+    }).filter(p => p.off < 120 && !seen[p.name] && (seen[p.name] = 1)).sort((a, b) => a.at - b.at);
+  };
 })(window.OR);

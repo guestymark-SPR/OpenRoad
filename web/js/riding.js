@@ -169,4 +169,47 @@
     OR.toast(l.length + ' rough spots on the map. Red are the worst jolts.', 5000);
   };
   OR.roughOn = () => !!(OR.map && OR.map.getLayer('rough'));
+
+  // ---------- speedo check ----------
+  // While you hold a steady speed, tap (or say) what the speedo shows. OpenRoad compares it with GPS speed.
+  const recent = [];
+  OR.on('fix', p => { recent.push({ v: p.speed, acc: p.acc, t: p.t || Date.now() }); while (recent.length > 10) recent.shift(); });
+  OR.speedoList = () => OR.store.get('speedo', []);
+  OR.speedoSteady = function () {
+    const now = Date.now(), last = recent.filter(x => now - x.t < 6000 && x.v != null);
+    if (last.length < 4) return { ok: false, why: 'Waiting for GPS speed' };
+    const vs = last.map(x => x.v), avg = vs.reduce((a, b) => a + b, 0) / vs.length, spread = Math.max(...vs) - Math.min(...vs);
+    if (avg < 6.7) return { ok: false, why: 'Go a bit faster: over 15 mph' };
+    if (spread > 1.2) return { ok: false, why: 'Hold a steady speed for a few seconds', avg };
+    if (last.some(x => x.acc > 20)) return { ok: false, why: 'GPS isn\'t accurate enough here', avg };
+    return { ok: true, avg };
+  };
+  // speedo reading in your units; returns the saved pair or an error
+  OR.speedoRecord = function (shown) {
+    const s = OR.speedoSteady(); if (!s.ok) return { error: s.why };
+    const k = OR.cfg.units === 'km' ? 3.6 : 2.236936, gps = s.avg * k;
+    const pair = { speedo: shown, gps: Math.round(gps * 10) / 10, unit: OR.cfg.units === 'km' ? 'km/h' : 'mph', t: Date.now() };
+    if (Math.abs(shown - gps) / gps > 0.25) return { error: 'That\'s more than 25% from GPS speed (' + Math.round(gps) + '). Try again when steady.' };
+    const l = OR.speedoList();
+    if (l.length && Date.now() - l[l.length - 1].t < 20000) return { error: 'Got that one. Wait 20 seconds, ideally at a different speed, then take the next.' };
+    l.push(pair); OR.store.set('speedo', l.slice(-40));
+    return { pair };
+  };
+  OR.speedoResult = function () {
+    const l = OR.speedoList(); if (l.length < 3) return null;
+    const errs = l.map(x => (x.speedo - x.gps) / x.gps), avg = errs.reduce((a, b) => a + b, 0) / errs.length;
+    const sd = Math.sqrt(errs.reduce((a, b) => a + (b - avg) * (b - avg), 0) / errs.length);
+    return { pct: avg * 100, n: l.length, sd: sd * 100 };
+  };
+  OR.speedoSheet = function () {
+    const mph = OR.cfg.units !== 'km', vals = mph ? [20, 30, 40, 50, 60, 70, 80] : [30, 50, 60, 70, 80, 90, 100, 110, 120];
+    OR.sheet('<h2>' + ic('lean') + 'Speedo check</h2><p class="small">Hold a steady speed, then tap the number your speedo shows. A pillion can do it, or say "speedo 50".</p>' +
+      '<div class="sp-live"><span>GPS speed</span><b id="spGps">–</b><small id="spWhy"></small></div><div class="sp-keys">' + vals.map(v => '<button data-sp="' + v + '">' + v + '</button>').join('') + '</div>' +
+      '<p class="small muted" id="spRes"></p>', b => {
+      const upd = () => { if (!document.body.contains(b) || !$('#spGps', b)) return clearInterval(iv); const s = OR.speedoSteady(); $('#spGps', b).textContent = s.avg ? Math.round(s.avg * (mph ? 2.236936 : 3.6)) + ' ' + OR.speedUnit() : '–'; $('#spWhy', b).textContent = s.ok ? 'Steady: tap your speedo reading' : s.why; b.querySelector('.sp-live').classList.toggle('ok', s.ok); };
+      const res = () => { const r = OR.speedoResult(); $('#spRes', b).textContent = r ? 'So far: your speedo reads ' + Math.abs(r.pct).toFixed(1) + '% ' + (r.pct >= 0 ? 'high' : 'low') + ' (' + r.n + ' readings).' : OR.speedoList().length + ' of 3 readings needed.'; };
+      const iv = setInterval(upd, 700); upd(); res();
+      $$('[data-sp]', b).forEach(x => x.onclick = () => { const r = OR.speedoRecord(+x.dataset.sp); if (r.error) { OR.toast(r.error, 5000); return; } OR.toast('Saved: speedo ' + r.pair.speedo + ', GPS ' + Math.round(r.pair.gps)); res(); });
+    });
+  };
 })(window.OR);

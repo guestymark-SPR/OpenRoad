@@ -144,7 +144,14 @@
   };
 
   // ---------- the page ----------
+  function speedoCard() {
+    const r = OR.speedoResult(), n = OR.speedoList().length;
+    return '<div class="card"><b>' + OR.ic('lean') + ' Speedo check</b><p class="small">' + (r ? 'Your speedo reads <b>' + Math.abs(r.pct).toFixed(1) + '% ' + (r.pct >= 0 ? 'high' : 'low') + '</b>, from ' + r.n + ' readings' + (r.sd > 3 ? ' (they vary quite a bit: a few more will make it surer)' : '') + '. At an indicated ' + (OR.cfg.units === 'km' ? '100 km/h you\'re doing about ' + Math.round(100 / (1 + r.pct / 100)) + ' km/h' : '70 mph you\'re doing about ' + Math.round(70 / (1 + r.pct / 100)) + ' mph') + '.' :
+      'Compare your speedo with GPS' + (n ? ': ' + n + ' of 3 readings so far' : '') + '. While riding steadily, open Ride options, Speedo check, and tap what the speedo shows (or say "speedo 50").') + '</p>' +
+      (n ? '<button class="btn small ghost" id="spReset">Start again</button>' : '') + '</div>';
+  }
   OR.pageBike = function (box) {
+    setTimeout(() => { const el = document.createElement('div'); el.innerHTML = speedoCard(); box.appendChild(el); const rs = el.querySelector('#spReset'); if (rs) rs.onclick = () => { if (confirm('Clear your speedo readings?')) { OR.store.set('speedo', []); OR.pageBike(box); } }; }, 0);
     const b = OR.cfg.bike, prof = OR.BIKES[b.profile], range = OR.fuelRange(), left = OR.fuelLeft();
     const lm = OR.learnedMpg(), pace = OR.pace(), brk = OR.breaks(), mm = OR.monthlyMiles(), costs = OR.runningCosts();
     let h = '<div id="bikePage"></div>';

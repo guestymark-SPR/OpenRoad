@@ -19,6 +19,12 @@
         (avoidable.length ? '<button class="btn small" id="lezAvoid">Avoid ' + (avoidable.length > 1 ? 'them' : 'it') + '</button>' : '') + '</div>';
     } else if (c.zones) h += OR.plan.avoidZones && OR.plan.avoidZones.length ? '' : '';
     if (OR.plan.avoidZones && OR.plan.avoidZones.length) h += '<div class="card okc"><b>Avoiding low-emission zones</b><p class="small">Routes go round ' + OR.plan.avoidZones.length + ' zone' + (OR.plan.avoidZones.length > 1 ? 's' : '') + '.</p><button class="btn small ghost" id="lezUndo">Stop avoiding</button></div>';
+    if (c.passes && c.passes.length || c.pins && c.pins.length) {
+      const pins = c.pins || [];
+      h += '<div class="passes"><b>' + ic('pass') + (c.passes.length ? c.passes.length + ' mountain pass' + (c.passes.length > 1 ? 'es' : '') : 'No mountain passes') + (pins.length ? ', ' + pins.length + ' hairpin' + (pins.length > 1 ? 's' : '') : '') + '</b>' +
+        (c.passes.length ? '<ul>' + c.passes.map(p => '<li><b>' + esc(p.name) + '</b>' + (p.ele ? ', ' + OR.fmtHeight(p.ele) : '') + ' <span class="small muted">at ' + OR.fmtDist(p.at) + '</span></li>').join('') + '</ul>' : '') +
+        (pins.length ? '<p class="small muted">Hairpins counted from the shape of the route: bends that turn back on themselves.</p>' : '') + '</div>';
+    }
     const gh = OR.goldenHour(r, OR.plan.depart ? new Date(OR.plan.depart) : new Date());
     if (gh) {
       const late = gh.leave < new Date() && (!OR.plan.depart || new Date(OR.plan.depart).toDateString() === new Date().toDateString());
@@ -57,8 +63,10 @@
     if (!c.done && !c.loading) {
       c.loading = true;
       html = render(r, c); paint();
-      const [z, e] = await Promise.all([OR.zonesAlong(r).catch(() => null), OR.elevationAlong(r).catch(err => { c.elevErr = err.message; return null; })]);
-      c.zones = z; c.elev = e; c.loading = false; c.done = true; r.zones = z; r.elev = e;
+      const [z, e, ps] = await Promise.all([OR.zonesAlong(r).catch(() => null), OR.elevationAlong(r).catch(err => { c.elevErr = err.message; return null; }), OR.passesAlong(r).catch(() => [])]);
+      c.zones = z; c.elev = e; c.passes = ps; c.pins = OR.hairpins(r); r.passes = ps; r.hairpins = c.pins.length;
+      // a pass with no height recorded gets it from the elevation profile
+      if (e) ps.forEach(p => { if (p.ele == null) { let k = 0; e.cum.forEach((d, i) => { if (Math.abs(d - p.at) < Math.abs(e.cum[k] - p.at)) k = i; }); p.ele = Math.round(e.h[k]); p.eleFromProfile = true; } }); c.loading = false; c.done = true; r.zones = z; r.elev = e;
     }
     // rain on each option, once per set of options
     const opts = OR.plan.options.slice();
