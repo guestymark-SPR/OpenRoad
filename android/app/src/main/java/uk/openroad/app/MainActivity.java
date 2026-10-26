@@ -262,6 +262,25 @@ public class MainActivity extends Activity {
                 return "data:image/png;base64," + android.util.Base64.encodeToString(o.toByteArray(), android.util.Base64.NO_WRAP);
             } catch (Exception e) { return ""; }
         }
+        // a GPX for another app (Beeline): saved to Downloads/OpenRoad, then opened with the app the rider picks
+        @JavascriptInterface public void openGpx(String name, String text) {
+            try {
+                byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+                if (Build.VERSION.SDK_INT < 29) { saveFile(name, text); toast("Saved to Downloads. Open it from Beeline: Plan ride, Options, Import GPX route."); return; }
+                ContentValues v = new ContentValues();
+                v.put(MediaStore.MediaColumns.DISPLAY_NAME, name);
+                v.put(MediaStore.MediaColumns.MIME_TYPE, "application/gpx+xml");
+                v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/OpenRoad");
+                final Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                if (uri == null) throw new Exception("no storage");
+                try (OutputStream o = getContentResolver().openOutputStream(uri)) { o.write(bytes); }
+                runOnUiThread(() -> {
+                    Intent i = new Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/gpx+xml").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    try { startActivity(Intent.createChooser(i, "Open with Beeline")); }
+                    catch (Exception e) { toast("Saved to Downloads/OpenRoad/" + name + ". Open it from Beeline: Plan ride, Options, Import GPX route."); }
+                });
+            } catch (Exception e) { toast("Could not save the route: " + e.getMessage()); }
+        }
         @JavascriptInterface public void shareText(String text, String title) {
             runOnUiThread(() -> {
                 Intent i = new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text).putExtra(Intent.EXTRA_SUBJECT, title);

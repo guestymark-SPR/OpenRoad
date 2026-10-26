@@ -688,3 +688,6 @@ body.riding #radarChip{top:calc(150px + var(--safe-t))}
 }
 .dmapbtn{margin-left:auto;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--ink-2)}
 .dmapbtn.on{background:var(--green);color:#fff;border-color:var(--green)}.dmapbtn svg{width:20px;height:20px}
+
+.besttime{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;border-radius:14px;padding:10px 12px;margin:8px 0;background:color-mix(in srgb,#0e9f57 10%,var(--surface));border:1.5px solid color-mix(in srgb,#0e9f57 40%,var(--line))}
+.besttime>b{display:flex;gap:6px;align-items:center;width:100%}.besttime svg{width:20px;height:20px}.besttime span{flex:1;font-size:14px}

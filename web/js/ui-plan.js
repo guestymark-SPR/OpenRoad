@@ -25,6 +25,12 @@
         (c.passes.length ? '<ul>' + c.passes.map(p => '<li><b>' + esc(p.name) + '</b>' + (p.ele ? ', ' + OR.fmtHeight(p.ele) : '') + ' <span class="small muted">at ' + OR.fmtDist(p.at) + '</span></li>').join('') + '</ul>' : '') +
         (pins.length ? '<p class="small muted">Hairpins counted from the shape of the route: bends that turn back on themselves.</p>' : '') + '</div>';
     }
+    if (c.best) {
+      const b = c.best, same = b.from === b.to, nowBest = b.from <= Date.now() + 15 * 60000;
+      h += '<div class="besttime"><b>' + ic('time') + 'Best time to leave</b><span><b>' + (nowBest ? 'Now' + (same ? '' : ' to ' + OR.clock(new Date(b.to))) : OR.clock(new Date(b.from)) + (same ? '' : ' to ' + OR.clock(new Date(b.to)))) + '</b>: ' + esc(OR.describeWeather(b.best)) + '.' +
+        (!nowBest ? ' Leaving now: ' + esc(OR.describeWeather(b.now)) + '.' : '') + (b.laterWet ? ' Showers likely if you leave after ' + OR.clock(new Date(b.laterWet)) + '.' : '') + '</span>' +
+        (!nowBest ? '<button class="btn small" id="btSet">Leave at ' + OR.clock(new Date(b.from)) + '</button>' : '') + '</div>';
+    }
     const gh = OR.goldenHour(r, OR.plan.depart ? new Date(OR.plan.depart) : new Date());
     if (gh) {
       const late = gh.leave < new Date() && (!OR.plan.depart || new Date(OR.plan.depart).toDateString() === new Date().toDateString());
@@ -48,6 +54,7 @@
     return h;
   }
   function bind() {
+    const bt = $('#btSet'); if (bt) bt.onclick = () => { const c = cache[sig(cur)]; if (!c || !c.best) return; OR.plan.depart = c.best.from; OR.toast('Leave time set to ' + OR.clock(new Date(c.best.from))); OR.emit('departChanged', new Date(c.best.from)); };
     const gs = $('#ghSet'); if (gs) gs.onclick = () => { const gh = OR.goldenHour(cur, OR.plan.depart ? new Date(OR.plan.depart) : new Date()); if (!gh) return; OR.plan.depart = gh.leave.getTime(); OR.toast('Leave time set to ' + OR.clock(gh.leave)); OR.emit('departChanged', gh.leave); };
     const dp = $('#dryPick'); if (dp) dp.onclick = () => { const c = cache[sig(cur)]; if (!c || !c.rain) return; const best = c.rain.reduce((b, x, i) => x && (b < 0 || x.score < c.rain[b].score) ? i : b, -1); if (best >= 0 && OR.chooseOption) OR.chooseOption(best); };
     const a = $('#lezAvoid'); if (a) a.onclick = () => {
@@ -68,6 +75,7 @@
       // a pass with no height recorded gets it from the elevation profile
       if (e) ps.forEach(p => { if (p.ele == null) { let k = 0; e.cum.forEach((d, i) => { if (Math.abs(d - p.at) < Math.abs(e.cum[k] - p.at)) k = i; }); p.ele = Math.round(e.h[k]); p.eleFromProfile = true; } }); c.loading = false; c.done = true; r.zones = z; r.elev = e;
     }
+    if (!c.best && !c.bestBusy && OR.online()) { c.bestBusy = true; c.best = await OR.bestTime(r).catch(() => null); if (cur === r) { html = render(r, c); paint(); } }
     // rain on each option, once per set of options
     const opts = OR.plan.options.slice();
     if (opts.length > 1 && !c.rain && !c.rainBusy) {
