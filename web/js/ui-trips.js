@@ -29,25 +29,51 @@
   }
 
   function tripForm(t) {
+    const cc = t.fuelCountry || 'FR';
     return OR.field('tName', 'Trip name', t.name, 'text', 'e.g. Ardennes 2027') +
       '<div class="two">' + OR.field('tStart', 'First day', t.start, 'date') + OR.field('tRiders', 'Riders sharing costs', t.riders, 'number') + '</div>' +
-      '<div class="two">' + OR.field('tFuelG', 'Fuel price in the UK (£ a litre)', t.fuelGBP, 'number', 'e.g. 1.45') + OR.field('tFuelE', 'Fuel price abroad (€ a litre)', t.fuelEUR, 'number', 'e.g. 1.80') + '</div>' +
-      OR.field('tRate', 'Euro rate: £ for €1 (to show one total)', t.eurRate, 'number', 'e.g. 0.85') +
-      '<p class="small muted">Prices are whatever you enter: fuel, ferry and hotel prices change too often to fill in for you.</p>';
+      '<div class="pricebox"><div class="pb-h"><b>Fuel and euro</b><button class="btn small yellow" id="tPrices" type="button">' + OR.ic('update') + (t.priceStamp ? 'Update to today\'s prices' : 'Fill in today\'s prices') + '</button></div>' +
+      '<label class="f"><span>Fuel abroad: prices for</span><select id="tCountry">' + Object.keys(OR.EU_NAMES).map(k => '<option value="' + k + '"' + (k === cc ? ' selected' : '') + '>' + OR.EU_NAMES[k] + '</option>').join('') + '</select></label>' +
+      '<div class="two">' + OR.field('tFuelG', 'UK unleaded (£ a litre)', t.fuelGBP, 'number', 'e.g. 1.45') + OR.field('tFuelE', 'Abroad (€ a litre)', t.fuelEUR, 'number', 'e.g. 1.80') + '</div>' +
+      OR.field('tRate', 'Euro rate: £ for €1', t.eurRate, 'number', 'e.g. 0.85') +
+      '<p class="small stamp" id="tStamp">' + esc(t.priceStamp ? OR.priceStamp(t.priceStamp) : 'Press the button for today\'s official average prices and exchange rate, or type your own.') + '</p></div>' +
+      '<p class="small muted">Ferry and hotel prices are whatever you enter.</p>';
   }
   function readForm(b, t) {
     t.name = $('#tName', b).value.trim() || 'My trip'; t.start = $('#tStart', b).value || t.start;
     t.riders = Math.max(1, parseInt($('#tRiders', b).value, 10) || 1);
-    t.fuelGBP = $('#tFuelG', b).value; t.fuelEUR = $('#tFuelE', b).value; t.eurRate = $('#tRate', b).value;
+    t.fuelGBP = $('#tFuelG', b).value; t.fuelEUR = $('#tFuelE', b).value; t.eurRate = $('#tRate', b).value; t.fuelCountry = $('#tCountry', b).value;
+  }
+  // fills the price fields from today's official averages and stamps when it was done
+  function bindPrices(b, t) {
+    const btn = $('#tPrices', b);
+    const go = async () => {
+      btn.disabled = true; const was = btn.innerHTML; btn.textContent = 'Getting prices…';
+      try {
+        const p = await OR.todaysPrices($('#tCountry', b).value);
+        if (p.gbp != null) $('#tFuelG', b).value = p.gbp.toFixed(3);
+        if (p.eur != null) $('#tFuelE', b).value = p.eur.toFixed(3);
+        if (p.rate != null) $('#tRate', b).value = p.rate;
+        t.priceStamp = { at: Date.now(), ukWeek: p.ukWeek, euDate: p.euDate, country: p.country, rateDate: p.rateDate };
+        t.fuelCountry = p.country;
+        $('#tStamp', b).textContent = OR.priceStamp(t.priceStamp);
+        if (p.rate == null) OR.toast('Fuel prices filled in. The euro rate couldn\'t be fetched: type it in', 6000);
+      } catch (e) { OR.toast('Couldn\'t get today\'s prices (' + e.message + '). ' + (OR.online() ? '' : 'You need a signal. ') + 'You can type them in.', 7000); }
+      btn.disabled = false; btn.innerHTML = was;
+    };
+    btn.onclick = go;
+    $('#tCountry', b).onchange = () => { t.fuelCountry = $('#tCountry', b).value; if (t.priceStamp) go(); };
   }
   function newTrip() {
     const t = { name: '', start: OR.isoDate(new Date(Date.now() + 7 * 864e5)), riders: 1, fuelGBP: '', fuelEUR: '', eurRate: '' };
     OR.sheet('<h2>New trip</h2>' + tripForm(t) + '<button class="btn wide pri" id="tGo">Create trip</button>', b => {
+      bindPrices(b, t);
       $('#tGo', b).onclick = () => { readForm(b, t); const n = OR.trips.create(t); OR.closeSheet(); openId = n.id; render(); };
     });
   }
   function editTrip(t) {
     OR.sheet('<h2>Trip details</h2>' + tripForm(t) + '<button class="btn wide pri" id="tGo">Save</button>', b => {
+      bindPrices(b, t);
       $('#tGo', b).onclick = () => { readForm(b, t); save(t); OR.closeSheet(); render(); };
     });
   }
@@ -63,10 +89,11 @@
       '<dl><dt>Riding</dt><dd>' + OR.fmtDist(tot.dist) + ', ' + OR.fmtTime(tot.time) + '</dd><dt>Fuel</dt><dd>' + OR.money(tot.fuel, t) + (tot.litres ? ' (' + Math.round(tot.litres) + ' L)' : '') + '</dd>' +
       '<dt>Crossings</dt><dd>' + OR.money(tot.ferry, t) + '</dd><dt>Hotels</dt><dd>' + OR.money(tot.hotel, t) + '</dd><dt>Other</dt><dd>' + OR.money(tot.other, t) + '</dd></dl></div>';
     const notes = [];
-    if (!num(OR.cfg.bike.mpg)) notes.push('<button class="linkish" data-more="bike">Add your mpg</button> to work out fuel.');
+    if (!(OR.mpg && OR.mpg())) notes.push('<button class="linkish" data-more="bike">Add your mpg</button> to work out fuel.');
     else if (tot.missingFuel) notes.push('<button class="linkish" id="tFix">Add fuel prices</button> to cost the fuel.');
     if (tot.unplanned) notes.push(tot.unplanned + ' ride' + (tot.unplanned > 1 ? 's' : '') + ' still to plan.');
     if ((tot.all.EUR || 0) && (tot.all.GBP || 0) && !num(t.eurRate)) notes.push('<button class="linkish" id="tFix2">Add a euro rate</button> to see one total in pounds.');
+    if (t.priceStamp) h += '<p class="small stamp">' + OR.ic('fuel') + esc('Fuel ' + (t.fuelGBP ? '£' + t.fuelGBP : '') + (t.fuelEUR ? ' and €' + t.fuelEUR + ' in ' + (OR.EU_NAMES[t.fuelCountry] || 'Europe') : '') + (t.eurRate ? ', €1 = £' + t.eurRate : '') + '. ' + OR.priceStamp(t.priceStamp)) + ' <button class="linkish" id="tUpd">Update</button></p>';
     if (notes.length) h += '<div class="notes">' + notes.map(n => '<p>' + n + '</p>').join('') + '</div>';
 
     h += '<ol class="days">' + t.days.map((day, di) => dayHtml(t, day, di, c.days[di])).join('') + '</ol>';
@@ -133,7 +160,7 @@
   function bindTrip(v, t) {
     const on = (id, fn) => { const e = $('#' + id, v); if (e) e.onclick = fn; };
     on('tBack', () => { openId = null; render(); });
-    on('tEdit', () => editTrip(t)); on('tFix', () => editTrip(t)); on('tFix2', () => editTrip(t));
+    on('tEdit', () => editTrip(t)); on('tUpd', () => editTrip(t)); on('tFix', () => editTrip(t)); on('tFix2', () => editTrip(t));
     $$('[data-more]', v).forEach(b => b.onclick = () => OR.openMore(b.dataset.more));
     on('addDay', () => { t.days.push(OR.trips.blankDay()); save(t); render(); });
     on('tPdf', () => OR.printHtml(t.name, OR.tripHtml(t)));

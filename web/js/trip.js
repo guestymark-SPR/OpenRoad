@@ -29,7 +29,7 @@
 
   // ---------- fuel ----------
   OR.fuelRange = function () { // full-tank range in metres, or null if the bike isn't set up
-    const b = OR.cfg.bike, L = parseFloat(b.tankL), mpg = parseFloat(b.mpg);
+    const b = OR.cfg.bike, L = parseFloat(b.tankL), mpg = OR.mpg ? OR.mpg() : parseFloat(b.mpg);
     if (!(L > 0 && mpg > 0)) return null;
     return L / 4.54609 * mpg * OR.MI;
   };

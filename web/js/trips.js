@@ -67,7 +67,7 @@
   const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
   function add(m, cur, v) { if (!v) return; m[cur] = (m[cur] || 0) + v; }
   OR.tripCalc = function (trip) {
-    const mpg = num(OR.cfg.bike.mpg), days = [];
+    const days = [];
     const tot = { dist: 0, time: 0, litres: 0, fuel: {}, ferry: {}, hotel: {}, other: {}, all: {}, missingFuel: false, unplanned: 0 };
     trip.days.forEach((day, di) => {
       const d = { dist: 0, time: 0, litres: 0, fuel: {}, ferry: {}, hotel: {}, other: {}, all: {}, timeline: [] };
@@ -76,7 +76,9 @@
         if (s.kind === 'ride') {
           if (!s.route) { tot.unplanned++; d.timeline.push({ s, at: clock, none: true }); return; }
           const r = s.route; d.dist += r.dist; d.time += r.time;
-          d.timeline.push({ s, at: clock, until: clock + r.time / 60 }); clock += r.time / 60;
+          const myT = OR.myTime ? OR.myTime(r.time, true) : r.time; // at your pace, with your usual breaks
+          d.timeline.push({ s, at: clock, until: clock + myT / 60 }); clock += myT / 60;
+          const mpg = OR.mpgForRoute ? OR.mpgForRoute(r) : num(OR.cfg.bike.mpg);
           const mid = typeof r.shape === 'string' ? OR.decodePoly(r.shape, 6) : r.shape, p = mid[Math.floor(mid.length / 2)];
           const cur = s.fuelCur || (p && uk(p[0], p[1]) ? 'GBP' : 'EUR');
           if (mpg > 0) {
@@ -179,5 +181,35 @@
     if (OR.native && OR.native.printHtml) { OR.native.printHtml(title, html); return; }
     const w = window.open('', '_blank'); if (!w) { OR.toast('Allow pop-ups to print'); return; }
     w.document.write(html); w.document.close(); setTimeout(() => w.print(), 400);
+  };
+})(window.OR);
+
+/* Today's prices for a trip: official average fuel prices (published daily to the app's data file) and the ECB euro rate. */
+(function (OR) {
+  OR.FUEL_URL = 'https://github.com/guestymark-SPR/OpenRoad/releases/download/data/fuel.json';
+  OR.EU_NAMES = { FR: 'France', BE: 'Belgium', NL: 'Netherlands', LU: 'Luxembourg', DE: 'Germany', IE: 'Ireland', AT: 'Austria', IT: 'Italy', ES: 'Spain', PT: 'Portugal', DK: 'Denmark', SE: 'Sweden', FI: 'Finland', PL: 'Poland', CZ: 'Czechia', SI: 'Slovenia', HR: 'Croatia' };
+  async function euroRate() {
+    try { const j = await OR.json('https://api.frankfurter.app/latest?from=EUR&to=GBP'); if (j.rates && j.rates.GBP) return { rate: j.rates.GBP, date: j.date }; } catch (e) { }
+    const j = await OR.json('https://api.frankfurter.dev/v2/rate/eur/gbp'); return { rate: j.rate, date: j.date };
+  }
+  const nice = s => { if (!s) return ''; const m = String(s).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); const d = m ? new Date(+m[3], +m[2] - 1, +m[1]) : new Date(s + 'T12:00:00'); return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); };
+  OR.todaysPrices = async function (country) {
+    const [fuel, fx] = await Promise.all([OR.json(OR.FUEL_URL + '?t=' + Date.now()).catch(e => { throw new Error('fuel prices: ' + e.message); }), euroRate().catch(() => null)]);
+    const cc = country || 'FR', eu = fuel.eu && fuel.eu.prices || {};
+    return {
+      gbp: fuel.uk ? fuel.uk.unleaded_ppl / 100 : null, ukWeek: fuel.uk && fuel.uk.week,
+      eur: eu[cc] != null ? eu[cc] : null, euDate: fuel.eu && fuel.eu.date, country: cc, euAll: eu,
+      rate: fx ? Math.round(fx.rate * 10000) / 10000 : null, rateDate: fx && fx.date
+    };
+  };
+  // the stamp shown under the prices: when the button was pressed and how old each figure is
+  OR.priceStamp = function (s) {
+    if (!s || !s.at) return '';
+    const at = new Date(s.at);
+    const parts = [];
+    if (s.ukWeek) parts.push('UK unleaded: average for the week of ' + nice(s.ukWeek) + ' (UK government)');
+    if (s.euDate) parts.push((OR.EU_NAMES[s.country] || s.country) + ' Euro-super 95: average from the EU Weekly Oil Bulletin of ' + nice(s.euDate));
+    if (s.rateDate) parts.push('Euro rate: ' + nice(s.rateDate) + ' (European Central Bank)');
+    return 'Filled in ' + at.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + ' at ' + at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + '. ' + parts.join('. ') + '. Pump prices vary from these averages.';
   };
 })(window.OR);

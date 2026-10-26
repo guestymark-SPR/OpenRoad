@@ -53,7 +53,7 @@
       if (byDate) p.push('by ' + date);
       text = 'Next due ' + p.join(' or ');
     }
-    return { state: over ? 'over' : soon ? 'soon' : 'ok', text: text.charAt(0).toUpperCase() + text.slice(1) };
+    return { state: over ? 'over' : soon ? 'soon' : 'ok', text: text.charAt(0).toUpperCase() + text.slice(1), milesLeft: byMiles };
   };
   OR.docDue = function (dateStr) {
     if (!dateStr) return null;

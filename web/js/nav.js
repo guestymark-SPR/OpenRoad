@@ -88,7 +88,7 @@
     // travelled part in grey
     const done = route.shape.slice(0, ride.seg + 1); done.push([p.lng, p.lat]);
     OR.setData('done', { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: done } }] });
-    const eta = new Date(Date.now() + timeLeft(route, ride.along) * 1000);
+    const eta = new Date(Date.now() + (OR.myTime ? OR.myTime(timeLeft(route, ride.along)) : timeLeft(route, ride.along)) * 1000);
     OR.emit('ride', { m, next: route.man[k + 1], toTurn, remain, eta, k, limit: ride.limit });
     camera(p, toTurn);
   }
@@ -103,7 +103,7 @@
       ride.rerouting = true; OR.emit('rerouting', true); OR.say('Finding a new route');
       try {
         const r = await OR.rerouteFrom([p.lng, p.lat, p.heading], ride.route, ride.along);
-        ride.route = r; ride.seg = 0; ride.along = 0; ride.spoken = {}; ride.off = 0;
+        ride.predAcc += ride.route && ride.route.dist ? ride.route.time * Math.min(1, ride.along / ride.route.dist) : 0; ride.route = r; ride.seg = 0; ride.along = 0; ride.spoken = {}; ride.off = 0;
         OR.setData('route', { type: 'FeatureCollection', features: [OR.routeGeo(r)] });
         ride.limits = null; ride.cams = []; loadRideData(r);
         OR.emit('rerouted', r);
@@ -166,7 +166,7 @@
   }
   OR.startRide = function (route) {
     Object.assign(ride, { on: true, route: route || null, follow: true, seg: 0, along: 0, spoken: {}, off: 0, arrived: false, pts: [], times: [], dist: 0, moving: 0, max: 0, start: Date.now(), lastT: 0,
-      limits: route && route.limits || null, limit: null, cams: [], leanL: 0, leanR: 0, lean: 0 });
+      limits: route && route.limits || null, limit: null, cams: [], leanL: 0, leanR: 0, lean: 0, predAcc: 0 });
     if (OR.resetLean) OR.resetLean();
     if (route) loadRideData(route);
     OR.setData('done', null); OR.setData('track', null);
@@ -190,7 +190,7 @@
     ride.rerouting = true; OR.emit('rerouting', true);
     try {
       const nr = await OR.rerouteFrom([OR.pos.lng, OR.pos.lat, OR.pos.heading], copy, ride.along);
-      ride.route = nr; ride.seg = 0; ride.along = 0; ride.spoken = {}; ride.off = 0; ride.limits = null; ride.cams = [];
+      ride.predAcc += ride.route && ride.route.dist ? ride.route.time * Math.min(1, ride.along / ride.route.dist) : 0; ride.route = nr; ride.seg = 0; ride.along = 0; ride.spoken = {}; ride.off = 0; ride.limits = null; ride.cams = [];
       OR.setData('route', { type: 'FeatureCollection', features: [OR.routeGeo(nr)] }); loadRideData(nr);
       OR.say('Skipped ' + (name || 'the next stop')); OR.emit('rerouted', nr); return true;
     } catch (e) { OR.toast('Could not skip: ' + e.message, 5000); return false; }
@@ -212,7 +212,8 @@
     OR.store.set('rideInProgress', null);
     let saved = null;
     if (ride.pts.length > 5 && ride.dist > 200) {
-      saved = { id: OR.uid(), start: ride.start, end: Date.now(), dist: ride.dist, moving: ride.moving, max: ride.max, leanL: Math.round(ride.leanL), leanR: Math.round(ride.leanR),
+      ride.predAcc += ride.route && ride.route.dist ? ride.route.time * Math.min(1, ride.along / ride.route.dist) : 0; 
+      saved = { id: OR.uid(), start: ride.start, end: Date.now(), dist: ride.dist, moving: ride.moving, max: ride.max, pred: Math.round(ride.predAcc) || 0, leanL: Math.round(ride.leanL), leanR: Math.round(ride.leanR),
         name: ride.route ? ride.route.name : 'Ride on ' + new Date(ride.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }),
         pts: OR.encodePoly(ride.pts, 6), t0: ride.times[0], dt: ride.times.map((t, i) => i ? Math.round((t - ride.times[i - 1]) / 1000) : 0) };
       OR.rides.add(saved);

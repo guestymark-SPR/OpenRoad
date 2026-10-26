@@ -259,7 +259,7 @@
     if (planErr) h += '<p class="err">' + esc(planErr) + '</p>';
     if (OR.plan.options.length && planMode !== 'saved') {
       h += '<h3>Pick a route</h3><div class="opts">' + OR.plan.options.map((o, i) =>
-        '<button class="opt' + (i === OR.plan.choice ? ' on' : '') + '" data-i="' + i + '"><span class="opt-top"><b>' + esc(o.variant) + '</b><span class="nums">' + OR.fmtDist(o.dist) + '<i>' + OR.fmtTime(o.time) + '</i></span></span>' +
+        '<button class="opt' + (i === OR.plan.choice ? ' on' : '') + '" data-i="' + i + '"><span class="opt-top"><b>' + esc(o.variant) + '</b><span class="nums">' + OR.fmtDist(o.dist) + '<i>' + OR.fmtTime(OR.myTime ? OR.myTime(o.time) : o.time) + '</i></span></span>' +
         (o.roads && o.roads.length ? '<span class="refs">' + o.roads.map(chip).join('') + '</span>' : '') +
         '<span class="bend"><span class="bar"><i style="width:' + Math.min(100, Math.round(o.twist / 2.2)) + '%"></i></span>' + OR.bendLabel(o.twist) + (o.mwayPct ? ', ' + o.mwayPct + '% motorway' : ', no motorway') + '</span></button>').join('') + '</div>';
       h += OR.wxStripHtml ? OR.wxStripHtml() : '';
@@ -509,7 +509,7 @@
     const p = PAGES.find(x => x[0] === morePage);
     v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'More</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ bike: pageBike, maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
+    ({ bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
   }
   OR.openMore = p => { morePage = p; tab('more'); renderMore(); };
   function keep(box, id, obj, key, num, after) { const el = $('#' + id, box); el.onchange = () => { obj[key] = num ? (el.value === '' ? '' : parseFloat(el.value)) : el.value.trim(); OR.saveCfg(); if (after) after(); }; }
@@ -686,7 +686,7 @@
       }).catch(e => OR.toast('Weather unavailable: ' + e.message)));
       on('roFuel', () => findNearby('fuel', here())); on('roCafe', () => findNearby('cafe', here())); on('roStay', () => findNearby('stay', here()));
       on('roIce', () => sheet('<div class="ice"><pre>' + esc(OR.iceText()) + '</pre></div>'));
-      on('roFill', () => OR.filledUp());
+      on('roFill', () => OR.fillUpSheet());
     });
   }
 
