@@ -15,7 +15,7 @@
   // the area of the car screen not covered by Android Auto's cards (in CSS pixels)
   window.carInsets = function (l, t, r, b) {
     insets = { left: l, top: t, right: r, bottom: b };
-    const h = $('#hud'); h.style.left = (l + 16) + 'px'; h.style.bottom = (b + 16) + 'px';
+    const h = $('#hud'); h.style.right = (r + 16) + 'px'; h.style.bottom = (b + 16) + 'px';
     if (OR.map) OR.map.setPadding(insets);
   };
   window.carTheme = function (m) { OR.cfg.theme = m; OR.applyTheme(); };
