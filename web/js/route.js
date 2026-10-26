@@ -44,7 +44,8 @@
     return {
       locations: wps.map((w, i) => ({ lat: +w.lat.toFixed(6), lon: +w.lng.toFixed(6), type: i === 0 || i === wps.length - 1 || w.type === 'break' ? 'break' : 'through' })),
       costing: 'motorcycle', costing_options: costing(opts), units: OR.cfg.units === 'km' ? 'kilometers' : 'miles', language: 'en-GB',
-      alternates: opts.alternates || 0, id: 'openroad'
+      alternates: opts.alternates || 0, id: 'openroad',
+      exclude_polygons: OR.plan && OR.plan.avoidZones && OR.plan.avoidZones.length ? OR.plan.avoidZones : undefined
     };
   }
   function valhalla(path, b) {

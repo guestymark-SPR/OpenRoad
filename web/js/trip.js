@@ -5,7 +5,7 @@
   // the main Overpass server is often busy; these public mirrors serve the same OpenStreetMap data
   const OVERPASS = ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'];
 
-  async function overpass(q) {
+  async function overpass(q, raw) {
     let last = null;
     for (const url of OVERPASS) {
       try {
@@ -14,12 +14,13 @@
         try { j = JSON.parse(t); } catch (e) { throw new Error('the server sent an error page'); }
         // Overpass reports overload and timeouts as a "remark" with no results
         if (j.remark && !(j.elements || []).length && /error|timeout|runtime|memory/i.test(j.remark)) throw new Error(j.remark.slice(0, 120));
-        return parse(j);
+        return raw ? (j.elements || []) : parse(j);
       } catch (e) { last = e; }
     }
     throw new Error((last && last.message ? last.message.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 140) : 'no answer') + (OR.online() ? '' : ' (no signal)'));
   }
   OR.overpass = overpass;
+  OR.overpassRaw = q => overpass(q, true);
   function parse(j) {
     return (j.elements || []).map(e => {
         const t = e.tags || {}, lat = e.lat != null ? e.lat : e.center && e.center.lat, lng = e.lon != null ? e.lon : e.center && e.center.lon;

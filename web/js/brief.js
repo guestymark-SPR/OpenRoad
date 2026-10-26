@@ -96,7 +96,9 @@
     const b = { route, dep, arrive, sunset: sunE && sunE.set, sunrise: sunS && sunS.rise, dark, errors: {} };
     const tasks = {
       wx: OR.weatherAlong(route, dep), hazards: OR.hazardsAlong(route), countries: OR.routeCountries(route),
-      cams: OR.camerasAlong ? OR.camerasAlong(route) : Promise.resolve([]), traffic: OR.trafficAlong(route)
+      cams: OR.camerasAlong ? OR.camerasAlong(route) : Promise.resolve([]), traffic: OR.trafficAlong(route),
+      zones: route.zones !== undefined ? Promise.resolve(route.zones) : OR.zonesAlong ? OR.zonesAlong(route) : Promise.resolve(null),
+      elev: route.elev ? Promise.resolve(route.elev) : OR.elevationAlong ? OR.elevationAlong(route) : Promise.resolve(null)
     };
     await Promise.all(Object.keys(tasks).map(k => tasks[k].then(v => { b[k] = v; }).catch(e => { b[k] = null; b.errors[k] = e.message; })));
     b.countries = b.countries || []; if (!b.countries.length) b.countries = OR.inUK(st[0], st[1]) ? ['GB'] : [];
@@ -107,6 +109,8 @@
     if (route.twist >= 170) b.warnings.push('Very bendy route: take it steady until you know the roads');
     if (route.hasFerry) b.warnings.push('The route includes a ferry');
     if (route.hasToll) b.warnings.push('The route includes toll roads');
+    (b.zones || []).forEach(z => b.warnings.push('Passes through ' + z.name + ' (low-emission zone): check whether motorbikes need a sticker or registration'));
+    if (b.elev && b.elev.steep >= 15) b.warnings.push('Steep in places: about ' + Math.round(b.elev.steep) + '% at the steepest');
     return b;
   };
 

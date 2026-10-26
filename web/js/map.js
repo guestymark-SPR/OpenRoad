@@ -143,7 +143,7 @@
 
   // ---------- overlays (route, alternatives, ride track, points of interest) ----------
   const EMPTY = { type: 'FeatureCollection', features: [] };
-  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY };
+  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY };
   OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); };
   function addOverlays() {
     const m = OR.map, night = m.__mode === 'night';
@@ -163,6 +163,8 @@
     L({ id: 'ov-wx', type: 'symbol', source: 'ov-wx', layout: { 'icon-image': 'pin-wx', 'icon-anchor': 'bottom', 'icon-size': z([6, 0.7, 12, 0.9]), 'icon-allow-overlap': true,
       'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-anchor': 'top', 'text-offset': [0, 0.2], 'text-allow-overlap': true },
       paint: { 'text-color': '#fff', 'text-halo-color': '#1e88e5', 'text-halo-width': 2.4 } });
+    L({ id: 'ov-great', type: 'line', source: 'ov-great', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#8e24aa', 'line-width': z([8, 4, 14, 10]), 'line-opacity': 0.75 } });
+    L({ id: 'ov-great-t', type: 'symbol', source: 'ov-great', layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 13 }, paint: { 'text-color': '#fff', 'text-halo-color': '#8e24aa', 'text-halo-width': 2.2 } });
     L({ id: 'ov-meet', type: 'symbol', source: 'ov-meet', layout: { 'icon-image': 'pin-meet', 'icon-anchor': 'bottom', 'icon-size': 1.15, 'icon-allow-overlap': true,
       'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-anchor': 'top', 'text-offset': [0, 0.2], 'text-allow-overlap': true },
       paint: { 'text-color': '#fff', 'text-halo-color': '#d81b60', 'text-halo-width': 2.4 } });

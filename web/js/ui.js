@@ -131,9 +131,11 @@
     const c = OR.cfg;
     sheet('<h2>Map</h2><div class="seg big" id="mt"><button data-v="road" class="' + (c.mapType !== 'satellite' ? 'on' : '') + '">' + ic('map') + 'Road</button><button data-v="satellite" class="' + (c.mapType === 'satellite' ? 'on' : '') + '">' + ic('layers') + 'Satellite</button></div>' +
       '<p class="small muted">Satellite pictures need a signal. Offline packs show the road map.</p>' +
+      '<button class="btn wide" id="radarTog">' + ic('cloud') + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Show rain radar') + '</button><p class="small muted">Rain over the last 2 hours from RainViewer (free for personal use). It doesn\'t forecast, and it\'s coarse when zoomed in.</p>' +
       '<div class="seg" id="th">' + [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']].map(([k, l]) => '<button data-v="' + k + '" class="' + (c.theme === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
       '<p class="small muted">Auto switches to night colours after sunset where you are.</p>', b => {
       $$('#mt button', b).forEach(x => x.onclick = () => { OR.setMapType(x.dataset.v); closeSheet(); });
+      const rb = $('#radarTog', b); if (rb) rb.onclick = () => { closeSheet(); OR.toggleRadar(); };
       $$('#th button', b).forEach(x => x.onclick = () => { c.theme = x.dataset.v; OR.saveCfg(); OR.applyTheme(); closeSheet(); });
     });
   }
@@ -299,6 +301,7 @@
         (o.roads && o.roads.length ? '<span class="refs">' + o.roads.map(chip).join('') + '</span>' : '') +
         '<span class="bend"><span class="bar"><i style="width:' + Math.min(100, Math.round(o.twist / 2.2)) + '%"></i></span>' + OR.bendLabel(o.twist) + (o.mwayPct ? ', ' + o.mwayPct + '% motorway' : ', no motorway') + '</span></button>').join('') + '</div>';
       h += OR.wxStripHtml ? OR.wxStripHtml() : '';
+      h += OR.planExtrasHtml ? OR.planExtrasHtml() : '';
       h += '<div class="rideRow"><button class="btn go" id="ride">' + ic('rides') + 'Start ride</button><button class="btn brief" id="brief">' + ic('shield') + 'Route brief</button></div>';
       h += '<div class="tools">' + [['wx', 'cloud', 'Weather', '#1e88e5'], ['fuelChk', 'fuel', 'Fuel check', '#e53935'], ['stays', 'bed', 'Stays at end', '#7e57c2'], ['save', 'save', 'Save', '#0e9f57'], ['toTrip', 'trips', 'Add to trip', '#1565c0'], ['gpx', 'dl', 'GPX', '#5d6d7e'], ['shareR', 'share', 'Share', '#00897b']]
         .concat(A ? [['offl', 'map', 'Save offline', '#ef8f00']] : []).map(([id, i, l, c]) => '<button class="tool" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>').join('') + '</div>';
@@ -485,8 +488,10 @@
   const NEAR = ['fuel', 'cafe', 'motopark', 'bikeshop', 'stay', 'camp', 'pub', 'view', 'pass'];
   function renderNearby() {
     $('#v-nearby').innerHTML = '<h2 class="vh">Nearby</h2><p class="muted small">Around your position, or the middle of the map when there\'s no GPS fix.</p><div class="tiles">' +
-      NEAR.map(k => '<button class="tile" data-near="' + k + '">' + badge(OR.POI[k].i, OR.POI[k].c) + '<span>' + OR.KINDS[k].label + '</span></button>').join('') + '</div>' +
+      NEAR.map(k => '<button class="tile" data-near="' + k + '">' + badge(OR.POI[k].i, OR.POI[k].c) + '<span>' + OR.KINDS[k].label + '</span></button>').join('') +
+      '<button class="tile" id="greatRoads">' + badge('twisty', '#8e24aa') + '<span>Great roads</span></button></div>' +
       '<p class="small muted">Places come from OpenStreetMap. Prices aren\'t included: use the website or phone number to check and book.</p>';
+    $('#greatRoads').onclick = () => { if (innerWidth < 900) $('#panel').classList.remove('open'); OR.findGreatRoads(); };
     $$('[data-near]').forEach(bt => bt.onclick = () => { const c = OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray(); findNearby(bt.dataset.near, c); });
   }
   async function findNearby(kind, ll, onPick) {

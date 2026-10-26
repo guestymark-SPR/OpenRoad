@@ -66,6 +66,7 @@
     if (b.warnings.length) h += '<h3>Watch out for</h3><div class="chips bad">' + b.warnings.map(w => '<span>' + e(w) + '</span>').join('') + '</div>';
 
     // weather
+    if (b.elev) h += '<h3>' + ic('pass') + 'Hills</h3><p class="small">Up ' + OR.fmtHeight(b.elev.up) + ', down ' + OR.fmtHeight(b.elev.down) + ', highest point ' + OR.fmtHeight(b.elev.max) + '.</p>' + OR.profileSvg(b.elev);
     h += '<h3>' + ic('cloud') + 'Weather</h3>';
     if (b.wx && b.wx.length) h += '<ol class="wxl">' + b.wx.map(x => { const c = OR.wmo(x.code); return '<li><span class="t">' + OR.clock(new Date(x.at)) + '</span><span class="e">' + c[1] + '</span><span class="d">' + c[0] + (x.end ? ', at the end' : x.along < 200 ? ', at the start' : ', ' + OR.fmtDist(x.along) + ' in') + '</span><b>' + Math.round(x.temp) + '°</b><span class="s">' + Math.round(x.rainP || 0) + '% rain, gusts ' + Math.round(x.gust) + ' mph</span></li>'; }).join('') + '</ol>';
     else h += '<p class="muted">' + e(b.errors.wx || 'No forecast for this time') + '</p>';

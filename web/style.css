@@ -460,3 +460,12 @@ body.riding #menuBtn{display:none}
 .ch-ic{background:var(--surface);color:#e53935}.ch-send{background:#0b6b3a;color:#fff}.ch-send svg{stroke:#fff}.ch-send svg .d{fill:#fff;opacity:.3}
 .li.pick{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);padding:12px;border-radius:12px;margin-bottom:6px;color:var(--ink)}
 .li.pick small{margin-left:auto;color:var(--ink-2)}
+
+/* ---------- hills, low-emission zones, radar, great roads ---------- */
+.hills{border:1.5px solid var(--line);border-radius:14px;padding:10px 12px 6px;margin:10px 0;background:var(--surface)}
+.hl-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;justify-content:space-between}.hl-h b{display:flex;gap:6px;align-items:center}.hl-h b svg{width:20px;height:20px}.hl-h span{font-size:13px;color:var(--ink-2)}
+.prof{width:100%;height:90px;display:block;margin-top:6px}.prof .pf{fill:color-mix(in srgb,#8d5a3b 25%,transparent)}.prof .pl{fill:none;stroke:#8d5a3b;stroke-width:2;vector-effect:non-scaling-stroke}.prof .pt{font-size:10px;fill:var(--ink-2)}
+.lez ul{margin:6px 0;padding-left:18px}.lez b svg{width:18px;height:18px;vertical-align:-3px;margin-right:4px}
+#radarChip{position:fixed;z-index:18;left:50%;transform:translateX(-50%);top:calc(84px + var(--safe-t));display:flex;gap:6px;align-items:center;background:#1e88e5;color:#fff;border-radius:22px;padding:5px 6px 5px 14px;font-weight:700;box-shadow:var(--shadow)}
+#radarChip button{width:34px;height:34px;border-radius:17px;border:0;background:rgba(255,255,255,.2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px}#radarChip svg{width:18px;height:18px;stroke:#fff}
+.li.great{display:flex;flex-direction:column;gap:4px}

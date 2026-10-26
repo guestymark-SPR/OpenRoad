@@ -124,28 +124,43 @@
   };
   OR.on('style', () => { if (frameAt >= 0) OR.radar.show(frameAt); });
 
-  // ---------- the bendiest roads in view (from the map's own road data) ----------
-  const CLASSES = { primary: 1, secondary: 1, tertiary: 1, minor: 1, trunk: 1 };
+  // ---------- the bendiest roads in view (from the map's own road shapes) ----------
+  const CLASSES = { trunk: 'Main road', primary: 'Main road', secondary: 'B-road', tertiary: 'Minor road', minor: 'Minor road' };
   OR.greatRoads = function () {
     const m = OR.map, feats = m.querySourceFeatures('omt', { sourceLayer: 'transportation' });
-    const groups = {};
+    // pieces of road (tiles cut roads into pieces) joined back up where they meet end to end
+    const lines = [], seen = {};
     feats.forEach(f => {
-      const p = f.properties; if (!CLASSES[p.class] || p.brunnel === 'tunnel' || p.service) return;
-      const key = p.name || p.ref; if (!key) return; // only named or numbered roads, so the list makes sense
-      const lines = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.type === 'MultiLineString' ? f.geometry.coordinates : [];
-      const g = groups[key] = groups[key] || { name: p.name || '', ref: p.ref || '', cls: p.class, len: 0, turn: 0, lines: [], seen: {} };
-      lines.forEach(l => {
-        const sig = l[0].map(x => x.toFixed(4)).join(',') + l.length; if (g.seen[sig]) return; g.seen[sig] = 1; // the same piece comes from neighbouring tiles
-        const pts = OR.resample(l, 40); if (pts.length < 3) return;
-        let len = 0, turn = 0;
-        for (let i = 1; i < pts.length; i++) {
-          len += OR.dist(pts[i - 1], pts[i]);
-          if (i > 1) turn += Math.min(90, OR.angDiff(OR.bearing(pts[i - 2], pts[i - 1]), OR.bearing(pts[i - 1], pts[i])));
-        }
-        g.len += len; g.turn += turn; g.lines.push(l);
-      });
+      const p = f.properties; if (!CLASSES[p.class] || p.ramp || p.brunnel === 'tunnel') return;
+      const ls = f.geometry.type === 'LineString' ? [f.geometry.coordinates] : f.geometry.type === 'MultiLineString' ? f.geometry.coordinates : [];
+      ls.forEach(l => { if (l.length < 2) return; const k = l[0].map(x => x.toFixed(5)) + '|' + l[l.length - 1].map(x => x.toFixed(5)) + '|' + l.length; if (seen[k]) return; seen[k] = 1; lines.push({ cls: p.class, pts: l }); });
     });
-    return Object.values(groups).filter(g => g.len > 2500).map(g => Object.assign(g, { twist: Math.round(g.turn / (g.len / MI)) }))
-      .filter(g => g.twist >= 90).sort((a, b) => b.twist * Math.sqrt(b.len) - a.twist * Math.sqrt(a.len)).slice(0, 12);
+    const key = c => c[0].toFixed(5) + ',' + c[1].toFixed(5), ends = {};
+    lines.forEach((l, i) => [key(l.pts[0]), key(l.pts[l.pts.length - 1])].forEach(k => (ends[k] = ends[k] || []).push(i)));
+    const used = new Array(lines.length).fill(false), chains = [];
+    const nextAt = (k, cls) => { const c = (ends[k] || []).filter(i => !used[i] && CLASSES[lines[i].cls] === CLASSES[cls]); return c.length === 1 ? c[0] : -1; };
+    lines.forEach((l, i) => {
+      if (used[i]) return; used[i] = true; let pts = l.pts.slice();
+      for (let grow = true; grow;) {
+        grow = false;
+        let n = nextAt(key(pts[pts.length - 1]), l.cls);
+        if (n >= 0) { used[n] = true; const q = lines[n].pts; pts = pts.concat(key(q[0]) === key(pts[pts.length - 1]) ? q.slice(1) : q.slice().reverse().slice(1)); grow = true; }
+        n = nextAt(key(pts[0]), l.cls);
+        if (n >= 0) { used[n] = true; const q = lines[n].pts; pts = (key(q[q.length - 1]) === key(pts[0]) ? q.slice(0, -1) : q.slice().reverse().slice(0, -1)).concat(pts); grow = true; }
+      }
+      chains.push({ cls: l.cls, pts });
+    });
+    // how much each turns per mile, measured every 40 m so straight bits with many points don't count as bends
+    const out = chains.map(c => {
+      const pts = OR.resample(c.pts, 40); let len = 0, turn = 0;
+      for (let i = 1; i < pts.length; i++) { len += OR.dist(pts[i - 1], pts[i]); if (i > 1) { const d = OR.angDiff(OR.bearing(pts[i - 2], pts[i - 1]), OR.bearing(pts[i - 1], pts[i])); if (d < 75) turn += d; } } // the same measure as for routes (sharp corners at junctions don't count)
+      return { cls: c.cls, kind: CLASSES[c.cls], len, twist: len ? Math.round(turn / (len / MI)) : 0, lines: [c.pts], mid: c.pts[Math.floor(c.pts.length / 2)], name: '', ref: '' };
+    }).filter(g => g.len > 2500 && g.twist >= 110);
+    return out.sort((a, b) => b.twist * Math.sqrt(b.len) - a.twist * Math.sqrt(a.len)).slice(0, 10);
+  };
+  // names: the nearest town or village to the middle of each road
+  OR.nameRoads = async function (roads) {
+    await Promise.all(roads.map(async g => { const n = await OR.reverseName(g.mid[0], g.mid[1]).catch(() => null); g.name = g.kind + (n ? ' near ' + n.split(',')[0] : ''); }));
+    return roads;
   };
 })(window.OR);
