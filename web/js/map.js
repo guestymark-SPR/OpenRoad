@@ -143,7 +143,7 @@
 
   // ---------- overlays (route, alternatives, ride track, points of interest) ----------
   const EMPTY = { type: 'FeatureCollection', features: [] };
-  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY };
+  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY };
   OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); };
   function addOverlays() {
     const m = OR.map, night = m.__mode === 'night';
@@ -160,6 +160,9 @@
     L({ id: 'ov-pois', type: 'symbol', source: 'ov-pois', layout: { 'icon-image': ['concat', 'pin-', ['get', 'kind']], 'icon-anchor': 'bottom', 'icon-size': z([6, 0.75, 13, 1]),
       'icon-allow-overlap': true, 'text-field': ['step', ['zoom'], '', 11, ['get', 'name']], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-anchor': 'top', 'text-offset': [0, 0.3], 'text-optional': true, 'text-max-width': 9 },
       paint: { 'text-color': night ? '#eef2f3' : '#1c2226', 'text-halo-color': night ? '#111' : '#fff', 'text-halo-width': 1.6 } });
+    L({ id: 'ov-wx', type: 'symbol', source: 'ov-wx', layout: { 'icon-image': 'pin-wx', 'icon-anchor': 'bottom', 'icon-size': z([6, 0.7, 12, 0.9]), 'icon-allow-overlap': true,
+      'text-field': ['get', 'name'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-anchor': 'top', 'text-offset': [0, 0.2], 'text-allow-overlap': true },
+      paint: { 'text-color': '#fff', 'text-halo-color': '#1e88e5', 'text-halo-width': 2.4 } });
     L({ id: 'ov-cams', type: 'symbol', source: 'ov-cams', minzoom: 9, layout: { 'icon-image': 'pin-cam', 'icon-anchor': 'bottom', 'icon-size': 0.85, 'icon-allow-overlap': true } });
   }
 

@@ -203,7 +203,7 @@
   function changed(replan) {
     showAllWps = false;
     OR.savePlan(); drawWaypoints();
-    OR.plan.route = null; OR.plan.options = []; clearRouteExtras(); OR.setData('route', null); OR.setData('alts', null);
+    OR.plan.route = null; OR.plan.options = []; clearRouteExtras(); OR.setData('route', null); OR.setData('alts', null); OR.emit('planCleared');
     renderPlan(); tab('plan');
     if (replan) doPlan();
   }
@@ -262,7 +262,8 @@
         '<button class="opt' + (i === OR.plan.choice ? ' on' : '') + '" data-i="' + i + '"><span class="opt-top"><b>' + esc(o.variant) + '</b><span class="nums">' + OR.fmtDist(o.dist) + '<i>' + OR.fmtTime(o.time) + '</i></span></span>' +
         (o.roads && o.roads.length ? '<span class="refs">' + o.roads.map(chip).join('') + '</span>' : '') +
         '<span class="bend"><span class="bar"><i style="width:' + Math.min(100, Math.round(o.twist / 2.2)) + '%"></i></span>' + OR.bendLabel(o.twist) + (o.mwayPct ? ', ' + o.mwayPct + '% motorway' : ', no motorway') + '</span></button>').join('') + '</div>';
-      h += '<button class="btn wide go" id="ride">' + ic('rides') + 'Start ride</button>';
+      h += OR.wxStripHtml ? OR.wxStripHtml() : '';
+      h += '<div class="rideRow"><button class="btn go" id="ride">' + ic('rides') + 'Start ride</button><button class="btn brief" id="brief">' + ic('shield') + 'Route brief</button></div>';
       h += '<div class="tools">' + [['wx', 'cloud', 'Weather', '#1e88e5'], ['fuelChk', 'fuel', 'Fuel check', '#e53935'], ['stays', 'bed', 'Stays at end', '#7e57c2'], ['save', 'save', 'Save', '#0e9f57'], ['toTrip', 'trips', 'Add to trip', '#1565c0'], ['gpx', 'dl', 'GPX', '#5d6d7e'], ['shareR', 'share', 'Share', '#00897b']]
         .concat(A ? [['offl', 'map', 'Save offline', '#ef8f00']] : []).map(([id, i, l, c]) => '<button class="tool" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>').join('') + '</div>';
       h += '<div id="extraOut">' + (extras.html || '') + '</div>';
@@ -293,6 +294,7 @@
     });
     $$('.opt', v).forEach(b => b.onclick = () => chooseOption(+b.dataset.i));
     on('ride', () => startRide(OR.plan.route));
+    on('brief', () => OR.openBrief && OR.openBrief(OR.plan.route));
     on('save', () => { const n = prompt('Name this route', r.name); if (n == null) return; r.name = n.trim() || r.name; OR.routes.save(r); OR.toast('Saved to Saved routes'); });
     on('fuelChk', () => fuelCheck(r));
     on('wx', () => weatherCheck(r));
@@ -339,6 +341,7 @@
     OR.setData('alts', { type: 'FeatureCollection', features: o.map((r, i) => i === c ? null : { type: 'Feature', properties: { i }, geometry: { type: 'LineString', coordinates: r.shape } }).filter(Boolean) });
     OR.setData('route', { type: 'FeatureCollection', features: [OR.routeGeo(o[c])] });
     if (fit) fitRoute(o[c]);
+    OR.emit('routeShown', o[c]);
   }
   OR.showOptions = showOptions;
   function chooseOption(i) {
@@ -493,7 +496,7 @@
   let morePage = null;
   const field = (id, label, val, type, ph) => '<label class="f"><span>' + label + '</span><input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '"' + (type === 'number' ? ' inputmode="decimal" step="any"' : '') + '></label>';
   OR.field = field;
-  const PAGES = [['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['safety', 'shield', 'Safety check-in', 'Texts your contact if you don\'t check in', '#e53935'],
+  const PAGES = [['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety check-in', 'Texts your contact if you don\'t check in', '#e53935'],
     ['ice', 'helmet', 'Emergency card', 'Your ICE details, kept on this phone', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
     ['settings', 'gear', 'Settings', 'Units, voice, avoid tolls and ferries', '#5d6d7e'], ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
   function renderMore() {
@@ -506,7 +509,7 @@
     const p = PAGES.find(x => x[0] === morePage);
     v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'More</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ bike: pageBike, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
+    ({ bike: pageBike, maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
   }
   OR.openMore = p => { morePage = p; tab('more'); renderMore(); };
   function keep(box, id, obj, key, num, after) { const el = $('#' + id, box); el.onchange = () => { obj[key] = num ? (el.value === '' ? '' : parseFloat(el.value)) : el.value.trim(); OR.saveCfg(); if (after) after(); }; }
@@ -589,6 +592,8 @@
       '<h3>Routes</h3><label class="chk"><input type="checkbox" id="sTolls"' + (c.avoidTolls ? ' checked' : '') + '> Avoid toll roads</label>' +
       '<label class="chk"><input type="checkbox" id="sFerry"' + (c.avoidFerries ? ' checked' : '') + '> Avoid ferries</label>' +
       '<h3>While riding</h3><label class="chk"><input type="checkbox" id="sCams"' + (c.cameras !== false ? ' checked' : '') + '> Speed camera warnings (UK and Ireland)</label>' +
+      '<h3>Live traffic</h3>' + field('sTomtom', 'TomTom traffic key (free)', c.tomtomKey || '', 'text', 'paste your key') +
+      '<p class="small muted">For roadworks, accidents and queues in the route brief. Get a free key at developer.tomtom.com (no card needed, 2,500 checks a month). It\'s kept only on this phone.</p>' +
       '<p class="small muted">Camera warnings are switched off everywhere else because warning devices are illegal in France, Germany and Switzerland. Camera locations come from OpenStreetMap and aren\'t complete.</p>';
     const segBind = (id, fn) => $$('#' + id + ' button', box).forEach(b => b.onclick = () => { fn(b.dataset.v); OR.saveCfg(); pageSettings(box); });
     segBind('sUnits', x => { c.units = x; renderAll(); });
@@ -598,6 +603,7 @@
     $('#sTolls', box).onchange = e => { c.avoidTolls = e.target.checked; OR.saveCfg(); };
     $('#sFerry', box).onchange = e => { c.avoidFerries = e.target.checked; OR.saveCfg(); };
     $('#sCams', box).onchange = e => { c.cameras = e.target.checked; OR.saveCfg(); };
+    $('#sTomtom', box).onchange = e => { c.tomtomKey = e.target.value.trim(); OR.saveCfg(); OR.toast(c.tomtomKey ? 'Traffic key saved' : 'Traffic key removed'); };
   }
   function pageAbout(box) {
     box.innerHTML = (A ? '<div class="stats"><div><b>' + esc(A.version()) + '</b><span>your version</span></div></div><button id="sUpd" class="btn wide pri">' + ic('update') + 'Check for updates</button><p class="small muted">OpenRoad also checks each time it opens.</p>' : '') +

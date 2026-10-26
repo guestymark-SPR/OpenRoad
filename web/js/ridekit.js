@@ -23,6 +23,7 @@
       t += m.time || 0;
     }
     const end = route.shape[route.shape.length - 1];
+    if (pts.length > 1 && t0 + t * 1000 - pts[pts.length - 1].at < 20 * 60000) pts.pop(); // don't show the arrival twice
     pts.push({ p: end, at: t0 + t * 1000, along: route.dist, end: true });
     const use = pts.slice(0, 14);
     const q = '?latitude=' + use.map(x => x.p[1].toFixed(3)).join(',') + '&longitude=' + use.map(x => x.p[0].toFixed(3)).join(',') +

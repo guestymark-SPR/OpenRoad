@@ -87,7 +87,7 @@
         man.push({ idx: m.begin_shape_index + off, end: m.end_shape_index + off, type: m.type, text: m.instruction,
           alert: m.verbal_transition_alert_instruction || '', pre: m.verbal_pre_transition_instruction || m.instruction,
           post: m.verbal_post_transition_instruction || '', street: (m.street_names || m.begin_street_names || []).join(' / '),
-          len: m.length * unitM, time: m.time, exit: m.roundabout_exit_count || 0 });
+          len: m.length * unitM, time: m.time, exit: m.roundabout_exit_count || 0, toll: !!m.toll });
       }
       legEnds.push(shape.length - 1);
     }
@@ -99,7 +99,8 @@
     const refLen = {};
     for (const m of man) for (const n of (m.street || '').split(' / ')) { const t = n.trim(); if (/^[A-Z]{1,3}\d{1,4}[A-Z]?$/.test(t)) refLen[t] = (refLen[t] || 0) + m.len; }
     const roads = Object.keys(refLen).sort((a, b) => refLen[b] - refLen[a]).slice(0, 4);
-    return Object.assign({ roads,
+    const sum = trip.summary || {};
+    return Object.assign({ roads, hasToll: !!sum.has_toll || man.some(m => m.toll), hasFerry: !!sum.has_ferry || man.some(m => m.type === 28),
       id: OR.uid(), shape, cum, man, legEnds: legEnds.map(i => cum[i]), dist, time: trip.summary.time,
       twist: OR.bendiness(shape, man), mwayPct: dist ? Math.round(100 * Math.min(mway, dist) / dist) : 0, created: Date.now()
     }, meta || {});
