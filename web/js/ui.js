@@ -22,7 +22,8 @@
     OR.groupBoot && OR.groupBoot();
     OR.crashSync && OR.crashSync();
     if (A && A.setPacksOnly) A.setPacksOnly(!!OR.cfg.packsOnly);
-    OR.recoverRide();
+    const resume = OR.rideToResume && OR.rideToResume();
+    if (resume) setTimeout(() => startRide(resume.route, resume.snap), 600); else OR.recoverRide();
     drawWaypoints();
     OR.on('style', () => { if (OR.plan.route) showOptions(); });
     if (OR.cfg.checkinAt && OR.cfg.checkinAt < Date.now() - 864e5) OR.checkin.cancel();
@@ -843,14 +844,14 @@
   }
 
   // ---------- ride ----------
-  function startRide(route) {
+  function startRide(route, resume) {
     closePopup(); closeSheet();
     if (route && OR.routes.list().every(r => r.id !== route.id)) OR.routes.save(route); // so it's there with no signal
     document.body.classList.add('riding'); $('#hud').hidden = false; $('#panel').classList.remove('open');
     $('#thenBox').hidden = true; $('#hudNote').hidden = true; $('#recentre').hidden = true; $('#limit').hidden = true;
     $('#turn').hidden = !route; $('#hRemainL').textContent = route ? 'to go' : 'ridden'; $('#hEtaL').textContent = route ? 'arrive' : 'riding for';
     OR.ride.fuel = route && OR.ride.fuel && OR.plan.route === route ? OR.ride.fuel : [];
-    OR.startRide(route);
+    OR.startRide(route, resume);
     if (route && OR.online() && OR.fuelRange()) OR.fuelAlong(route).then(f => { OR.ride.fuel = f.list; }).catch(() => { });
     updateMute();
     if (OR.pos) OR.map.easeTo({ center: [OR.pos.lng, OR.pos.lat], zoom: 16, pitch: 55 });
@@ -864,8 +865,11 @@
   function endRide() {
     const saved = OR.stopRide();
     document.body.classList.remove('riding'); $('#hud').hidden = true;
-    if (saved) { OR.toast('Ride saved: ' + OR.fmtDist(saved.dist) + ' in ' + OR.fmtTime(saved.moving), 5000); renderRides(); }
-    if (OR.plan.route) showOptions();
+    if (saved) { OR.toast('Ride saved: ' + OR.fmtDist(saved.dist) + ' in ' + OR.fmtTime(saved.moving) + (OR.plan.route ? '. Route cleared from the map' : ''), 5000); renderRides(); }
+    // the ride is over: clear its route off the map and out of Plan (it's kept in Saved routes, and in its trip)
+    OR.plan.wps = []; showAllWps = false; OR.savePlan(); drawWaypoints();
+    OR.plan.route = null; OR.plan.options = []; clearRouteExtras(); OR.setData('route', null); OR.setData('alts', null); OR.setData('trip', null); OR.setData('tripdays', null); OR.emit('planCleared');
+    renderPlan();
   }
   function updateMute() { $('#hMute').innerHTML = ic(OR.cfg.voice ? 'vol' : 'mute'); $('#hMute').classList.toggle('off', !OR.cfg.voice); }
   function refOf(street) { const m = String(street || '').match(/\b([A-Z]{1,3}\d{1,4}[A-Z]?)\b/); return m ? m[1] : ''; }

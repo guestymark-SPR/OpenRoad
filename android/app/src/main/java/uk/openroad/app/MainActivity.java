@@ -50,7 +50,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
         web = new WebView(this);
-        web.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        // no separate hardware layer: its texture can be dropped while another app (an incoming call) is in front, leaving a black screen
         if (Build.VERSION.SDK_INT >= 26) web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
         setContentView(web);
 
@@ -80,6 +80,13 @@ public class MainActivity extends Activity {
                 return true;
             }
             @Override public void onPageFinished(WebView v, String url) { openFromIntent(getIntent()); }
+            // the page's renderer was stopped by Android (low memory during a call, say): start the screen again.
+            // A ride in progress carries on: the ride service kept recording, and the page picks it back up.
+            @Override public boolean onRenderProcessGone(WebView v, android.webkit.RenderProcessGoneDetail d) {
+                try { ((android.view.ViewGroup) v.getParent()).removeView(v); v.destroy(); } catch (Exception ignored) { }
+                if (v == web) recreate();
+                return true;
+            }
         });
         web.setWebChromeClient(new WebChromeClient() {
             @Override public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
@@ -114,7 +121,7 @@ public class MainActivity extends Activity {
         if (code == REQ_PERMS && !bridge.hasLocation()) js("window.onGpsError&&onGpsError('Location permission was refused. Allow it in Settings > Apps > OpenRoad > Permissions.')");
     }
 
-    @Override protected void onResume() { super.onResume(); GroupService.appVisible = true; if (bridge.wantGps) bridge.gpsOn(); }
+    @Override protected void onResume() { super.onResume(); GroupService.appVisible = true; if (bridge.wantGps) bridge.gpsOn(); if (web != null) web.evaluateJavascript("window.onAppResume&&onAppResume()", null); }
     @Override protected void onPause() { super.onPause(); GroupService.appVisible = false; if (!RideService.running) bridge.gpsOff(false); }
 
     @Override protected void onNewIntent(Intent i) { super.onNewIntent(i); setIntent(i); openFromIntent(i); if (i.getBooleanExtra("openChat", false)) js("window.OR&&OR.openChat&&OR.openChat()"); if (i.getBooleanExtra("openEvents", false)) js("window.OR&&OR.openMore&&OR.openMore('group')"); }

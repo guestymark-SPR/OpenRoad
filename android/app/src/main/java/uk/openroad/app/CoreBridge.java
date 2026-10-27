@@ -89,6 +89,7 @@ class CoreBridge {
         });
     }
     @JavascriptInterface public void rideStop() { onMain(() -> { try { ctx.startService(new Intent(ctx, RideService.class).setAction(RideService.ACTION_STOP)); } catch (Exception ignored) { } }); }
+    @JavascriptInterface public boolean rideActive() { return RideService.running; }
     @JavascriptInterface public String rideTrack(String since) { return RideService.pointsSince(Long.parseLong(since)); }
     @JavascriptInterface public String rideJolts(String since) { return RideService.joltsSince(Long.parseLong(since)); }
     @JavascriptInterface public String mapPacks() { return Tiles.get(ctx).packsJson(); }

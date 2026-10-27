@@ -240,25 +240,49 @@
   };
   document.addEventListener('visibilitychange', () => { if (!document.hidden) OR.pullNativeTrack(); });
 
+  // ---------- coming back to the app (after a phone call, say) ----------
+  // Redraw the map; if its graphics were lost and don't come back, restart the page (a ride carries on).
+  let lostAt = 0;
+  function mapGl() { try { return OR.map && OR.map.painter && OR.map.painter.context && OR.map.painter.context.gl; } catch (e) { return null; } }
+  function checkMap() {
+    if (!OR.map || document.hidden) return;
+    try { OR.map.resize(); OR.map.triggerRepaint(); } catch (e) { }
+    const gl = mapGl();
+    if (gl && gl.isContextLost && gl.isContextLost()) { if (!lostAt) lostAt = Date.now(); setTimeout(() => { const g = mapGl(); if (g && g.isContextLost() && !document.hidden && Date.now() - lostAt > 2500) { if (ride.on) OR.store.set('rideInProgress', snapshot()); location.reload(); } }, 3000); }
+    else lostAt = 0;
+    if (sm.fix && !sm.raf) { sm.last = performance.now(); sm.raf = requestAnimationFrame(frame); }
+  }
+  window.onAppResume = () => setTimeout(checkMap, 150);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(checkMap, 150); });
+  function watchGl() { if (!OR.map) return setTimeout(watchGl, 1000); OR.map.on('webglcontextlost', () => { lostAt = Date.now(); setTimeout(checkMap, 3000); }); OR.map.on('webglcontextrestored', () => { lostAt = 0; }); }
+  watchGl();
+
   // ---------- start / stop ----------
   let wake = null;
   function screenOn(on) {
     if (A && A.keepScreenOn) { A.keepScreenOn(on); return; }
     try { if (on && navigator.wakeLock) navigator.wakeLock.request('screen').then(w => wake = w).catch(() => { }); else if (wake) { wake.release(); wake = null; } } catch (e) { }
   }
-  OR.startRide = function (route) {
+  // resume: a ride snapshot to carry on (the screen was restarted mid-ride); the ride service is still recording
+  OR.startRide = function (route, resume) {
     Object.assign(ride, { on: true, route: route || null, follow: true, seg: 0, along: 0, spoken: {}, off: 0, arrived: false, pts: [], times: [], dist: 0, moving: 0, max: 0, start: Date.now(), lastT: 0,
       limits: route && route.limits || null, limit: null, cams: [], leanL: 0, leanR: 0, lean: 0, predAcc: 0 });
-    if (OR.resetLean) OR.resetLean();
+    if (resume) {
+      Object.assign(ride, { start: resume.start, pts: OR.decodePoly(resume.pts, 6), times: resume.times.slice(), dist: resume.dist, moving: resume.moving, max: resume.max });
+      ride.lastT = ride.times[ride.times.length - 1] || 0;
+    }
+    if (OR.resetLean && !resume) OR.resetLean();
     if (route) loadRideData(route);
     OR.setData('done', null); OR.setData('track', null);
     OR.startGps(); screenOn(true);
-    if (A && A.rideStart) A.rideStart(route ? route.name : 'Free ride');
+    if (A && A.rideStart && !resume) A.rideStart(route ? route.name : 'Free ride');
     if (route) {
       OR.setData('route', { type: 'FeatureCollection', features: [OR.routeGeo(route)] }); OR.setData('alts', null);
-      const m = route.man[0]; OR.say((m && m.pre) || 'Route started');
+      if (!resume) { const m = route.man[0]; OR.say((m && m.pre) || 'Route started'); }
       ride.spoken[0] = 2;
-    } else OR.say('Recording your ride');
+    } else if (!resume) OR.say('Recording your ride');
+    if (resume) { OR.pullNativeTrack(); OR.store.set('rideInProgress', snapshot()); }
+    if (!resume) OR.store.set('rideInProgress', snapshot());
     OR.emit('ridestart', route);
   };
   // put a new route in place mid-ride (catch-up mode, and anything else that re-plans on the move)
@@ -316,6 +340,12 @@
     return saved;
   };
   // a ride that was cut short (app closed, battery) is saved on next start
+  // a ride still being recorded by the ride service (the screen was restarted mid-ride): carry on with it
+  OR.rideToResume = function () {
+    const r = OR.store.get('rideInProgress', null);
+    if (!r || !r.pts || !A || !A.rideActive || !A.rideActive()) return null;
+    return { snap: r, route: r.routeId && OR.routes ? OR.routes.get(r.routeId) || null : null };
+  };
   OR.recoverRide = function () {
     const r = OR.store.get('rideInProgress', null); if (!r || !r.pts) return;
     OR.store.set('rideInProgress', null);
