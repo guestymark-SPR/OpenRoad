@@ -89,7 +89,7 @@
     const portrait = innerHeight > innerWidth, W = portrait ? 720 : 1280, H = portrait ? 1280 : 720;
     const cfg = await encoderFor(W, H);
     if (!cfg) return OR.toast('This phone can\'t make videos here (no H.264 encoder available to the app)', 7000);
-    const pth = path(pts), km = pth.L / 1000, frames = FPS * SECONDS;
+    const pth = path(pts), km = pth.L / 1000, frames = FPS * ((opts && opts.seconds) || SECONDS);
     const zoom = Math.max(10.3, Math.min(14, 13.6 - Math.log2(Math.max(1, km / 25))));
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
     // the screen while filming: just the map, and a progress card
@@ -106,7 +106,7 @@
       const ve = new VideoEncoder({ output: (chunk, meta) => { const b = new Uint8Array(chunk.byteLength); chunk.copyTo(b); samples.push({ data: b, key: chunk.type === 'key' }); if (meta && meta.decoderConfig && meta.decoderConfig.description) desc = new Uint8Array(meta.decoderConfig.description); }, error: e => { err = e; } });
       ve.configure(cfg);
       // camera: a wide look first, then along the ride, then pull back to see it all
-      const intro = FPS * 3, outro = FPS * 3, mid = frames - intro - outro;
+      const intro = Math.round(frames / 10), outro = Math.round(frames / 10), mid = frames - intro - outro;
       let hd = OR.bearing(pth.at(0), pth.at(Math.min(pth.L, 1500)));
       const box = OR.bbox(pts), over = m.cameraForBounds(box, { padding: 80 }) || { center: m.getCenter(), zoom: 9 };
       for (let f = 0; f < frames && !stop && !err; f++) {
