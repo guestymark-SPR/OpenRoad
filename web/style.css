@@ -792,3 +792,12 @@ label.chk{display:flex;align-items:center;gap:12px;flex-direction:row-reverse;ju
 .opt-row:last-child{border-bottom:0}
 .opt-row>span{flex:1;min-width:0}.opt-row b{display:block;font-size:16px;font-weight:700}.opt-row small{display:block;color:var(--ink-3);font-size:13px;line-height:1.4;margin-top:2px}
 .chk input[type=checkbox],input.switch{min-height:0!important;height:30px!important;width:50px!important;padding:0;border:0}
+/* runs of form fields sit together in one card */
+.fieldcard{background:linear-gradient(180deg,var(--surface),color-mix(in srgb,var(--surface) 96%,#000));border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:18px;box-shadow:var(--lift);padding:6px 14px 10px;margin:8px 0}
+.fieldcard label.f{margin:8px 0}
+.fieldcard label.f>span{font-size:13px;font-weight:700;color:var(--ink-3)}
+.fieldcard input,.fieldcard select,.fieldcard textarea{background:var(--surface-2)}
+.fieldcard>p.small{margin:4px 0 6px}
+.optcard+p.small,.fieldcard+p.small{margin:6px 6px 0}
+.optcard{margin:8px 0}
+.opt-row small b{display:inline;font-size:inherit;font-weight:800;color:var(--ink-2)}

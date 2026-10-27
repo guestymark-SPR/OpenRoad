@@ -146,7 +146,9 @@
     const c = OR.cfg;
     sheet('<h2>Map</h2><div class="seg big" id="mt"><button data-v="road" class="' + (c.mapType !== 'satellite' ? 'on' : '') + '">' + ic('map') + 'Road</button><button data-v="satellite" class="' + (c.mapType === 'satellite' ? 'on' : '') + '">' + ic('layers') + 'Satellite</button></div>' +
       '<p class="small muted">Satellite pictures need a signal. Offline packs show the road map.</p>' +
-      '<button class="btn wide" id="fullTog">' + ic('full') + 'Full-screen map</button>' + '<button class="btn wide" id="roughTog">' + ic('warn') + (OR.roughOn && OR.roughOn() ? 'Hide rough roads' : 'Show rough roads I\'ve ridden') + '</button>' + '<button class="btn wide" id="radarTog">' + ic('cloud') + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Show rain radar') + '</button><p class="small muted">Rain over the last 2 hours from RainViewer (free for personal use). It doesn\'t forecast, and it\'s coarse when zoomed in.</p>' +
+      '<h3 class="grp">On the map</h3><div class="menu"><button id="radarTog">' + badge('cloud', '#039be5') + '<span><b>' + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Rain radar') + '</b><small>Showers over the last 2 hours</small></span>' + ic('chev', 'chev') + '</button>' +
+      '<button id="roughTog">' + badge('warn', '#ef8f00') + '<span><b>' + (OR.roughOn && OR.roughOn() ? 'Hide rough roads' : 'Rough roads I\'ve ridden') + '</b><small>Bumps and potholes your phone felt</small></span>' + ic('chev', 'chev') + '</button>' +
+      '<button id="fullTog">' + badge('full', '#5d6d7e') + '<span><b>Full-screen map</b><small>Hide the menu; the menu button brings it back</small></span>' + ic('chev', 'chev') + '</button></div><p class="small muted">Rain over the last 2 hours from RainViewer (free for personal use). It doesn\'t forecast, and it\'s coarse when zoomed in.</p><h3 class="grp">Colours</h3>' +
       '<div class="seg" id="th">' + [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']].map(([k, l]) => '<button data-v="' + k + '" class="' + (c.theme === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
       '<p class="small muted">Auto switches to night colours after sunset where you are.</p>', b => {
       $$('#mt button', b).forEach(x => x.onclick = () => { OR.setMapType(x.dataset.v); closeSheet(); });
@@ -838,7 +840,7 @@
     const seg = (id, val, opts) => '<div class="seg" id="' + id + '">' + opts.map(([k, l]) => '<button data-v="' + k + '" class="' + (val === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
     box.innerHTML = '<h3>Units</h3>' + seg('sUnits', c.units, [['mi', 'Miles and mph'], ['km', 'Kilometres']]) +
       '<h3>Map colours</h3>' + seg('sTheme', c.theme, [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']]) +
-      '<h3>Spoken directions</h3>' + seg('sVoice', c.voice ? 'on' : 'off', [['on', 'On'], ['off', 'Off']]) + '<button class="btn ghost" id="sTest">Test the voice</button>' +
+      '<h3>Spoken directions</h3>' + seg('sVoice', c.voice ? 'on' : 'off', [['on', 'On'], ['off', 'Off']]) + '<button class="btn wide" id="sTest">' + ic('vol') + 'Test the voice</button>' +
       '<p class="small muted">Directions play through the phone\'s audio, so pair your helmet headset with the phone over Bluetooth. Music is turned down while it speaks.</p>' +
       '<h3>Routes</h3><label class="chk"><input type="checkbox" id="sTolls"' + (c.avoidTolls ? ' checked' : '') + '> Avoid toll roads</label>' +
       '<label class="chk"><input type="checkbox" id="sFerry"' + (c.avoidFerries ? ' checked' : '') + '> Avoid ferries</label>' +
@@ -974,6 +976,39 @@
       on('roChat', () => OR.openChat());
     });
   }
+
+  // ---------- one look for every page ----------
+  function groupRuns(root, test, cls) {
+    const all = Array.from(root.querySelectorAll('*')).filter(test), done = new Set();
+    all.forEach(el => {
+      if (done.has(el) || !el.isConnected) return;
+      const run = [el]; let n = el.nextElementSibling;
+      while (n && (test(n) || (cls === 'fieldcard' && n.matches('p.small') && run.length))) { run.push(n); n = n.nextElementSibling; }
+      while (run.length > 1 && run[run.length - 1].matches('p.small')) run.pop(); // a note after the last field stays below the card
+      const w = document.createElement('div'); w.className = cls; el.before(w); run.forEach(x => { w.appendChild(x); done.add(x); });
+    });
+  }
+  const NOCARD = '.card,.optcard,.fieldcard,.li,.brief,.dday,.svc,.tyre,.bikecard,.bikephoto,.hzgrid,.ice,.quick,#crashBox,.joinrow,.row';
+  OR.cardify = function (root) {
+    if (!root || !root.querySelectorAll) return;
+    root.querySelectorAll('h3:not(.grp):not(.gh)').forEach(h => { if (!h.closest(NOCARD + ',.passes,.hills,.golden,.besttime')) h.classList.add('grp'); });
+    root.querySelectorAll('label.chk').forEach(l => {
+      if (l.closest('.optcard')) return;
+      const inp = l.querySelector('input[type=checkbox]'); if (!inp) return;
+      const row = document.createElement('label'); row.className = 'opt-row';
+      const sp = document.createElement('span'), b = document.createElement('b');
+      inp.remove(); b.innerHTML = l.innerHTML.trim(); sp.appendChild(b);
+      const nx = l.nextElementSibling;
+      if (nx && nx.tagName === 'P' && nx.classList.contains('small')) { const sm = document.createElement('small'); sm.innerHTML = nx.innerHTML; sp.appendChild(sm); nx.remove(); }
+      inp.classList.add('switch'); row.appendChild(sp); row.appendChild(inp);
+      l.replaceWith(row);
+    });
+    groupRuns(root, el => el.classList.contains('opt-row') && !el.parentElement.closest('.optcard'), 'optcard');
+    groupRuns(root, el => el.matches('label.f, div.two') && !el.parentElement.closest(NOCARD + ',.two,.fieldcard'), 'fieldcard');
+  };
+  let carding = false;
+  const cardObs = new MutationObserver(() => { if (carding) return; carding = true; try { OR.cardify($('#views')); OR.cardify($('#sheetBox')); } finally { carding = false; } });
+  setTimeout(() => { ['#views', '#sheetBox'].forEach(sel => { const el = $(sel); if (el) { OR.cardify(el); cardObs.observe(el, { childList: true, subtree: true }); } }); }, 0);
 
   // ---------- pop-up sheet ----------
   function sheet(html, bind) {
