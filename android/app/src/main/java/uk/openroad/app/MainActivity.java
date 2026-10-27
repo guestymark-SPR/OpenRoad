@@ -225,6 +225,39 @@ public class MainActivity extends Activity {
                 return "Saved to " + f.getPath();
             } catch (Exception e) { return "Could not save the file: " + e.getMessage(); }
         }
+        // helmet-cam video with the overlay: written in pieces to Movies/OpenRoad, then offered to share
+        private final java.util.Map<String, Object[]> videos = new java.util.HashMap<>();
+        @JavascriptInterface public String videoOpen(String name, String mime) {
+            try {
+                String id = Long.toHexString(System.nanoTime());
+                if (Build.VERSION.SDK_INT >= 29) {
+                    ContentValues v = new ContentValues();
+                    v.put(MediaStore.MediaColumns.DISPLAY_NAME, name); v.put(MediaStore.MediaColumns.MIME_TYPE, mime);
+                    v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/OpenRoad");
+                    Uri uri = getContentResolver().insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, v);
+                    if (uri == null) return "";
+                    videos.put(id, new Object[]{getContentResolver().openOutputStream(uri), uri, mime});
+                } else {
+                    java.io.File dir = new java.io.File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "OpenRoad"); dir.mkdirs();
+                    java.io.File f = new java.io.File(dir, name);
+                    videos.put(id, new Object[]{new java.io.FileOutputStream(f), Uri.fromFile(f), mime});
+                }
+                return id;
+            } catch (Exception e) { return ""; }
+        }
+        @JavascriptInterface public void videoChunk(String id, String b64) {
+            Object[] v = videos.get(id); if (v == null) return;
+            try { ((OutputStream) v[0]).write(android.util.Base64.decode(b64, android.util.Base64.DEFAULT)); } catch (Exception ignored) { }
+        }
+        @JavascriptInterface public String videoClose(String id, boolean share) {
+            Object[] v = videos.remove(id); if (v == null) return "Couldn't save the video";
+            try { ((OutputStream) v[0]).close(); } catch (Exception ignored) { }
+            final Uri uri = (Uri) v[1]; final String mime = (String) v[2];
+            if (share && Build.VERSION.SDK_INT >= 29) runOnUiThread(() -> {
+                try { startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType(mime).putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION), "Share the video")); } catch (Exception ignored) { }
+            });
+            return Build.VERSION.SDK_INT >= 29 ? "Saved to Movies/OpenRoad" : "Saved to " + uri.getPath();
+        }
         // a ride picture: saved to Pictures/OpenRoad, and offered to WhatsApp, Facebook and so on if share is true
         @JavascriptInterface public String saveImage(String name, String base64, boolean share) {
             try {

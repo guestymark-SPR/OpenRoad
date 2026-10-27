@@ -715,3 +715,4 @@ body.riding #radarChip{top:calc(150px + var(--safe-t))}
 .bp-prev span.on{background:var(--ph);color:#15191c}
 .bp-prev .ref{flex:none;background:var(--pm);color:var(--ph);border:1.5px solid #fff;padding:2px 7px;margin:0 6px;font-weight:800}
 .aasteps{padding-left:22px;margin:8px 0}.aasteps li{margin:6px 0}
+.rvprev{position:relative;border-radius:14px;overflow:hidden;background:#000;margin:8px 0}.rvprev video{display:none}.rvprev canvas{display:block;width:100%;height:auto}

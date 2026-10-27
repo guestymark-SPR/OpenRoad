@@ -495,7 +495,7 @@
     return '<label class="btn wide file">' + ic('dl') + 'Import a GPX file<input type="file" id="gpxIn" accept=".gpx,application/gpx+xml,application/xml,text/xml,*/*" hidden></label>' +
       (list.length ? '<div class="list">' + list.map(r => '<div class="li"><b>' + esc(r.name) + '</b><span>' + OR.fmtDist(r.dist) + ', ' + OR.fmtTime(r.time) + (r.twist ? ', ' + OR.bendLabel(r.twist).toLowerCase() : '') + '</span>' +
         (r.roads && r.roads.length ? '<span class="refs">' + r.roads.map(chip).join('') + '</span>' : '') +
-        '<div class="row"><button class="btn small" data-a="open" data-id="' + r.id + '">Show</button><button class="btn small pri" data-a="ride" data-id="' + r.id + '">Ride</button><button class="btn small" data-a="beeline" data-id="' + r.id + '">Beeline</button<button class="btn small" data-a="maps" data-id="' + r.id + '">Google / Apple</button>' +
+        '<div class="row"><button class="btn small" data-a="open" data-id="' + r.id + '">Show</button><button class="btn small pri" data-a="ride" data-id="' + r.id + '">Ride</button><button class="btn small" data-a="beeline" data-id="' + r.id + '">Beeline</button><button class="btn small" data-a="maps" data-id="' + r.id + '">Google / Apple</button>' +
         '<button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
         : '<div class="empty">' + ic('save', 'big') + '<p>Routes you save or import appear here and work with no signal. GPX files from Calimoto, Kurviger or friends open straight in.</p></div>');
   }
@@ -593,7 +593,7 @@
         new Date(r.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + '</span>' +
         '<div class="kv"><span><b>' + OR.fmtDist(r.dist) + '</b>distance</span><span><b>' + OR.fmtTime(r.moving) + '</b>moving</span><span><b>' + (r.moving ? OR.speed(r.dist / r.moving) : 0) + '</b>avg ' + OR.speedUnit() + '</span><span><b>' + OR.speed(r.max) + '</b>max ' + OR.speedUnit() + '</span>' +
         (r.leanL || r.leanR ? '<span><b>' + (r.leanL || 0) + '° / ' + (r.leanR || 0) + '°</b>lean L / R</span>' : '') + '</div>' +
-        '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small" data-a="replay" data-id="' + r.id + '">Replay</button><button class="btn small" data-a="card" data-id="' + r.id + '">Picture</button><button class="btn small" data-a="coach" data-id="' + r.id + '">Corners</button><button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="route" data-id="' + r.id + '">Save as route</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
+        '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small" data-a="replay" data-id="' + r.id + '">Replay</button><button class="btn small" data-a="card" data-id="' + r.id + '">Picture</button><button class="btn small" data-a="coach" data-id="' + r.id + '">Corners</button><button class="btn small" data-a="video" data-id="' + r.id + '">Video</button><button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="route" data-id="' + r.id + '">Save as route</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
         : '<div class="empty">' + ic('rides', 'big') + '<p>Every ride is recorded with distance, time, speeds and an estimate of your lean angle. Recording carries on with the screen off in the Android app.</p></div>') +
       '<p class="small muted">Lean angle is estimated from GPS speed and how sharply you turn, so treat it as a guide rather than a measurement.</p>';
     $('#freeRide', v).onclick = () => startRide(null);
@@ -605,6 +605,7 @@
       if (b.dataset.a === 'replay') OR.replayRide(r);
       if (b.dataset.a === 'card') OR.rideCard(r);
       if (b.dataset.a === 'coach') OR.cornerCoach(r);
+      if (b.dataset.a === 'video') OR.rideVideo(r);
       if (b.dataset.a === 'route') { try { const rt = await OR.routeFromTrack(pts, r.name); OR.routes.save(rt); OR.toast('Saved to Saved routes'); } catch (e) { OR.toast('Could not make a route: ' + e.message, 6000); } }
       if (b.dataset.a === 'del' && confirm('Delete this ride?')) { OR.rides.del(r.id); renderRides(); }
     });
