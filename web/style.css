@@ -801,3 +801,76 @@ label.chk{display:flex;align-items:center;gap:12px;flex-direction:row-reverse;ju
 .optcard+p.small,.fieldcard+p.small{margin:6px 6px 0}
 .optcard{margin:8px 0}
 .opt-row small b{display:inline;font-size:inherit;font-weight:800;color:var(--ink-2)}
+
+/* =====================================================================
+   Outlaw look (1.0.50): black leather, bone-white stitching, oxblood red, blackletter titles and
+   patch-style section labels. An original look: no club's name, colours or emblem.
+   Switch between Outlaw and Classic in Settings.
+   ===================================================================== */
+@font-face{font-family:'Pirata One';font-style:normal;font-weight:400;font-display:swap;src:url(fonts/PirataOne.ttf) format('truetype')}
+@font-face{font-family:'Oswald';font-style:normal;font-weight:200 700;font-display:swap;src:url(fonts/Oswald.ttf) format('truetype')}
+:root[data-look=outlaw]{
+  --bone:#ece4d2; --blood:#8e1116; --blood-2:#a8161c; --leather:#141414;
+  --green:#141414; --green-2:#8e1116; --yellow:#ece4d2; --red:#c62828; --ok:#2e7d32;
+  --paper:#e9e3d6; --surface:#f6f2ea; --surface-2:#ece6da; --ink:#141414; --ink-2:#3b3732; --ink-3:#6d665c; --line:#d3cabb; --sheet:#e9e3d6;
+  --head:'Pirata One',Georgia,serif; --label:'Oswald','Roboto Condensed','Arial Narrow',sans-serif;
+  --stitch:rgba(20,20,20,.28);
+}
+:root[data-look=outlaw][data-theme=night]{
+  --green:#101010; --green-2:#c4262d; --yellow:#ece4d2;
+  --paper:#0c0c0c; --surface:#171717; --surface-2:#202020; --ink:#eee8db; --ink-2:#c7bfb1; --ink-3:#8f887c; --line:#2c2a27; --sheet:#0f0f0f;
+  --stitch:rgba(236,228,210,.22);
+}
+/* leather: a very fine grain, so black isn't flat */
+:root[data-look=outlaw]{--grain:radial-gradient(rgba(255,255,255,.035) 1px,transparent 1.2px) 0 0/5px 5px,radial-gradient(rgba(0,0,0,.25) 1px,transparent 1.2px) 2px 3px/7px 7px}
+/* titles in blackletter */
+[data-look=outlaw] .vh,[data-look=outlaw] #sheetBox h2{font-family:var(--head);font-weight:400;letter-spacing:.01em;font-size:34px;line-height:1.05}
+[data-look=outlaw] #sheetBox h2{font-size:30px}
+[data-look=outlaw] .vh::after{background:var(--blood-2);height:3px;width:54px}
+/* section labels like a patch rocker: spaced capitals between two rules */
+[data-look=outlaw] h3.grp,[data-look=outlaw] h3.gh{font-family:var(--label);font-weight:600;font-size:13px;letter-spacing:.2em;color:var(--ink-2);display:flex;align-items:center;gap:10px;margin:24px 2px 10px}
+[data-look=outlaw] h3.grp::before,[data-look=outlaw] h3.gh::before{content:"";width:14px;height:2px;background:var(--blood-2);flex:none}
+[data-look=outlaw] h3.grp::after,[data-look=outlaw] h3.gh::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+/* the tab bar: a strip of black leather with stitching round the edge */
+[data-look=outlaw] .navsign{background:var(--grain),linear-gradient(180deg,#1f1f1f,#0b0b0b);box-shadow:0 8px 20px -8px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.08);border-radius:16px;position:relative}
+[data-look=outlaw] .navsign::after{content:"";position:absolute;inset:4px;border:1.5px dashed rgba(236,228,210,.45);border-radius:12px;pointer-events:none}
+[data-look=outlaw] #nav .navsign button{font-family:var(--label);font-weight:500;letter-spacing:.09em;text-transform:uppercase;font-size:11.5px;color:var(--bone)}
+[data-look=outlaw] #nav .navsign button svg{stroke:var(--bone)}
+[data-look=outlaw] #nav .navsign button.on{background:var(--bone);color:#141414;box-shadow:inset 0 -3px 0 var(--blood-2)}
+[data-look=outlaw] #nav .navsign button.on svg{stroke:#141414}
+/* cards, menus, tiles: stitched inside the edge */
+[data-look=outlaw] .menu,[data-look=outlaw] .optcard,[data-look=outlaw] .fieldcard,[data-look=outlaw] .list,[data-look=outlaw] .tile,[data-look=outlaw] .tool,[data-look=outlaw] .card,[data-look=outlaw] .bikecard,[data-look=outlaw] .stats>div{
+  outline:1.25px dashed var(--stitch);outline-offset:-5px}
+[data-look=outlaw] .stats>div{border-top-color:var(--blood-2)!important}
+/* icon tiles: black patches with bone-white icons and a stitched ring */
+[data-look=outlaw] .badge{background:var(--grain),radial-gradient(circle at 35% 25%,#2a2a2a,#0d0d0d);box-shadow:inset 0 0 0 1.5px rgba(236,228,210,.5),0 3px 8px -3px rgba(0,0,0,.55)}
+[data-look=outlaw] .badge svg{color:var(--bone)!important}
+[data-look=outlaw] .badge svg .d{fill:var(--blood-2);fill-opacity:.85}
+/* buttons */
+[data-look=outlaw] .btn{font-family:var(--label);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+[data-look=outlaw] .btn.small{letter-spacing:.04em}
+[data-look=outlaw] .btn.pri,[data-look=outlaw] .btn.go{background:var(--grain),linear-gradient(180deg,var(--blood-2),var(--blood));border-color:var(--blood);color:var(--bone)}
+[data-look=outlaw] .btn.go{box-shadow:inset 0 0 0 3px var(--blood),inset 0 0 0 5px rgba(236,228,210,.75);border-radius:16px}
+[data-look=outlaw] .btn.pri svg,[data-look=outlaw] .btn.go svg{stroke:var(--bone)}
+[data-look=outlaw] .seg button{font-family:var(--label);letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+[data-look=outlaw] .seg button.on{box-shadow:inset 0 -3px 0 var(--blood-2),0 1px 3px rgba(0,0,0,.25)}
+/* quick settings: a leather card */
+[data-look=outlaw] .quick{background:var(--grain),linear-gradient(160deg,#1e1e1e,#0b0b0b);outline:1.5px dashed rgba(236,228,210,.4);outline-offset:-6px}
+[data-look=outlaw] .q-row>span{font-family:var(--label);letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--bone)}
+[data-look=outlaw] .q-row>span svg{stroke:var(--blood-2)}
+[data-look=outlaw] .q-row .seg button.on{background:var(--bone);color:#141414}
+/* switches: oxblood when on */
+[data-look=outlaw] .chk input[type=checkbox]:checked,[data-look=outlaw] input.switch:checked{background:var(--blood-2)}
+/* menu row text */
+[data-look=outlaw] .menu b,[data-look=outlaw] .opt-row b,[data-look=outlaw] .tile span{font-family:var(--label);font-weight:500;letter-spacing:.03em;font-size:17px}
+[data-look=outlaw] .tool span{font-family:var(--label);font-weight:500;letter-spacing:.04em;text-transform:uppercase;font-size:12px}
+/* top bar and map buttons: leather */
+[data-look=outlaw] #top,[data-look=outlaw] .fab{background:var(--grain),linear-gradient(180deg,#1d1d1d,#0f0f0f)!important;color:var(--bone)}
+[data-look=outlaw] #top input{color:var(--bone)}
+[data-look=outlaw] #top input::placeholder{color:rgba(236,228,210,.55)}
+[data-look=outlaw] #top svg,[data-look=outlaw] .fab svg{stroke:var(--bone)}
+[data-look=outlaw] #top .logo{background:var(--blood)!important}
+/* the panel itself */
+[data-look=outlaw] #panel{background:var(--paper)}
+[data-look=outlaw][data-theme=night] #panel{background:var(--grain),var(--paper)}
+[data-look=outlaw] .opt-row small b{font-family:inherit;font-size:inherit;letter-spacing:0;font-weight:800}
