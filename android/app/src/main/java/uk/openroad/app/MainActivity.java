@@ -39,7 +39,7 @@ import java.util.List;
  */
 public class MainActivity extends Activity {
 
-    private static final int REQ_PERMS = 7, REQ_FILE = 42, REQ_SMS = 8, REQ_MIC = 9;
+    private static final int REQ_PERMS = 7, REQ_FILE = 42, REQ_SMS = 8, REQ_MIC = 9, REQ_BLE = 10;
     private WebView web;
     private WebView printView; // kept so it isn't collected while printing
     private ValueCallback<Uri[]> fileCallback;
@@ -118,6 +118,7 @@ public class MainActivity extends Activity {
         if (code == REQ_PERMS && bridge.hasLocation() && bridge.wantGps) bridge.gpsOn();
         if (code == REQ_MIC && res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) Voice.get(this).listen();
         if (code == REQ_MIC && (res.length == 0 || res[0] != PackageManager.PERMISSION_GRANTED)) js("window.onVoiceError&&onVoiceError('OpenRoad needs the microphone for voice commands')");
+        if (code == REQ_BLE) GroupService.bleRestart();
         if (code == REQ_PERMS && !bridge.hasLocation()) js("window.onGpsError&&onGpsError('Location permission was refused. Allow it in Settings > Apps > OpenRoad > Permissions.')");
     }
 
@@ -188,6 +189,13 @@ public class MainActivity extends Activity {
             if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED)
                 runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.SEND_SMS}, REQ_SMS));
         }
+        // bike to bike: switch on or off, asking for the Bluetooth permissions it needs (Android 12 and later)
+        @JavascriptInterface public void bikeLinkSet(boolean on) {
+            Util.kvSet(MainActivity.this, "bikeLink", on ? "on" : "off");
+            if (on && !BikeLink.allowed(MainActivity.this) && Build.VERSION.SDK_INT >= 31) runOnUiThread(() -> requestPermissions(new String[]{"android.permission.BLUETOOTH_SCAN", "android.permission.BLUETOOTH_ADVERTISE"}, REQ_BLE));
+            else GroupService.bleRestart();
+        }
+        @JavascriptInterface public String bikeLinkStatus() { return BikeLink.status; }
         @JavascriptInterface public void checkInCancel() { CheckIn.cancel(MainActivity.this); }
         @JavascriptInterface public String checkInAt() { return String.valueOf(CheckIn.armedAt(MainActivity.this)); }
         @JavascriptInterface public void checkInPos(double lat, double lon, double t) { CheckIn.savePos(MainActivity.this, lat, lon, (long) t); }

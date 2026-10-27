@@ -9,13 +9,14 @@
   function serverLine(st) {
     const sv = Object.values(st.servers || {}), on = sv.filter(x => x === 'online').length;
     if (!sv.length) return '<span class="gst wait">Connecting…</span>';
-    return on ? '<span class="gst ok">Connected' + (sv.length > 1 ? ' (' + on + ' of ' + sv.length + ' servers)' : '') + '</span>' : '<span class="gst bad">No connection. Retrying, and positions send as soon as there\'s signal.</span>';
+    const ble = st.ble && st.ble !== 'off' ? (st.ble === 'on' ? '<span class="gst ok">Bike to bike on: riders close by are seen with no signal</span>' : '<span class="gst wait">Bike to bike: ' + esc(st.ble) + '</span>') : '';
+    return (on ? '<span class="gst ok">Connected' + (sv.length > 1 ? ' (' + on + ' of ' + sv.length + ' servers)' : '') + '</span>' : '<span class="gst bad">No connection. Retrying, and positions send as soon as there\'s signal.</span>') + ble;
   }
   function riderRow(r) {
     const i = OR.riderInfo(r), bits = [];
     if (i.dist != null) bits.push('<b>' + OR.fmtDist(i.dist) + '</b> ' + i.dir);
     if (!i.stale) bits.push(i.moving ? OR.speed(r.s) + ' ' + OR.speedUnit() : 'stopped');
-    bits.push('seen ' + i.seen);
+    bits.push('seen ' + i.seen + (r.via === 'ble' ? ' bike to bike' : r.via === 'ble2' ? ' via another bike' : ''));
     if (r.b >= 0) bits.push('battery ' + r.b + '%');
     return '<div class="rider' + (i.stale ? ' lost' : '') + '">' + dot(r.c) + '<div class="ri"><b>' + esc(r.n || 'Rider') + '</b>' +
       (i.stale ? '<span class="lostx">Not heard from for ' + i.seen.replace(' ago', '') + '. Shown where last seen.</span>' : '') +
@@ -273,7 +274,7 @@
     if (pageBox && document.body.contains(pageBox) && OR.curTab && OR.curTab() === 'group') {
       const typing = document.activeElement && pageBox.contains(document.activeElement) && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
       // redraw only when something you'd notice has changed (not every few seconds)
-      const sig = st.on ? [st.riders.map(r => r.id + (OR.riderInfo(r).stale ? 's' : '') + (OR.riderInfo(r).dist != null ? Math.round(OR.riderInfo(r).dist / 400) : '') + (r.s > 2 ? 'm' : '')).join(','), st.unread, st.role, (st.routes || []).length, (st.meets || []).map(m => m.t).join(), (OR.groupHazards ? OR.groupHazards().length : 0), Object.values(st.servers || {}).join(), (st.msgs || []).length].join('|') : 'off';
+      const sig = st.on ? [st.riders.map(r => r.id + (OR.riderInfo(r).stale ? 's' : '') + (OR.riderInfo(r).dist != null ? Math.round(OR.riderInfo(r).dist / 400) : '') + (r.s > 2 ? 'm' : '')).join(','), st.unread, st.role, (st.routes || []).length, (st.meets || []).map(m => m.t).join(), (OR.groupHazards ? OR.groupHazards().length : 0), Object.values(st.servers || {}).join(), st.ble || '', st.riders.map(r => r.via || '').join(), (st.msgs || []).length].join('|') : 'off';
       if (!typing && sig !== lastSig) { lastSig = sig; const sc = $('#views').scrollTop; if (st.on) inGroup(pageBox, st); else OR.pageGroup(pageBox); $('#views').scrollTop = sc; }
     }
     const nb = document.querySelector('#nav [data-tab=group]'); if (nb) { nb.dataset.n = st.on ? (st.unread || '') : ''; nb.classList.toggle('live', !!st.on); }

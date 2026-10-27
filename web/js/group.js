@@ -31,6 +31,7 @@
       g.code = OR.group.pretty(code); OR.saveCfg();
       N().groupStart(g.code, g.name || 'Rider', g.colour || OR.GROUP_COLOURS[0], OR.cfg.voice !== false, parseFloat(g.splitMi) || 2, OR.cfg.units === 'km' ? 'km' : 'mi');
       if (N().groupRole) N().groupRole(g.role || '');
+      if (N().bikeLinkSet && OR.cfg.bikeLink !== false) N().bikeLinkSet(true); // asks for Bluetooth permission the first time
       OR.chatApply();
       poll(); watch();
     },

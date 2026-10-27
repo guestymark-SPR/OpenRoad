@@ -284,8 +284,9 @@
       row('stereoTurns', 'Turn sounds in the ear the turn is on', 'A chime and the direction in your left ear for a left turn, right for right. Needs a stereo headset or intercom (most Sena and Cardo play music in stereo).') +
       row('glareWarn', 'Warn me about low sun ahead', 'When you\'re about to ride into a low sun. The route card also shows it before you go.') +
       row('pubHazards', 'Share hazards with all OpenRoad riders', 'See and hear hazards other riders mark (gravel, diesel, a crash), and mark your own for everyone. Anonymous: no name or track is shared, just the hazard and where it is. They go after 6 hours. Android app only.') +
+      row('bikeLink', 'Bike to bike in group rides', 'Phones in the group also share positions and quick messages (fuel, stop, help, crash alerts) straight to each other over Bluetooth, so riders close by still see each other with no signal. Each phone repeats what it hears, so it can hop along a line of bikes. Range is short, about 50 to 150 m between phones. Uses a little more battery. Android app only.') +
       row('fatigueWarn', 'Suggest a break when my riding gets tired', 'Compares how smooth your riding is now with your first half hour. A guide only: stop whenever you feel tired.');
     box.appendChild(el);
-    $$('[data-aw]', el).forEach(x => x.onchange = () => { c[x.dataset.aw] = x.checked; OR.saveCfg(); if (x.dataset.aw === 'pubHazards' && A && A.pubHazOn) A.pubHazOn(x.checked); });
+    $$('[data-aw]', el).forEach(x => x.onchange = () => { c[x.dataset.aw] = x.checked; OR.saveCfg(); if (x.dataset.aw === 'pubHazards' && A && A.pubHazOn) A.pubHazOn(x.checked); if (x.dataset.aw === 'bikeLink' && A && A.bikeLinkSet) A.bikeLinkSet(x.checked); });
   };
 })(window.OR);

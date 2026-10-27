@@ -62,13 +62,14 @@ public class GroupService extends Service implements LocationListener {
 
     private static GroupService self;
     private GroupLink link;
+    private BikeLink ble; private static final Map<String, String> bleNames = new LinkedHashMap<>();
     private PowerManager.WakeLock lock;
     private Location me;
     private long lastSent = 0; private Location lastSentAt;
     private boolean voice = true; private double splitM = 3218.7;
     private final Map<String, String> alertState = new LinkedHashMap<>();
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final Runnable tick = new Runnable() { @Override public void run() { checkGroup(); sendIfDue(true); main.postDelayed(this, 10000); } };
+    private final Runnable tick = new Runnable() { @Override public void run() { checkGroup(); sendIfDue(true); if (ble != null && link != null) ble.urgent(!link.anyOnline()); main.postDelayed(this, 10000); } };
 
     static String state() {
         try {
@@ -84,7 +85,7 @@ public class GroupService extends Service implements LocationListener {
             JSONArray mt = new JSONArray(); synchronized (meets) { for (JSONObject r : meets.values()) mt.put(r); } o.put("meets", mt);
             synchronized (msgs) { o.put("msgs", new JSONArray(msgs.toString())); }
             JSONObject sv = new JSONObject(); synchronized (servers) { for (Map.Entry<String, String> e : servers.entrySet()) sv.put(e.getKey(), e.getValue()); }
-            o.put("servers", sv);
+            o.put("servers", sv); o.put("ble", BikeLink.status);
             return o.toString();
         } catch (Exception e) { return "{\"on\":false}"; }
     }
@@ -127,6 +128,7 @@ public class GroupService extends Service implements LocationListener {
         code = newCode;
         try { link = new GroupLink(code, myId, GroupLink.SERVERS, listener); }
         catch (Exception e) { addMsg(null, "Couldn't join: " + e.getMessage()); stop(); return START_NOT_STICKY; }
+        startBle();
         if (!running) {
             PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
             lock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "OpenRoad:group"); lock.acquire();
@@ -168,6 +170,8 @@ public class GroupService extends Service implements LocationListener {
             if ("m".equals(kind)) { // the same message arrives from both servers: keep one
                 String key = id + ":" + o.optLong("t");
                 synchronized (msgs) { for (int i = 0; i < msgs.length(); i++) if (key.equals(msgs.getJSONObject(i).optString("key"))) return; }
+                // the same quick message over the internet and bike to bike: keep the first
+                if (!o.optString("k").isEmpty()) synchronized (msgs) { for (int i = 0; i < msgs.length(); i++) { JSONObject x = msgs.getJSONObject(i); if (x.optString("id").startsWith(id.substring(0, Math.min(6, id.length()))) && o.optString("k").equals(x.optString("k")) && System.currentTimeMillis() - x.optLong("t") < 180000) return; } }
                 JSONObject r; synchronized (riders) { r = riders.get(id); }
                 String who = o.optString("n", r != null ? r.optString("n") : "A rider");
                 String text = msgText(o.optString("k"), o.optString("x"));
@@ -183,7 +187,7 @@ public class GroupService extends Service implements LocationListener {
             JSONObject prev; synchronized (riders) { prev = riders.get(id); }
             if (prev != null && prev.optLong("t") > t) return; // older copy from the other server
             o.put("rx", t > 0 ? Math.min(System.currentTimeMillis(), t) : System.currentTimeMillis());
-            synchronized (riders) { riders.put(id, o); }
+            synchronized (riders) { riders.put(id, o); if (id.length() >= 6 && !id.endsWith("000000")) riders.remove(id.substring(0, 6) + "000000"); } // the same rider heard bike to bike before
             if (prev == null) { addMsg(o, "is in the group"); updateNote(); }
         } catch (Exception ignored) { }
     }
@@ -382,7 +386,43 @@ public class GroupService extends Service implements LocationListener {
     }
 
     // ---------- my position ----------
-    @Override public void onLocationChanged(Location l) { me = l; CrashWatch.fix(l); sendIfDue(false); hazCheck(); }
+    @Override public void onLocationChanged(Location l) { me = l; CrashWatch.fix(l); sendIfDue(false); hazCheck(); if (ble != null) ble.position(l); }
+
+    // ---------- bike to bike (Bluetooth, no signal needed) ----------
+    void startBle() {
+        if (ble != null) { ble.stop(); ble = null; }
+        if ("off".equals(Util.kvGet(this, "bikeLink"))) { BikeLink.status = "off"; return; }
+        try { ble = new BikeLink(this, code, myId, myName, bleOut); ble.start(); if (me != null) ble.position(me); } catch (Exception e) { ble = null; BikeLink.status = "couldn't start"; }
+    }
+    static void bleRestart() { GroupService g = self; if (g != null) g.main.post(g::startBle); }
+    private JSONObject riderByShort(String s) { for (JSONObject r : riders.values()) if (r.optString("id").startsWith(s)) return r; return null; }
+    private final BikeLink.Out bleOut = new BikeLink.Out() {
+        @Override public void position(String s, double la, double lo, float speed, int heading, long ageMs, boolean relayed) {
+            try {
+                long rx = System.currentTimeMillis() - ageMs; JSONObject r, created = null;
+                synchronized (riders) {
+                    r = riderByShort(s);
+                    if (r == null) { created = r = new JSONObject().put("id", s + "000000").put("n", bleNames.containsKey(s) ? bleNames.get(s) : "Rider nearby").put("c", "#5d6d7e"); riders.put(s + "000000", r); }
+                    if (r.optLong("rx") >= rx) return; // what came over the internet is newer
+                    r.put("la", la).put("lo", lo).put("s", speed).put("h", heading).put("rx", rx).put("t", rx).put("via", relayed ? "ble2" : "ble");
+                }
+                if (created != null) { addMsg(created, "is in range, bike to bike"); updateNote(); }
+            } catch (Exception ignored) { }
+        }
+        @Override public void message(String s, String kind) {
+            try {
+                JSONObject r; synchronized (riders) { r = riderByShort(s); }
+                JSONObject o = new JSONObject().put("id", r != null ? r.optString("id") : s + "000000").put("n", r != null ? r.optString("n") : bleNames.containsKey(s) ? bleNames.get(s) : "A rider nearby")
+                        .put("c", r != null ? r.optString("c") : "").put("k", kind).put("t", System.currentTimeMillis()).put("via", "ble");
+                if (r != null && r.has("la")) o.put("la", r.optDouble("la")).put("lo", r.optDouble("lo"));
+                received("m", o.toString());
+            } catch (Exception ignored) { }
+        }
+        @Override public void name(String s, String n) {
+            bleNames.put(s, n);
+            synchronized (riders) { JSONObject r = riderByShort(s); if (r != null && "Rider nearby".equals(r.optString("n"))) try { r.put("n", n); } catch (Exception ignored) { } }
+        }
+    };
     private void sendIfDue(boolean force) {
         if (link == null || me == null) return;
         long now = System.currentTimeMillis(), since = now - lastSent;
@@ -404,6 +444,7 @@ public class GroupService extends Service implements LocationListener {
             JSONObject o = new JSONObject().put("id", myId).put("n", myName).put("c", myColour).put("k", kind == null ? "" : kind).put("x", text == null ? "" : clip(text, 80)).put("t", System.currentTimeMillis());
             if (me != null) o.put("la", me.getLatitude()).put("lo", me.getLongitude());
             link.sendMessage(o.toString());
+            if (ble != null) ble.message(kind);
             JSONObject m = new JSONObject().put("key", "me:" + o.getLong("t")).put("id", myId).put("n", "You").put("c", myColour).put("k", o.getString("k")).put("text", msgText(kind, text)).put("t", o.getLong("t")).put("mine", true);
             synchronized (msgs) { msgs.put(m); while (msgs.length() > 30) msgs.remove(0); }
             lastSent = 0; sendIfDue(true);
@@ -536,6 +577,7 @@ public class GroupService extends Service implements LocationListener {
         CrashWatch.stop("group");
         Util.kvSet(this, "groupLast", "");
         if (link != null) { link.close(); link = null; }
+        if (ble != null) { ble.stop(); ble = null; }
         synchronized (riders) { riders.clear(); }
         code = "";
         try { ((LocationManager) getSystemService(LOCATION_SERVICE)).removeUpdates(this); } catch (Exception ignored) { }
