@@ -129,7 +129,7 @@
   OR.applyTheme = function () {
     const m = OR.themeNow();
     document.documentElement.dataset.theme = m;
-    document.documentElement.dataset.look = OR.cfg.look || 'outlaw';
+    document.documentElement.dataset.look = OR.cfg.look || 'classic';
     if (OR.map && OR.map.__mode !== m) {
       OR.map.__mode = m;
       OR.map.setStyle(OR.buildStyle(m), { diff: false });

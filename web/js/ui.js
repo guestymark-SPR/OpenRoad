@@ -14,7 +14,7 @@
     if (!window.maplibregl) { window.__mlReady = boot; return; }
     OR.initMap();
     document.documentElement.dataset.theme = OR.themeNow();
-    document.documentElement.dataset.look = OR.cfg.look || 'outlaw';
+    document.documentElement.dataset.look = OR.cfg.look || 'classic';
     // the fixed buttons get the same icon set as everything else
     [['#locBtn', 'locate'], ['#layersBtn', 'layers'], ['#northBtn', 'north'], ['#qGo', 'search'], ['#hMore', 'menu'], ['#groupBtn', 'group']].forEach(([sel, n]) => { const el = $(sel); if (el) el.innerHTML = ic(n); });
     $('#top .logo').innerHTML = ic('moto');
@@ -656,7 +656,7 @@
         '<div class="quick"><div class="q-row"><span>' + ic('sun') + 'Map colours</span>' + qs('qTheme', c.theme, [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']]) + '</div>' +
         '<div class="q-row"><span>' + ic(c.voice ? 'vol' : 'mute') + 'Spoken directions</span>' + qs('qVoice', c.voice ? 'on' : 'off', [['on', 'On'], ['off', 'Off']]) + '</div>' +
         '<div class="q-row"><span>' + ic('map') + 'Units</span>' + qs('qUnits', c.units, [['mi', 'Miles'], ['km', 'Km']]) + '</div>' +
-        '<div class="q-row"><span>' + ic('star') + 'Look</span>' + qs('qLook', c.look || 'outlaw', [['outlaw', 'Outlaw'], ['classic', 'Classic']]) + '</div></div>' +
+        '<div class="q-row"><span>' + ic('star') + 'Look</span>' + qs('qLook', c.look || 'classic', [['outlaw', 'Outlaw'], ['classic', 'Classic']]) + '</div></div>' +
         sec('Riding', ['settings', 'voice', 'aware', 'maps']) + sec('Safety', ['safety', 'ice']) + sec('Group rides', ['chat']) + sec('Riding abroad', ['papers', 'phrases']) + sec('App', ['auto', 'about']) +
         (A ? '<p class="small muted center">OpenRoad ' + esc(A.version()) + '</p>' : '');
       $$('.menu button', v).forEach(b => b.onclick = () => { morePage = b.dataset.p; renderMore(); $('#views').scrollTop = 0; });
