@@ -74,6 +74,8 @@ class CoreBridge {
     @JavascriptInterface public void kvSet(String k, String v) { Util.kvSet(ctx, k, v); }
     @JavascriptInterface public void fetchTextH(int id, String url, String method, String body, String type, String headers) { Util.fetch(id, url, method, body, type, headers, js); }
     @JavascriptInterface public void speak(String text) { Speech.get(ctx).speak(text); }
+    @JavascriptInterface public void speakPan(String text, float pan) { Speech.get(ctx).speakPan(text, pan); }
+    @JavascriptInterface public String rideSteadiness(String since) { return RideService.steadinessSince(Long.parseLong(since)); }
     @JavascriptInterface public void stopSpeak() { Speech.get(ctx).stop(); }
     @JavascriptInterface public void speakIn(String text, String lang) { Speech.get(ctx).speakIn(text, lang, js); }
     @JavascriptInterface public void startGps() { onMain(this::gpsOn); }

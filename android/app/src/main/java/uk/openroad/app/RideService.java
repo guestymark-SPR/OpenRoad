@@ -43,7 +43,27 @@ public class RideService extends Service implements LocationListener, android.ha
         synchronized (jolts) { boolean f = true; for (double[] j : jolts) { if (j[4] <= t) continue; if (!f) sb.append(','); f = false; sb.append(String.format(Locale.US, "[%.6f,%.6f,%.2f,%.1f,%d]", j[0], j[1], j[2], j[3], (long) j[4])); } }
         return sb.append(']').toString();
     }
+    // steadiness: how much the bike is being corrected side to side, per minute of riding over about 20 mph.
+    // Gyro turn rate with the slow part (bends) taken out, so what's left is small, quick corrections.
+    private static final List<double[]> steady = new ArrayList<>(); // [minute start time, rms correction rate]
+    private double gSlow = 0, gSum = 0; private int gN = 0; private long gMin = 0;
+    static String steadinessSince(long t) {
+        StringBuilder sb = new StringBuilder("[");
+        synchronized (steady) { boolean f = true; for (double[] s : steady) { if (s[0] <= t) continue; if (!f) sb.append(','); f = false; sb.append(String.format(Locale.US, "[%d,%.4f]", (long) s[0], s[1])); } }
+        return sb.append(']').toString();
+    }
+    private void gyro(android.hardware.SensorEvent e) {
+        double w = Math.sqrt(e.values[0] * e.values[0] + e.values[1] * e.values[1] + e.values[2] * e.values[2]);
+        gSlow = gSlow * 0.98 + w * 0.02; // about the last second at 50 readings a second
+        long now = System.currentTimeMillis(), m = now / 60000;
+        if (m != gMin) {
+            if (gN > 1500) synchronized (steady) { steady.add(new double[]{gMin * 60000.0, Math.sqrt(gSum / gN)}); if (steady.size() > 1500) steady.remove(0); }
+            gMin = m; gSum = 0; gN = 0;
+        }
+        if (speedNow > 9) { double d = w - gSlow; gSum += d * d; gN++; }
+    }
     @Override public void onSensorChanged(android.hardware.SensorEvent e) {
+        if (e.sensor.getType() == android.hardware.Sensor.TYPE_GYROSCOPE) { gyro(e); return; }
         double g = Math.sqrt(e.values[0] * e.values[0] + e.values[1] * e.values[1] + e.values[2] * e.values[2]) / 9.81, dev = Math.abs(g - 1);
         rms = rms * 0.995 + dev * 0.005; // the bike's normal shake, over the last few seconds
         long now = System.currentTimeMillis();
@@ -93,6 +113,8 @@ public class RideService extends Service implements LocationListener, android.ha
             CrashWatch.start(this, "ride");
             synchronized (jolts) { jolts.clear(); }
             try { android.hardware.SensorManager sm = (android.hardware.SensorManager) getSystemService(SENSOR_SERVICE); sm.registerListener(this, sm.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER), android.hardware.SensorManager.SENSOR_DELAY_GAME); } catch (Exception ignored) { }
+            synchronized (steady) { steady.clear(); }
+            try { android.hardware.SensorManager sm = (android.hardware.SensorManager) getSystemService(SENSOR_SERVICE); android.hardware.Sensor gy = sm.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE); if (gy != null) sm.registerListener(this, gy, 20000); } catch (Exception ignored) { }
         }
         return START_STICKY;
     }

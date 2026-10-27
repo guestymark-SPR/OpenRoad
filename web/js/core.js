@@ -157,8 +157,10 @@ window.OR = window.OR || {};
   OR.$$ = (s, r) => Array.from((r || document).querySelectorAll(s));
 
   // ---------- voice ----------
-  OR.say = function (text) {
+  // pan: -1 left ear to 1 right ear (turns and bends, on a stereo headset), when turn sounds are on
+  OR.say = function (text, pan) {
     if (!OR.cfg.voice || !text) return;
+    if (pan && OR.cfg.stereoTurns !== false && A && A.speakPan) { A.speakPan(text, pan); return; }
     if (A && A.speak) { A.speak(text); return; }
     try {
       const u = new SpeechSynthesisUtterance(text); u.lang = 'en-GB'; u.volume = OR.cfg.voiceVol;

@@ -46,6 +46,7 @@
           (best !== cur ? '<button class="btn small" id="dryPick">Take the driest</button>' : '') + '</div>';
       }
     }
+    h += OR.awareHtml ? OR.awareHtml(r) : '';
     if (c.elev) {
       const e = c.elev;
       h += '<div class="hills"><div class="hl-h"><b>' + ic('pass') + 'Hills</b><span>↑ ' + OR.fmtHeight(e.up) + ' · ↓ ' + OR.fmtHeight(e.down) + ' · highest ' + OR.fmtHeight(e.max) + (e.steep >= 6 ? ' · steepest about ' + Math.round(e.steep) + '%' : '') + '</span></div>' + OR.profileSvg(e) + '</div>';
@@ -53,7 +54,9 @@
     else if (c.loading) h += '<p class="small muted">Checking hills and low-emission zones…</p>';
     return h;
   }
+  OR.repaintExtras = () => { if (cur) { html = render(cur, cache[sig(cur)] || {}); paint(); } };
   function bind() {
+    if (OR.awareBind && cur) OR.awareBind(cur);
     const bt = $('#btSet'); if (bt) bt.onclick = () => { const c = cache[sig(cur)]; if (!c || !c.best) return; OR.plan.depart = c.best.from; OR.toast('Leave time set to ' + OR.clock(new Date(c.best.from))); OR.emit('departChanged', new Date(c.best.from)); };
     const gs = $('#ghSet'); if (gs) gs.onclick = () => { const gh = OR.goldenHour(cur, OR.plan.depart ? new Date(OR.plan.depart) : new Date()); if (!gh) return; OR.plan.depart = gh.leave.getTime(); OR.toast('Leave time set to ' + OR.clock(gh.leave)); OR.emit('departChanged', gh.leave); };
     const dp = $('#dryPick'); if (dp) dp.onclick = () => { const c = cache[sig(cur)]; if (!c || !c.rain) return; const best = c.rain.reduce((b, x, i) => x && (b < 0 || x.score < c.rain[b].score) ? i : b, -1); if (best >= 0 && OR.chooseOption) OR.chooseOption(best); };

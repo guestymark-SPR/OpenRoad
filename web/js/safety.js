@@ -97,11 +97,11 @@
     for (let i = 1; i < r.shape.length; i++) if (r.cum[i] >= want) return r.shape[i];
     return r.shape[r.shape.length - 1];
   }
-  async function remindBreak(p) {
+  async function remindBreak(p, why) {
     const hrs = moving / 3600, at = ahead(p);
     const h = Math.floor(hrs), m = Math.round((hrs - h) * 60 / 15) * 15;
     const spoken = (h ? h + (h === 1 ? ' hour' : ' hours') : '') + (m && m < 60 ? (h ? ' and ' : '') + m + ' minutes' : '');
-    const intro = 'You\'ve been riding for ' + (spoken || 'a while') + ' without a break.';
+    const intro = why || 'You\'ve been riding for ' + (spoken || 'a while') + ' without a break.';
     let pick = null;
     for (const kind of ['cafe', 'fuel']) {
       try {
@@ -118,4 +118,5 @@
     OR.emit('breakDue', { line, pick });
   }
   OR.remindBreakNow = remindBreak; // for testing
+  OR.suggestBreak = (p, why) => { lastRemind = Date.now(); return remindBreak(p, why); };
 })(window.OR);

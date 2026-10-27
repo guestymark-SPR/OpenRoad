@@ -706,6 +706,7 @@
       if (OR.checkin.armAt(d.getTime())) { OR.toast('Check-in set for ' + OR.clock(d)); pageSafety(box); }
     };
     safetyExtras(box);
+    if (OR.awareSettings) OR.awareSettings(box);
     const ok = $('#ciOk', box); if (ok) ok.onclick = () => { OR.checkin.ok(); pageSafety(box); };
     const off = $('#ciOff', box); if (off) off.onclick = () => { OR.checkin.cancel(); pageSafety(box); };
   }

@@ -5,6 +5,7 @@ import android.media.AudioAttributes;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
@@ -30,6 +31,35 @@ final class Speech {
     private Speech(Context c) { ctx = c; audio = (AudioManager) c.getSystemService(Context.AUDIO_SERVICE); }
 
     void speak(final String text) { main.post(() -> speakNow(text)); }
+    // a turn or bend: a short chime then the words, in the ear it's on (pan -1 left to 1 right; needs a stereo headset)
+    void speakPan(final String text, final float pan) {
+        main.post(() -> {
+            if (tts == null || !ready) { speakNow(text); return; }
+            focus();
+            tone(pan);
+            Bundle b = new Bundle(); b.putFloat(TextToSpeech.Engine.KEY_PARAM_PAN, Math.max(-1f, Math.min(1f, pan)));
+            tts.playSilentUtterance(260, TextToSpeech.QUEUE_ADD, "sil" + System.nanoTime());
+            tts.speak(text, TextToSpeech.QUEUE_ADD, b, "or" + System.nanoTime());
+        });
+    }
+    private void tone(float pan) {
+        try {
+            final int rate = 22050, n = (int) (rate * 0.2);
+            short[] pcm = new short[n * 2];
+            float l = pan > 0 ? 0.12f : 1f, r = pan < 0 ? 0.12f : 1f;
+            for (int i = 0; i < n; i++) {
+                double t = (double) i / rate, f = t < 0.09 ? 880 : 1175, env = Math.sin(Math.PI * ((t < 0.09 ? t : t - 0.1) / 0.09));
+                double v = (t >= 0.09 && t < 0.1) ? 0 : Math.sin(2 * Math.PI * f * t) * Math.max(0, env) * 0.45;
+                pcm[i * 2] = (short) (v * l * 32767); pcm[i * 2 + 1] = (short) (v * r * 32767);
+            }
+            android.media.AudioTrack at = new android.media.AudioTrack.Builder()
+                    .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+                    .setAudioFormat(new android.media.AudioFormat.Builder().setSampleRate(rate).setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT).setChannelMask(android.media.AudioFormat.CHANNEL_OUT_STEREO).build())
+                    .setBufferSizeInBytes(pcm.length * 2).setTransferMode(android.media.AudioTrack.MODE_STATIC).build();
+            at.write(pcm, 0, pcm.length); at.play();
+            main.postDelayed(() -> { try { at.release(); } catch (Exception ignored) { } }, 800);
+        } catch (Exception ignored) { }
+    }
     void stop() { main.post(() -> { if (tts != null) tts.stop(); release(); }); }
 
     private void speakNow(String text) {
@@ -53,7 +83,8 @@ final class Speech {
         if (!ready) { synchronized (queue) { queue.add(text); } return; }
         say(text);
     }
-    private void say(String text) {
+    private void say(String text) { focus(); tts.speak(text, TextToSpeech.QUEUE_ADD, null, "or" + System.nanoTime()); }
+    private void focus() {
         try {
             if (Build.VERSION.SDK_INT >= 26) {
                 focusReq = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
@@ -61,7 +92,6 @@ final class Speech {
                 audio.requestAudioFocus(focusReq);
             }
         } catch (Exception ignored) { }
-        tts.speak(text, TextToSpeech.QUEUE_ADD, null, "or" + System.nanoTime());
     }
     // a phrase in another language (phrasebook), on its own voice so directions stay in English
     private TextToSpeech other; private String otherLang = "";
