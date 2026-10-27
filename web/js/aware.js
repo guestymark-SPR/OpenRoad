@@ -278,14 +278,18 @@
   // ---------- settings (in Safety) ----------
   OR.awareSettings = function (box) {
     const el = document.createElement('div'), c = OR.cfg;
-    const row = (k, t, d) => '<label class="chk"><input type="checkbox" data-aw="' + k + '"' + (c[k] !== false ? ' checked' : '') + '> ' + t + '</label><p class="small muted">' + d + '</p>';
-    el.innerHTML = '<h3>Road ahead</h3>' +
-      row('bendWarn', 'Warn me about tight bends', 'Spoken a few seconds before a tight bend on your route, with a speed to take it at, from the shape of the road and the lean you usually use (now about ' + OR.comfortLean() + '°). Only when you\'re going faster than that.') +
-      row('stereoTurns', 'Turn sounds in the ear the turn is on', 'A chime and the direction in your left ear for a left turn, right for right. Needs a stereo headset or intercom (most Sena and Cardo play music in stereo).') +
-      row('glareWarn', 'Warn me about low sun ahead', 'When you\'re about to ride into a low sun. The route card also shows it before you go.') +
-      row('pubHazards', 'Share hazards with all OpenRoad riders', 'See and hear hazards other riders mark (gravel, diesel, a crash), and mark your own for everyone. Anonymous: no name or track is shared, just the hazard and where it is. They go after 6 hours. Android app only.') +
-      row('bikeLink', 'Bike to bike in group rides', 'Phones in the group also share positions and quick messages (fuel, stop, help, crash alerts) straight to each other over Bluetooth, so riders close by still see each other with no signal. Each phone repeats what it hears, so it can hop along a line of bikes. Range is short, about 50 to 150 m between phones. Uses a little more battery. Android app only.') +
-      row('fatigueWarn', 'Suggest a break when my riding gets tired', 'Compares how smooth your riding is now with your first half hour. A guide only: stop whenever you feel tired.');
+    const row = (k, t, d) => '<label class="opt-row"><span><b>' + t + '</b><small>' + d + '</small></span><input type="checkbox" class="switch" data-aw="' + k + '"' + (c[k] !== false ? ' checked' : '') + '></label>';
+    const card = (title, rows) => '<h3 class="grp">' + title + '</h3><div class="optcard">' + rows + '</div>';
+    el.innerHTML = '<p class="small muted">All spoken through your headset while you ride. Each one can be switched off here.</p>' +
+      card('The road ahead',
+        row('bendWarn', 'Tight bends', 'A few seconds before a tight bend on your route, with a speed to take it at (from the shape of the road and the lean you usually use, now about ' + OR.comfortLean() + '°). Only when you\'re faster than that.') +
+        row('glareWarn', 'Low sun ahead', 'When you\'re about to ride into a low sun. The route card shows it before you go too.') +
+        row('stereoTurns', 'Turns in the ear they\'re on', 'A chime and the direction in your left ear for a left turn, right for right. Needs a stereo headset or intercom.')) +
+      card('Riders around you',
+        row('pubHazards', 'Hazards from all OpenRoad riders', 'Hear hazards other riders mark (gravel, diesel, a crash) and mark your own for everyone. Anonymous, and gone after 6 hours. Android app.') +
+        row('bikeLink', 'Bike to bike in group rides', 'Positions and quick messages straight between phones over Bluetooth, so riders close by still see each other with no signal (about 50 to 150 m). Android app.')) +
+      card('You',
+        row('fatigueWarn', 'Tiredness', 'Suggests a break when your riding gets less smooth than in your first half hour. A guide only: stop whenever you feel tired.'));
     box.appendChild(el);
     $$('[data-aw]', el).forEach(x => x.onchange = () => { c[x.dataset.aw] = x.checked; OR.saveCfg(); if (x.dataset.aw === 'pubHazards' && A && A.pubHazOn) A.pubHazOn(x.checked); if (x.dataset.aw === 'bikeLink' && A && A.bikeLinkSet) A.bikeLinkSet(x.checked); });
   };

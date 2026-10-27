@@ -58,6 +58,7 @@ window.OR = window.OR || {};
   const MI = 1609.344, YD = 0.9144;
   OR.fmtDist = function (m, short) {
     if (m == null || isNaN(m)) return '–';
+    if (m < 1) return OR.cfg.units === 'km' ? '0 km' : '0 miles';
     if (OR.cfg.units === 'km') {
       if (m < 950) return (Math.round(m / 10) * 10) + ' m';
       return (m < 10000 ? (m / 1000).toFixed(1) : Math.round(m / 1000)) + ' km';

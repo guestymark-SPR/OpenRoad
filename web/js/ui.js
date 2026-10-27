@@ -342,8 +342,8 @@
       h += OR.wxStripHtml ? OR.wxStripHtml() : '';
       h += OR.planExtrasHtml ? OR.planExtrasHtml() : '';
       h += '<div class="rideRow"><button class="btn go" id="ride">' + ic('rides') + 'Start ride</button><button class="btn brief" id="brief">' + ic('shield') + 'Route brief</button></div>';
-      h += '<div class="tools">' + [['wx', 'cloud', 'Weather', '#1e88e5'], ['fuelChk', 'fuel', 'Fuel check', '#e53935'], ['stays', 'bed', 'Stays at end', '#7e57c2'], ['save', 'save', 'Save', '#0e9f57'], ['toTrip', 'trips', 'Add to trip', '#1565c0'], ['beeline', 'share', 'Beeline', '#f5a300'], ['gmaps', 'map', 'Google / Apple Maps', '#4285f4'], ['gpx', 'dl', 'GPX', '#5d6d7e'], ['shareR', 'share', 'Share', '#00897b']]
-        .concat(A ? [['offl', 'map', 'Save offline', '#ef8f00']] : []).map(([id, i, l, c]) => '<button class="tool" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>').join('') + '</div>';
+      h += '<div class="tools">' + [['wx', 'cloud', 'Weather', '#039be5'], ['fuelChk', 'fuel', 'Fuel check', '#e53935'], ['stays', 'bed', 'Stays at end', '#7e57c2'], ['save', 'save', 'Save', '#0e9f57'], ['toTrip', 'trips', 'Add to trip', '#1565c0'], ['sendR', 'share', 'Send to…', '#00897b']]
+        .map(([id, i, l, c]) => '<button class="tool" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>').join('') + '</div>';
       h += '<div id="extraOut">' + (extras.html || '') + '</div>';
       h += '<details><summary>Turn-by-turn list (' + r.man.length + ' steps)</summary><ol class="dirs">' + r.man.map(m =>
         '<li>' + OR.arrow(m.type) + '<span>' + esc(m.text) + (m.len > 0 ? '<small>then ' + OR.fmtDist(m.len) + '</small>' : '') + '</span></li>').join('') + '</ol></details>';
@@ -378,13 +378,10 @@
     on('brief', () => OR.openBrief && OR.openBrief(OR.plan.route));
     on('save', () => { const n = prompt('Name this route', r.name); if (n == null) return; r.name = n.trim() || r.name; OR.routes.save(r); OR.toast('Saved to Saved routes'); });
     on('fuelChk', () => fuelCheck(r));
-    on('beeline', () => OR.sendToBeeline(r));
-    on('gmaps', () => OR.shareToMaps(r));
+    on('sendR', () => sendSheet(r));
     on('wx', () => weatherCheck(r));
     on('stays', () => { const e = r.shape[r.shape.length - 1]; findNearby('stay', e); });
-    on('gpx', () => OR.saveFile(OR.fileName(r.name) + '.gpx', OR.toGpx(r)));
-    on('shareR', () => OR.share(shareText(r), r.name));
-    on('offl', () => OR.saveRouteMap(r));
+
     on('toTrip', () => OR.addRouteToTrip && OR.addRouteToTrip(r));
   }
   OR.renderPlan = renderPlan;
@@ -394,6 +391,23 @@
     const c = $('#tgtCancel', v); if (c) c.onclick = () => { const t = OR.plan.target; OR.plan.target = null; renderPlan(); if (t) { OR.openTrip(t.tripId); } };
   }
   function fixTypes() { const w = OR.plan.wps; if (w.length) { w[0].type = 'break'; w[w.length - 1].type = 'break'; } }
+  // everywhere a route can go: another app, a file, a friend, or the phone's offline maps
+  function sendSheet(r) {
+    const row = (id, i, c, t, d) => '<button data-s="' + id + '">' + badge(i, c) + '<span><b>' + t + '</b><small>' + d + '</small></span>' + ic('chev', 'chev') + '</button>';
+    sheet('<h2>' + ic('share') + 'Send this route</h2><div class="menu">' +
+      row('gmaps', 'map', '#4285f4', 'Google Maps or Apple Maps', 'Open it there, or send a link to a friend') +
+      row('beeline', 'share', '#f5a300', 'Beeline Moto II', 'Turn-by-turn on your Beeline') +
+      row('shareR', 'chat', '#00897b', 'Send as a message', 'WhatsApp, text or email, with map links') +
+      row('gpx', 'dl', '#5d6d7e', 'GPX file', 'For Calimoto, Kurviger, Garmin and others') +
+      (A ? row('offl', 'map', '#ef8f00', 'Save the maps for it', 'So the route works with no signal') : '') + '</div>', b => {
+      $$('[data-s]', b).forEach(x => x.onclick = () => {
+        const k = x.dataset.s; closeSheet();
+        if (k === 'gmaps') OR.shareToMaps(r); else if (k === 'beeline') OR.sendToBeeline(r); else if (k === 'shareR') OR.share(shareText(r), r.name);
+        else if (k === 'gpx') OR.saveFile(OR.fileName(r.name) + '.gpx', OR.toGpx(r)); else if (k === 'offl') OR.saveRouteMap(r);
+      });
+    });
+  }
+  OR.sendSheet = r => sendSheet(r);
   function shareText(r) {
     return r.name + ': ' + OR.fmtDist(r.dist) + ', about ' + OR.fmtTime(r.time) + (r.roads && r.roads.length ? ' via ' + r.roads.join(', ') : '') + '\n' +
       r.wps.map((w, i) => (i === 0 ? 'Start: ' : i === r.wps.length - 1 ? 'End: ' : 'Via: ') + (w.name || '') + ' https://maps.google.com/?q=' + w.lat.toFixed(5) + ',' + w.lng.toFixed(5)).join('\n') +
@@ -495,8 +509,7 @@
     return '<label class="btn wide file">' + ic('dl') + 'Import a GPX file<input type="file" id="gpxIn" accept=".gpx,application/gpx+xml,application/xml,text/xml,*/*" hidden></label>' +
       (list.length ? '<div class="list">' + list.map(r => '<div class="li"><b>' + esc(r.name) + '</b><span>' + OR.fmtDist(r.dist) + ', ' + OR.fmtTime(r.time) + (r.twist ? ', ' + OR.bendLabel(r.twist).toLowerCase() : '') + '</span>' +
         (r.roads && r.roads.length ? '<span class="refs">' + r.roads.map(chip).join('') + '</span>' : '') +
-        '<div class="row"><button class="btn small" data-a="open" data-id="' + r.id + '">Show</button><button class="btn small pri" data-a="ride" data-id="' + r.id + '">Ride</button><button class="btn small" data-a="beeline" data-id="' + r.id + '">Beeline</button><button class="btn small" data-a="maps" data-id="' + r.id + '">Google / Apple</button>' +
-        '<button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
+        '<div class="row"><button class="btn small" data-a="open" data-id="' + r.id + '">Show</button><button class="btn small pri" data-a="ride" data-id="' + r.id + '">Ride</button><button class="btn small" data-a="send" data-id="' + r.id + '">' + ic('share') + 'Send</button><button class="btn small ghost icon-only" data-a="del" data-id="' + r.id + '" aria-label="Delete">' + ic('x') + '</button></div></div>').join('') + '</div>'
         : '<div class="empty">' + ic('save', 'big') + '<p>Routes you save or import appear here and work with no signal. GPX files from Calimoto, Kurviger or friends open straight in.</p></div>');
   }
   function bindSaved(v) {
@@ -505,9 +518,7 @@
       const r = OR.routes.get(b.dataset.id); if (!r) return;
       if (b.dataset.a === 'open') { loadRoute(r); }
       if (b.dataset.a === 'ride') startRide(r);
-      if (b.dataset.a === 'beeline') OR.sendToBeeline(r);
-      if (b.dataset.a === 'maps') OR.shareToMaps(r);
-      if (b.dataset.a === 'gpx') OR.saveFile(OR.fileName(r.name) + '.gpx', OR.toGpx(r));
+      if (b.dataset.a === 'send') sendSheet(r);
       if (b.dataset.a === 'del' && confirm('Delete "' + r.name + '"?')) { OR.routes.del(r.id); renderPlan(); }
     });
   }
@@ -593,13 +604,26 @@
         new Date(r.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + '</span>' +
         '<div class="kv"><span><b>' + OR.fmtDist(r.dist) + '</b>distance</span><span><b>' + OR.fmtTime(r.moving) + '</b>moving</span><span><b>' + (r.moving ? OR.speed(r.dist / r.moving) : 0) + '</b>avg ' + OR.speedUnit() + '</span><span><b>' + OR.speed(r.max) + '</b>max ' + OR.speedUnit() + '</span>' +
         (r.leanL || r.leanR ? '<span><b>' + (r.leanL || 0) + '° / ' + (r.leanR || 0) + '°</b>lean L / R</span>' : '') + '</div>' +
-        '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small" data-a="replay" data-id="' + r.id + '">Replay</button><button class="btn small" data-a="card" data-id="' + r.id + '">Picture</button><button class="btn small" data-a="coach" data-id="' + r.id + '">Corners</button><button class="btn small" data-a="video" data-id="' + r.id + '">Video</button><button class="btn small" data-a="fly" data-id="' + r.id + '">Flyover</button><button class="btn small ghost" data-a="gpx" data-id="' + r.id + '">GPX</button><button class="btn small ghost" data-a="route" data-id="' + r.id + '">Save as route</button><button class="btn small ghost" data-a="del" data-id="' + r.id + '">Delete</button></div></div>').join('') + '</div>'
+        '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small" data-a="replay" data-id="' + r.id + '">Replay</button><button class="btn small" data-a="more" data-id="' + r.id + '">' + ic('menu') + 'More</button></div></div>').join('') + '</div>'
         : '<div class="empty">' + ic('rides', 'big') + '<p>Every ride is recorded with distance, time, speeds and an estimate of your lean angle. Recording carries on with the screen off in the Android app.</p></div>') +
       '<p class="small muted">Lean angle is estimated from GPS speed and how sharply you turn, so treat it as a guide rather than a measurement.</p>';
     $('#freeRide', v).onclick = () => startRide(null);
     const ss = $('#seasonBtn', v); if (ss) ss.onclick = () => OR.seasonStats(yr);
-    $$('button[data-a]', v).forEach(b => b.onclick = async () => {
-      const r = OR.rides.get(b.dataset.id); if (!r) return; const pts = OR.rides.pts(r);
+    // the less-used things for a ride, in one sheet: share it, look at it, keep it
+    const more = r => {
+      const row = (a, i, c, t, d) => '<button data-a="' + a + '" data-id="' + r.id + '">' + badge(i, c) + '<span><b>' + t + '</b><small>' + d + '</small></span>' + ic('chev', 'chev') + '</button>';
+      sheet('<h2>' + ic('rides') + esc(r.name) + '</h2><h3 class="grp">Share</h3><div class="menu">' + row('card', 'star', '#ef8f00', 'Picture', 'A map card with your numbers, for WhatsApp or Facebook') +
+        row('fly', 'pass', '#7e57c2', 'Flyover video', '30 seconds flying over the hills you rode') + row('video', 'cam', '#d81b60', 'Helmet-cam video', 'Your footage with speed, lean and a map on it') + '</div>' +
+        '<h3 class="grp">Look back</h3><div class="menu">' + row('coach', 'lean', '#1565c0', 'Corner coach', 'Your smoothest bends, and ones to work on') + '</div>' +
+        '<h3 class="grp">Keep</h3><div class="menu">' + row('route', 'save', '#0e9f57', 'Save as a route', 'Ride it again with directions') + row('gpx', 'dl', '#5d6d7e', 'GPX file', 'For other apps and Garmin') + row('del', 'x', '#c62828', 'Delete', 'Remove this ride from the phone') + '</div>', b => {
+        const del = b.querySelector('button[data-a=del]'); if (del) del.classList.add('danger');
+        $$('button[data-a]', b).forEach(x => x.onclick = () => { closeSheet(); act(x.dataset.a, r); });
+      });
+    };
+    $$('button[data-a]', v).forEach(b => b.onclick = () => { const r = OR.rides.get(b.dataset.id); if (r) act(b.dataset.a, r); });
+    async function act(a, r) {
+      const pts = OR.rides.pts(r), b = { dataset: { a } };
+      if (a === 'more') return more(r);
       if (b.dataset.a === 'show') { OR.setData('rideview', { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: pts } }] }); OR.map.fitBounds(OR.bbox(pts), { padding: 60 }); if (innerWidth < 900) $('#panel').classList.remove('open'); }
       if (b.dataset.a === 'gpx') OR.saveFile(OR.fileName(r.name) + '.gpx', OR.toGpx({ name: r.name, pts, times: OR.rides.times(r) }));
       if (b.dataset.a === 'replay') OR.replayRide(r);
@@ -609,32 +633,42 @@
       if (b.dataset.a === 'fly') { OR.closeSheet && OR.closeSheet(); if (innerWidth < 900) $('#panel').classList.remove('open'); OR.flyover(r); }
       if (b.dataset.a === 'route') { try { const rt = await OR.routeFromTrack(pts, r.name); OR.routes.save(rt); OR.toast('Saved to Saved routes'); } catch (e) { OR.toast('Could not make a route: ' + e.message, 6000); } }
       if (b.dataset.a === 'del' && confirm('Delete this ride?')) { OR.rides.del(r.id); renderRides(); }
-    });
+    }
   }
 
   // ---------- more ----------
   let morePage = null;
   const field = (id, label, val, type, ph) => '<label class="f"><span>' + label + '</span><input id="' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '"' + (type === 'number' ? ' inputmode="decimal" step="any"' : '') + '></label>';
   OR.field = field;
-  const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['chat', 'chat', 'Chat settings', 'Quick messages, read aloud and notifications', '#0e9f57'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Safety', 'Crash alert, check-in, speed and break warnings', '#e53935'],
-    ['ice', 'helmet', 'Emergency card', 'Your ICE details, kept on this phone', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
-    ['settings', 'gear', 'Units, look and routing', 'Miles or km, day and night colours, tolls and ferries', '#5d6d7e'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, turn alerts on your watch', '#1565c0'],
-    ['phrases', 'chat', 'Phrasebook', 'French, Dutch and German for fuel, garages, hotels and the police, spoken aloud', '#1e88e5'],
+  const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['chat', 'chat', 'Group chat', 'Quick messages, read aloud and notifications', '#0e9f57'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Crash alert and check-in', 'Crash detection, check-in, speed and break warnings', '#e53935'], ['aware', 'warn', 'Road-ahead warnings', 'Bends, low sun, tiredness, shared hazards, bike to bike', '#ef6c00'],
+    ['ice', 'helmet', 'Emergency card', 'Your ICE details for first responders', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
+    ['settings', 'gear', 'Map and routing', 'Units, colours, tolls, ferries, cameras, traffic', '#5d6d7e'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, watch alerts', '#1565c0'],
+    ['phrases', 'chat', 'Phrasebook', 'French, Dutch and German, spoken aloud', '#1e88e5'],
     ['papers', 'id', 'Papers', 'Licence, V5C, insurance, MOT and breakdown cover', '#00897b'],
-    ['auto', 'moto', 'Android Auto', 'Setting it up, and what to check if OpenRoad doesn\'t show in the car', '#1e88e5'],
-    ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
+    ['auto', 'moto', 'Android Auto', 'Setting it up on a car screen', '#3949ab'],
+    ['about', 'update', 'Updates and about', 'Version, updates, where the data comes from', '#8e6bd6']];
   function renderMore() {
     const v = $('#v-more');
     if (!morePage) {
       const sec = (title, ids) => '<h3 class="grp">' + title + '</h3><div class="menu">' + ids.map(id => PAGES.find(p => p[0] === id)).map(p => '<button data-p="' + p[0] + '">' + badge(p[1], p[4]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
-      v.innerHTML = '<h2 class="vh">Settings</h2>' + sec('Riding', ['safety', 'voice', 'chat']) + sec('Maps', ['maps', 'settings']) + sec('You and abroad', ['ice', 'papers', 'phrases']) + sec('App', ['auto', 'about']);
+      const c = OR.cfg, qs = (id, val, opts) => '<div class="seg qseg" id="' + id + '">' + opts.map(([k, l]) => '<button data-v="' + k + '" class="' + (val === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
+      v.innerHTML = '<h2 class="vh">Settings</h2>' +
+        '<div class="quick"><div class="q-row"><span>' + ic('sun') + 'Map colours</span>' + qs('qTheme', c.theme, [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']]) + '</div>' +
+        '<div class="q-row"><span>' + ic(c.voice ? 'vol' : 'mute') + 'Spoken directions</span>' + qs('qVoice', c.voice ? 'on' : 'off', [['on', 'On'], ['off', 'Off']]) + '</div>' +
+        '<div class="q-row"><span>' + ic('map') + 'Units</span>' + qs('qUnits', c.units, [['mi', 'Miles'], ['km', 'Km']]) + '</div></div>' +
+        sec('Riding', ['settings', 'voice', 'aware', 'maps']) + sec('Safety', ['safety', 'ice']) + sec('Group rides', ['chat']) + sec('Riding abroad', ['papers', 'phrases']) + sec('App', ['auto', 'about']) +
+        (A ? '<p class="small muted center">OpenRoad ' + esc(A.version()) + '</p>' : '');
       $$('.menu button', v).forEach(b => b.onclick = () => { morePage = b.dataset.p; renderMore(); $('#views').scrollTop = 0; });
+      const qb = (id, fn) => $$('#' + id + ' button', v).forEach(x => x.onclick = () => { fn(x.dataset.v); OR.saveCfg(); renderMore(); });
+      qb('qTheme', x => { c.theme = x; OR.applyTheme(); });
+      qb('qVoice', x => { c.voice = x === 'on'; if (!c.voice) OR.hush(); });
+      qb('qUnits', x => { c.units = x; renderAll && renderAll(); });
       return;
     }
     const p = PAGES.find(x => x[0] === morePage);
     v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'Settings</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ phrases: p => OR.pagePhrases(p), voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout, auto: pageAuto })[morePage]($('#morePage', v));
+    ({ phrases: p => OR.pagePhrases(p), voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout, auto: pageAuto, aware: p => OR.awareSettings && OR.awareSettings(p) })[morePage]($('#morePage', v));
   }
   // pages that now have their own tab
   OR.openMore = p => {
@@ -695,12 +729,12 @@
   }
   function pageSafety(box) {
     const ci = OR.cfg.checkin, at = OR.cfg.checkinAt;
-    box.innerHTML = '<p class="small">Set a time to check in. If you don\'t tap "I\'m OK" by then, the phone alarms. If there\'s still no answer after the grace time, your contact gets a text with your last position.</p>' +
+    box.innerHTML = '<div id="sfCheck"><h3 class="gh">Check-in</h3><p class="small">Set a time to check in. If you don\'t tap "I\'m OK" by then, the phone alarms. If there\'s still no answer after the grace time, your contact gets a text with your last position.</p>' +
       '<div class="two">' + field('cName', 'Contact name', ci.name) + field('cPhone', 'Contact mobile', ci.phone, 'tel', '07…') + '</div>' +
       '<div class="two">' + field('cGrace', 'Grace time (minutes)', ci.grace, 'number') + field('cEvery', 'Repeat every (hours, 0 for once)', ci.every, 'number') + '</div>' +
       (at ? '<div class="card warnc"><b>Check-in due ' + OR.clock(new Date(at)) + (new Date(at).toDateString() !== new Date().toDateString() ? ' on ' + new Date(at).toLocaleDateString('en-GB') : '') + '</b><div class="row"><button id="ciOk" class="btn pri">I\'m OK</button><button id="ciOff" class="btn ghost">Turn off</button></div></div>'
         : '<div class="row"><label class="f inline"><span>Check in by</span><input id="ciTime" type="time" value="' + defaultTime() + '"></label><button id="ciArm" class="btn pri">Set check-in</button></div>') +
-      (A ? '' : '<p class="small muted">In a browser the text can only be opened for you to send. The Android app sends it itself.</p>');
+      (A ? '' : '<p class="small muted">In a browser the text can only be opened for you to send. The Android app sends it itself.</p>') + '</div>';
     keep(box, 'cName', ci, 'name'); keep(box, 'cPhone', ci, 'phone'); keep(box, 'cGrace', ci, 'grace', 1); keep(box, 'cEvery', ci, 'every', 1);
     const arm = $('#ciArm', box); if (arm) arm.onclick = () => {
       const [h, m] = $('#ciTime', box).value.split(':').map(Number); if (isNaN(h)) return;
@@ -708,7 +742,7 @@
       if (OR.checkin.armAt(d.getTime())) { OR.toast('Check-in set for ' + OR.clock(d)); pageSafety(box); }
     };
     safetyExtras(box);
-    if (OR.awareSettings) OR.awareSettings(box);
+    box.appendChild($('#sfCheck', box)); // crash detection first, then check-in
     const ok = $('#ciOk', box); if (ok) ok.onclick = () => { OR.checkin.ok(); pageSafety(box); };
     const off = $('#ciOff', box); if (off) off.onclick = () => { OR.checkin.cancel(); pageSafety(box); };
   }
@@ -736,7 +770,7 @@
       '<label class="chk"><input type="checkbox" id="sCrash"' + (s.crash ? ' checked' : '') + '> Watch for a crash while recording a ride or in a group ride</label>' +
       '<p class="small">If the phone feels a hard impact while you\'re riding and the bike then stops, it alarms for 60 seconds. If you don\'t tap "I\'m OK", ' +
       (c ? '<b>' + esc(c.name) + '</b> (' + esc(c.phone) + ')' : '<b>your contact</b>') + ' gets a text with your position, and your group is told if you\'re in a group ride.' +
-      (c ? '' : ' <b>Add a contact above (or on the Emergency card) first.</b>') + ' The text includes your blood group and medical notes from the Emergency card, if you\'ve filled them in.</p>' +
+      (c ? '' : ' <b>Add a contact under Check-in below (or on the Emergency card) first.</b>') + ' The text includes your blood group and medical notes from the Emergency card, if you\'ve filled them in.</p>' +
       '<p class="small muted">The phone needs to be on the bike or on you, and works best in a mount. It can\'t catch every crash, and a hard knock while stopped won\'t set it off. ' + (A ? 'Changes apply from your next ride.' : 'Crash detection needs the Android app.') + '</p>' +
       (A ? '<button id="sCrashTest" class="btn wide ghost">Test the alarm (nothing is sent)</button>' : '') +
       '<h3 class="gh">Speed limit warning</h3>' +
@@ -910,10 +944,14 @@
   }
   function rideOptions() {
     const r = OR.ride.route;
-    sheet('<h2>Ride options</h2><div class="tiles">' +
-      (r ? '<button class="tile" id="roSkip">' + badge('skip', '#ff6a1f') + '<span>Skip next stop</span></button><button class="tile" id="roView">' + badge('map', '#1e88e5') + '<span>Route overview</span></button><button class="tile" id="roWx">' + badge('cloud', '#1e88e5') + '<span>Weather ahead</span></button>' : '') +
-      '<button class="tile" id="roFuel">' + badge('fuel', '#e53935') + '<span>Fuel nearby</span></button><button class="tile" id="roCafe">' + badge('cup', '#8d5a3b') + '<span>Cafés nearby</span></button><button class="tile" id="roStay">' + badge('bed', '#7e57c2') + '<span>Stays nearby</span></button>' +
-      (OR.group && OR.group.state.on ? '<button class="tile" id="roGroup">' + badge('group', '#e53935') + '<span>Group</span></button><button class="tile" id="roChat">' + badge('chat', '#0e9f57') + '<span>Group chat</span></button>' : '') + '<button class="tile" id="roIce">' + badge('helmet', '#ef8f00') + '<span>Emergency card</span></button><button class="tile" id="roFill">' + badge('fuel', '#0e9f57') + '<span>I\'ve filled up</span></button><button class="tile" id="roPapers">' + badge('id', '#00897b') + '<span>My papers</span></button><button class="tile" id="roWhere">' + badge('near', '#e53935') + '<span>Where am I</span></button><button class="tile" id="roPhrase">' + badge('chat', '#1e88e5') + '<span>Phrasebook</span></button><button class="tile" id="roSpeedo">' + badge('lean', '#1565c0') + '<span>Speedo check</span></button></div>' +
+    const t = (id, i, c, l) => '<button class="tile" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>';
+    const grp = (title, tiles) => tiles ? '<h3 class="grp">' + title + '</h3><div class="tiles">' + tiles + '</div>' : '';
+    sheet('<h2>Ride options</h2>' +
+      grp('This route', r ? t('roSkip', 'skip', '#ff6a1f', 'Skip next stop') + t('roView', 'map', '#1e88e5', 'Route overview') + t('roWx', 'cloud', '#039be5', 'Weather ahead') : '') +
+      grp('Find nearby', t('roFuel', 'fuel', '#e53935', 'Fuel') + t('roCafe', 'cup', '#8d5a3b', 'Cafés') + t('roStay', 'bed', '#7e57c2', 'Stays') + t('roFill', 'fuel', '#0e9f57', 'I\'ve filled up')) +
+      grp('Group', OR.group && OR.group.state.on ? t('roGroup', 'group', '#e53935', 'Group') + t('roChat', 'chat', '#0e9f57', 'Group chat') : '') +
+      grp('Help and papers', t('roWhere', 'near', '#e53935', 'Where am I') + t('roIce', 'helmet', '#ef8f00', 'Emergency card') + t('roPapers', 'id', '#00897b', 'My papers') + t('roPhrase', 'chat', '#1e88e5', 'Phrasebook')) +
+      grp('Bike', t('roSpeedo', 'lean', '#1565c0', 'Speedo check')) +
       (OR.ride.leanL || OR.ride.leanR ? '<p class="small muted">Lean so far: ' + Math.round(OR.ride.leanL) + '° left, ' + Math.round(OR.ride.leanR) + '° right (estimated).</p>' : ''), b => {
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();

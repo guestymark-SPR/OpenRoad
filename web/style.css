@@ -721,3 +721,74 @@ body.filming #panel,body.filming #top,body.filming #nav,body.filming #hud,body.f
 #flyCard{position:fixed;left:50%;top:calc(16px + var(--safe-t));transform:translateX(-50%);z-index:60;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:10px 14px;display:flex;gap:12px;align-items:center}
 #flyCard b{display:flex;gap:6px;align-items:center}#flyCard svg{width:20px;height:20px}
 .dstops{list-style:none;margin:6px 0;padding:0}.dstops li{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.dstops .ds-t{font-weight:800;min-width:46px}.dstops li>span:nth-child(2){flex:1;display:flex;flex-direction:column}.dstops small{color:var(--ink-3)}
+
+/* =====================================================================
+   1.0.46: depth and order. Cards sit slightly above the sheet, icon tiles have light and shade,
+   section labels are small capitals, and everything gives a little when pressed.
+   ===================================================================== */
+:root{--lift:0 1px 0 rgba(255,255,255,.7) inset,0 1px 2px rgba(16,28,22,.06),0 6px 18px -10px rgba(16,28,22,.28);--press:scale(.985)}
+[data-theme=night]{--lift:0 1px 0 rgba(255,255,255,.05) inset,0 1px 2px rgba(0,0,0,.35),0 10px 24px -12px rgba(0,0,0,.7)}
+h3.grp,h3.gh{margin:22px 6px 8px;color:var(--ink-3);font-weight:800;font-size:12px;letter-spacing:.09em;text-transform:uppercase}
+.vh{position:relative;padding-bottom:10px}
+.vh::after{content:"";position:absolute;left:2px;bottom:0;width:36px;height:4px;border-radius:2px;background:var(--yellow)}
+/* grouped menus */
+.menu,.list{background:linear-gradient(180deg,var(--surface),color-mix(in srgb,var(--surface) 96%,#000));border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:18px;box-shadow:var(--lift)}
+.menu button{min-height:64px;transition:background .15s,transform .1s}
+.menu button:active,.tile:active,.tool:active,.li:active{transform:var(--press)}
+.menu button:active{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.menu button+button{border-top:0}
+.menu button{border-bottom:1px solid color-mix(in srgb,var(--line) 80%,transparent)}
+.menu b{font-size:16px;letter-spacing:-.005em}
+.menu small{display:block;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.menu span{min-width:0}
+/* icon tiles: a little light from above and a soft coloured shadow */
+.badge{background:linear-gradient(160deg,color-mix(in srgb,var(--c) 78%,#fff) 0%,var(--c) 45%,color-mix(in srgb,var(--c) 82%,#000) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -2px 0 rgba(0,0,0,.16),0 4px 10px -4px color-mix(in srgb,var(--c) 75%,transparent)}
+.badge svg{filter:drop-shadow(0 1px 0 rgba(0,0,0,.18))}
+/* tiles and tools: cards with lift */
+.tile,.tool{background:linear-gradient(180deg,var(--surface),color-mix(in srgb,var(--surface) 95%,#000));border:1px solid color-mix(in srgb,var(--line) 70%,transparent);box-shadow:var(--lift);transition:transform .1s}
+.tiles{gap:10px}
+.tile{min-height:68px;font-size:15.5px}
+.tools{grid-template-columns:repeat(3,1fr);gap:8px}
+.tool{min-height:84px;border-radius:16px;font-size:13px;color:var(--ink)}
+.tool .badge{width:42px;height:42px;border-radius:12px}
+/* cards */
+.card,.bikecard,.bikephoto,.stats>div{box-shadow:var(--lift)}
+.card{border-color:color-mix(in srgb,var(--line) 70%,transparent)}
+/* segmented controls: a raised selected part */
+.seg{background:color-mix(in srgb,var(--ink) 6%,var(--surface-2));border-radius:14px;padding:4px;gap:4px;border:0}
+.seg button{border-radius:10px;border:0}
+.seg button.on{background:var(--surface);box-shadow:0 1px 3px rgba(0,0,0,.18),0 0 0 1px color-mix(in srgb,var(--line) 60%,transparent);color:var(--ink)}
+[data-theme=night] .seg button.on{background:var(--surface-2);box-shadow:inset 0 -3px 0 var(--yellow),0 1px 3px rgba(0,0,0,.4)}
+/* quick settings at the top of Settings */
+.quick{background:linear-gradient(135deg,var(--green),color-mix(in srgb,var(--green) 70%,#000));border-radius:20px;padding:10px 12px;box-shadow:var(--lift);color:#fff;display:flex;flex-direction:column;gap:6px}
+.q-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px}
+.q-row>span{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.q-row>span svg{width:20px;height:20px;stroke:var(--yellow)}
+.q-row .seg{background:rgba(0,0,0,.22);margin:0;flex:none}
+.q-row .seg button{color:rgba(255,255,255,.85);padding:8px 12px;min-height:38px;font-size:14px;background:transparent}
+.q-row .seg button.on{background:var(--yellow);color:#15191c;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.center{text-align:center}
+/* list rows: action buttons sit on the right, and icon-only buttons are round */
+.li .row{gap:8px;flex-wrap:wrap}
+.btn.icon-only{width:40px;min-width:40px;padding:0;justify-content:center;border-radius:20px}
+.btn.small svg{width:18px;height:18px}
+/* sheets: a little more air at the top */
+#sheetBox h2{display:flex;align-items:center;gap:8px}
+#sheetBox h2 svg{width:24px;height:24px;color:var(--green-2)}
+[data-theme=night] #sheetBox h2 svg{color:var(--yellow)}
+.menu small{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tiles>.tile:last-child:nth-child(odd){grid-column:span 2}
+.menu button.danger b{color:var(--bad)}
+/* switches: every on/off setting, the same way */
+.chk input[type=checkbox],input.switch{appearance:none;-webkit-appearance:none;flex:none;width:50px;height:30px;border-radius:15px;background:color-mix(in srgb,var(--ink) 22%,var(--surface-2));position:relative;cursor:pointer;transition:background .2s;margin:0;box-shadow:inset 0 1px 2px rgba(0,0,0,.2)}
+.chk input[type=checkbox]::after,input.switch::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform .2s}
+.chk input[type=checkbox]:checked,input.switch:checked{background:var(--green-2)}
+.chk input[type=checkbox]:checked::after,input.switch:checked::after{transform:translateX(20px)}
+label.chk{display:flex;align-items:center;gap:12px;flex-direction:row-reverse;justify-content:space-between;font-weight:700;padding:10px 0}
+/* settings cards: a title and a line of explanation, with the switch on the right */
+.optcard{background:linear-gradient(180deg,var(--surface),color-mix(in srgb,var(--surface) 96%,#000));border:1px solid color-mix(in srgb,var(--line) 70%,transparent);border-radius:18px;box-shadow:var(--lift);overflow:hidden}
+.opt-row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid color-mix(in srgb,var(--line) 80%,transparent)}
+.opt-row:last-child{border-bottom:0}
+.opt-row>span{flex:1;min-width:0}.opt-row b{display:block;font-size:16px;font-weight:700}.opt-row small{display:block;color:var(--ink-3);font-size:13px;line-height:1.4;margin-top:2px}
+.chk input[type=checkbox],input.switch{min-height:0!important;height:30px!important;width:50px!important;padding:0;border:0}
