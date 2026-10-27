@@ -618,19 +618,20 @@
     ['settings', 'gear', 'Units, look and routing', 'Miles or km, day and night colours, tolls and ferries', '#5d6d7e'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, turn alerts on your watch', '#1565c0'],
     ['phrases', 'chat', 'Phrasebook', 'French, Dutch and German for fuel, garages, hotels and the police, spoken aloud', '#1e88e5'],
     ['papers', 'id', 'Papers', 'Licence, V5C, insurance, MOT and breakdown cover', '#00897b'],
+    ['auto', 'moto', 'Android Auto', 'Setting it up, and what to check if OpenRoad doesn\'t show in the car', '#1e88e5'],
     ['about', 'update', 'Updates and about', 'Version, updates and where the data comes from', '#8e6bd6']];
   function renderMore() {
     const v = $('#v-more');
     if (!morePage) {
       const sec = (title, ids) => '<h3 class="grp">' + title + '</h3><div class="menu">' + ids.map(id => PAGES.find(p => p[0] === id)).map(p => '<button data-p="' + p[0] + '">' + badge(p[1], p[4]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
-      v.innerHTML = '<h2 class="vh">Settings</h2>' + sec('Riding', ['safety', 'voice', 'chat']) + sec('Maps', ['maps', 'settings']) + sec('You and abroad', ['ice', 'papers', 'phrases']) + sec('App', ['about']);
+      v.innerHTML = '<h2 class="vh">Settings</h2>' + sec('Riding', ['safety', 'voice', 'chat']) + sec('Maps', ['maps', 'settings']) + sec('You and abroad', ['ice', 'papers', 'phrases']) + sec('App', ['auto', 'about']);
       $$('.menu button', v).forEach(b => b.onclick = () => { morePage = b.dataset.p; renderMore(); $('#views').scrollTop = 0; });
       return;
     }
     const p = PAGES.find(x => x[0] === morePage);
     v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'Settings</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ phrases: p => OR.pagePhrases(p), voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout })[morePage]($('#morePage', v));
+    ({ phrases: p => OR.pagePhrases(p), voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout, auto: pageAuto })[morePage]($('#morePage', v));
   }
   // pages that now have their own tab
   OR.openMore = p => {
@@ -816,6 +817,22 @@
     $('#sFerry', box).onchange = e => { c.avoidFerries = e.target.checked; OR.saveCfg(); };
     $('#sCams', box).onchange = e => { c.cameras = e.target.checked; OR.saveCfg(); };
     $('#sTomtom', box).onchange = e => { c.tomtomKey = e.target.value.trim(); OR.saveCfg(); OR.toast(c.tomtomKey ? 'Traffic key saved' : 'Traffic key removed'); };
+  }
+  // Android Auto only lists apps from the Play Store unless "Unknown sources" is on in its developer settings
+  function pageAuto(box) {
+    let info = null; try { info = A && A.autoInfo ? JSON.parse(A.autoInfo()) : null; } catch (e) { }
+    box.innerHTML = (info ? '<div class="card ' + (info.installed ? 'okc' : 'warnc') + '"><b>' + (info.installed ? 'Android Auto ' + esc(info.version || '') + ' is on this phone' : 'Android Auto isn\'t installed on this phone') + '</b>' + (info.installed ? '' : '<span class="small">Install it from the Play Store first.</span>') + '</div>' : '') +
+      '<p class="small">OpenRoad is installed from its own download, not the Play Store. Android Auto hides apps like that until you switch on <b>Unknown sources</b>.</p>' +
+      '<ol class="aasteps small"><li>Open Android Auto\'s settings: on a Samsung, <b>Settings, Apps, Android Auto</b>, then <b>Configure in Android Auto</b> (other phones: <b>Additional settings in the app</b>). The button below opens the Android Auto app page.</li>' +
+      '<li>Scroll to the bottom and tap <b>Version</b> about 10 times, until it asks to allow development settings. Tap <b>OK</b>.</li>' +
+      '<li>Tap the <b>three dots</b> at the top right, then <b>Developer settings</b>.</li>' +
+      '<li>Turn on <b>Unknown sources</b>.</li>' +
+      '<li>Unplug the phone from the car (or turn wireless Android Auto off and on), then connect again.</li>' +
+      '<li>On the car screen, open the app list: OpenRoad should be there. If not, look in Android Auto\'s launcher settings on the phone and make sure OpenRoad isn\'t hidden.</li></ol>' +
+      (A && A.openAutoSettings ? '<button class="btn wide pri" id="aaOpen">' + ic('gear') + 'Open Android Auto settings</button>' : '') +
+      '<h3>On the car screen</h3><p class="small">OpenRoad shows your trip days and saved routes. Pick one to navigate, with the map, turn card and voice; or choose <b>Record a ride</b>. Plan routes on the phone first: planning isn\'t possible on the car screen.</p>' +
+      '<p class="small muted">Android Auto may switch developer settings off again after it updates. If OpenRoad disappears from the car, check Unknown sources is still on.</p>';
+    const b = $('#aaOpen', box); if (b) b.onclick = () => A.openAutoSettings();
   }
   function pageAbout(box) {
     box.innerHTML = (A ? '<div class="stats"><div><b>' + esc(A.version()) + '</b><span>your version</span></div></div><button id="sUpd" class="btn wide pri">' + ic('update') + 'Check for updates</button><p class="small muted">OpenRoad also checks each time it opens.</p>' : '') +

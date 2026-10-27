@@ -30,7 +30,9 @@ class CoreBridge {
         @Override public void onLocationChanged(Location l) {
             js.run(String.format(Locale.US, "window.onNativeFix&&onNativeFix({coords:{latitude:%.7f,longitude:%.7f,speed:%s,heading:%s,accuracy:%.1f},timestamp:%d})",
                     l.getLatitude(), l.getLongitude(), l.hasSpeed() ? String.valueOf(l.getSpeed()) : "null",
-                    l.hasBearing() ? String.valueOf(l.getBearing()) : "null", l.getAccuracy(), System.currentTimeMillis()));
+                    l.hasBearing() ? String.valueOf(l.getBearing()) : "null", l.getAccuracy(),
+                    // when the fix was taken, not when it arrived, so the app can place you where you are now
+                    System.currentTimeMillis() - Math.max(0, (android.os.SystemClock.elapsedRealtimeNanos() - l.getElapsedRealtimeNanos()) / 1000000L)));
         }
         @Override public void onProviderEnabled(String p) { }
         @Override public void onProviderDisabled(String p) { js.run("window.onGpsError&&onGpsError('Location is switched off. Turn it on in quick settings.')"); }
@@ -46,7 +48,7 @@ class CoreBridge {
         if (!hasLocation()) { needPermission(); return; }
         try {
             lm.removeUpdates(gps);
-            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, gps, Looper.getMainLooper());
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500L, 0f, gps, Looper.getMainLooper()); // as often as the GPS gives them (most phones: once a second)
             Location last = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             if (last != null && System.currentTimeMillis() - last.getTime() < 60000) gps.onLocationChanged(last);
             if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) js.run("window.onGpsError&&onGpsError('Location is switched off. Turn it on in quick settings.')");
@@ -56,6 +58,15 @@ class CoreBridge {
     void onMain(Runnable r) { new android.os.Handler(Looper.getMainLooper()).post(r); }
 
     @JavascriptInterface public boolean isNative() { return true; }
+    // Android Auto on this phone: whether it's installed and which version (for the setup page)
+    @JavascriptInterface public String autoInfo() {
+        try { android.content.pm.PackageInfo i = ctx.getPackageManager().getPackageInfo("com.google.android.projection.gearhead", 0);
+            return new JSONObject().put("installed", true).put("version", i.versionName).toString(); }
+        catch (Exception e) { return "{\"installed\":false}"; }
+    }
+    @JavascriptInterface public void openAutoSettings() {
+        onMain(() -> { try { ctx.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:com.google.android.projection.gearhead")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { } });
+    }
     @JavascriptInterface public String version() { try { return ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionName; } catch (Exception e) { return "?"; } }
     @SuppressWarnings("deprecation")
     @JavascriptInterface public int versionCode() { try { return ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionCode; } catch (Exception e) { return 0; } }

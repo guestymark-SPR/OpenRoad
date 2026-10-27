@@ -17,7 +17,7 @@
   window.carInsets = function (l, t, r, b) {
     insets = { left: l, top: t, right: r, bottom: b };
     const h = $('#hud'); h.style.right = (r + 16) + 'px'; h.style.bottom = (b + 16) + 'px';
-    if (OR.map) OR.map.setPadding(insets);
+    OR.mapBasePad = insets; if (OR.map && !(OR.ride.on && OR.ride.follow)) OR.map.setPadding(insets);
   };
   window.carTheme = function (m) { OR.cfg.theme = m; OR.applyTheme(); };
   window.carMute = function (mute) { OR.cfg.voice = !mute; OR.saveCfg(); if (mute) OR.hush(); };

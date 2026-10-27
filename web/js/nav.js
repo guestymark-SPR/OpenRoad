@@ -31,14 +31,98 @@
     p.heading = lastHeading;
     OR.pos = p;
     if (!marker && OR.map) marker = new maplibregl.Marker({ element: markerEl(), rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat([p.lng, p.lat]).addTo(OR.map);
-    if (marker) { marker.setLngLat([p.lng, p.lat]); marker.setRotation(p.heading || 0); }
     if (ride.on) {
       const l = OR.leanFrom ? OR.leanFrom(p) : null;
       if (l != null) { if (l > ride.leanR) ride.leanR = l; if (-l > ride.leanL) ride.leanL = -l; ride.lean = l; }
       step(p);
     }
+    smoothFix(p);
     OR.emit('fix', p);
   }
+
+  // ---------- smooth arrow and camera ----------
+  // GPS gives one position a second. Drawn as it comes, the arrow hops and the map lurches. Instead, every
+  // screen frame we estimate where you are now: on a route, we slide along the route line at your GPS speed;
+  // off a route, we carry on along your heading. Each new fix gently corrects the estimate rather than jumping,
+  // the heading turns on a spring, and the camera follows the drawn arrow exactly, so the arrow stays still on
+  // screen and the map moves smoothly under it.
+  const D2R = Math.PI / 180, MPD = 111320; // metres per degree of latitude
+  const sm = { have: false, lng: 0, lat: 0, hd: 0, hdV: 0, along: null, fix: null, anchor: null, zoom: 16, pitch: 55, raf: 0, last: 0, blendFrom: null, blendT: 0, wasFollow: false, zoomT: 16 };
+  OR.smooth = sm;
+  const angN = a => ((a % 360) + 360) % 360;
+  const angD = (a, b) => ((b - a + 540) % 360) - 180; // signed, shortest way from a to b
+  function pointAlong(route, d) {
+    const c = route.cum, s = route.shape; d = Math.max(0, Math.min(c[c.length - 1], d));
+    let lo = 0, hi = c.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (c[m] <= d) lo = m; else hi = m; }
+    const seg = c[hi] - c[lo] || 1, t = (d - c[lo]) / seg;
+    return [s[lo][0] + (s[hi][0] - s[lo][0]) * t, s[lo][1] + (s[hi][1] - s[lo][1]) * t];
+  }
+  // the road's direction around a point, averaged over a short stretch so tiny kinks in the line don't twitch the arrow
+  function bearingAlong(route, d, v) { const ahead = Math.max(12, Math.min(40, v * 1.5)); return OR.bearing(pointAlong(route, d - ahead * 0.3), pointAlong(route, d + ahead)); }
+  function smoothFix(p) {
+    const now = performance.now(), age = Math.max(0, Math.min(1500, Date.now() - (p.t || Date.now())));
+    sm.fix = { lng: p.lng, lat: p.lat, v: p.speed > 0.7 ? p.speed : 0, hd: p.heading || 0, t: now - age, acc: p.acc || 10 };
+    const onRoute = ride.on && ride.route && ride.route.cum && ride.off === 0;
+    sm.v = sm.v == null || !sm.fix.v ? sm.fix.v : sm.v + (sm.fix.v - sm.v) * 0.5; // GPS speed wobbles by a few tenths a second
+    sm.anchor = onRoute ? { route: ride.route, along: ride.along, v: sm.v, t: sm.fix.t } : null;
+    if (!onRoute) sm.along = null;
+    const far = sm.have ? OR.dist([sm.lng, sm.lat], [p.lng, p.lat]) : 1e9;
+    if (!sm.have || far > Math.max(150, sm.fix.v * 4)) { // first fix, or a real jump (tunnel exit, reroute): go straight there
+      sm.lng = p.lng; sm.lat = p.lat; sm.hd = sm.fix.hd; sm.hdV = 0; sm.have = true; sm.along = onRoute ? ride.along : null;
+    }
+    if (!sm.raf) { sm.last = now; sm.raf = requestAnimationFrame(frame); }
+  }
+  function frame(now) {
+    sm.raf = 0;
+    const dt = Math.min(0.1, Math.max(0.001, (now - sm.last) / 1000)); sm.last = now;
+    const f = sm.fix; if (!f || !OR.map || !marker) return;
+    const k = 1 - Math.exp(-dt / 0.45); // how fast a correction is absorbed (time constant 0.45 s)
+    let tLng, tLat, tHd;
+    const a = sm.anchor;
+    if (a && a.route === ride.route && ride.off === 0) {
+      // on the route: where we'd be now at this speed, never more than 2 s past the last fix
+      const ahead = a.v * Math.min(2, (now - a.t) / 1000), target = a.along + ahead;
+      if (sm.along == null || Math.abs(target - sm.along) > 120) sm.along = target;
+      else { const kr = 1 - Math.exp(-dt / 1.3); let step = (target - sm.along) * kr; if (step < 0) step *= 0.5; sm.along += step + (a.v * dt) * (1 - kr); } // keep rolling at speed, ease out the error; slow to go backwards
+      sm.along = Math.min(sm.along, target + 6);
+      [tLng, tLat] = pointAlong(a.route, sm.along);
+      tHd = a.v > 1 ? bearingAlong(a.route, sm.along, a.v) : sm.hd;
+      sm.lng = tLng; sm.lat = tLat; // already smooth: it moves along the line
+    } else {
+      // no route (or off it): carry on along the heading for up to 1.5 s, then wait for the next fix
+      const go = f.v * Math.min(1.5, (now - f.t) / 1000), cos = Math.cos(f.lat * D2R);
+      tLat = f.lat + go * Math.cos(f.hd * D2R) / MPD; tLng = f.lng + go * Math.sin(f.hd * D2R) / (MPD * cos);
+      // roll on at your speed, and absorb the difference from GPS over about a second
+      const kf = 1 - Math.exp(-dt / 1.0), roll = (now - f.t) / 1000 < 1.5 ? (sm.v || 0) * dt * (1 - kf) : 0;
+      sm.lat += (tLat - sm.lat) * kf + roll * Math.cos(f.hd * D2R) / MPD; sm.lng += (tLng - sm.lng) * kf + roll * Math.sin(f.hd * D2R) / (MPD * cos);
+      tHd = f.v > 1.2 ? f.hd : sm.hd;
+    }
+    // heading on a critically damped spring: smooth turns, no overshoot, quick enough for hairpins
+    const w = 7; const e = angD(sm.hd, tHd);
+    sm.hdV += (w * w * e - 2 * w * sm.hdV) * dt; sm.hd = angN(sm.hd + sm.hdV * dt);
+    marker.setLngLat([sm.lng, sm.lat]); marker.setRotation(sm.hd);
+    if (sm.trace) sm.trace.push([now, sm.lng, sm.lat, sm.hd]);
+    // the camera follows the drawn arrow every frame
+    if (ride.on && ride.follow) {
+      sm.zoom += (sm.zoomT - sm.zoom) * (1 - Math.exp(-dt / 1.2));
+      sm.pitch += (55 - sm.pitch) * (1 - Math.exp(-dt / 0.8));
+      const base = OR.mapBasePad || { top: 0, bottom: 0, left: 0, right: 0 }, H = OR.map.getContainer().clientHeight;
+      const pad = { top: base.top + (H - base.top - base.bottom) * 0.44, bottom: base.bottom, left: base.left, right: base.right };
+      let cam = { center: [sm.lng, sm.lat], bearing: sm.hd, zoom: sm.zoom, pitch: sm.pitch, padding: pad };
+      if (!sm.wasFollow) { const c = OR.map.getCenter(); sm.blendFrom = { lng: c.lng, lat: c.lat, b: OR.map.getBearing(), z: OR.map.getZoom(), p: OR.map.getPitch() }; sm.blendT = now; sm.zoom = OR.map.getZoom(); }
+      if (sm.blendFrom) { // coming back to following after you moved the map: glide there over 0.8 s
+        const u = Math.min(1, (now - sm.blendT) / 800), q = u * u * (3 - 2 * u), B = sm.blendFrom;
+        cam.center = [B.lng + (sm.lng - B.lng) * q, B.lat + (sm.lat - B.lat) * q]; cam.bearing = B.b + angD(B.b, sm.hd) * q; cam.pitch = B.p + (sm.pitch - B.p) * q;
+        if (u >= 1) sm.blendFrom = null;
+      }
+      OR.map.jumpTo(cam);
+    }
+    sm.wasFollow = ride.on && ride.follow;
+    // keep animating while moving or settling; stop when still (saves battery)
+    const moving = f.v > 0 || Math.abs(sm.hdV) > 0.5 || Math.abs(e) > 0.5 || OR.dist([sm.lng, sm.lat], [tLng, tLat]) > 0.3 || sm.blendFrom || (ride.on && ride.follow && Math.abs(sm.zoomT - sm.zoom) > 0.01);
+    if (moving && document.visibilityState !== 'hidden') sm.raf = requestAnimationFrame(frame);
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && sm.fix && !sm.raf) { sm.last = performance.now(); sm.raf = requestAnimationFrame(frame); } });
 
   // ---------- following the route ----------
   function locate(route, p) {
@@ -120,14 +204,12 @@
   }
 
   // ---------- camera ----------
-  let lastCam = 0;
+  // sets the zoom the camera eases towards; the camera itself moves every frame (see frame() above)
   function camera(p, toTurn) {
-    if (!ride.follow || !OR.map) return;
-    const now = Date.now(); if (now - lastCam < 700) return; lastCam = now;
     const mph = (p.speed || 0) * 2.237;
     let zoom = mph > 55 ? 15 : mph > 35 ? 15.8 : 16.6;
     if (toTurn != null && toTurn < 350) zoom = Math.max(zoom, 16.8);
-    OR.map.easeTo({ center: [p.lng, p.lat], bearing: p.heading || OR.map.getBearing(), zoom, pitch: 55, duration: 900, offset: [0, OR.map.getContainer().clientHeight * 0.22] });
+    sm.zoomT = zoom;
   }
 
   // ---------- recording ----------
@@ -229,7 +311,7 @@
       OR.cfg.fuelSince = (OR.cfg.fuelSince || 0) + ride.dist; OR.saveCfg();
     }
     OR.setData('done', null); OR.setData('track', null); OR.setData('cams', null);
-    OR.map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+    OR.map.easeTo({ pitch: 0, bearing: 0, duration: 800, padding: OR.mapBasePad || { top: 0, bottom: 0, left: 0, right: 0 } }); sm.wasFollow = false;
     OR.emit('ridestop', saved);
     return saved;
   };

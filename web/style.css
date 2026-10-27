@@ -714,3 +714,4 @@ body.riding #radarChip{top:calc(150px + var(--safe-t))}
 .bp-prev span{flex:1;text-align:center;color:#fff;font-weight:700;font-size:13px;padding:9px 0;border-radius:8px}
 .bp-prev span.on{background:var(--ph);color:#15191c}
 .bp-prev .ref{flex:none;background:var(--pm);color:var(--ph);border:1.5px solid #fff;padding:2px 7px;margin:0 6px;font-weight:800}
+.aasteps{padding-left:22px;margin:8px 0}.aasteps li{margin:6px 0}
