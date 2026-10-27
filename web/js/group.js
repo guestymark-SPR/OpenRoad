@@ -110,9 +110,13 @@
     OR.emit('group', state);
   }
   OR.groupPoll = poll;
-  function draw() {
+  let drawSig = null;
+  function draw(force) {
     if (!OR.map) return;
     const pt = state.on && OR.group.meet();
+    // only redraw the map when something on it changed (this runs every 3 seconds)
+    const sig = (state.on ? state.riders.map(r => r.id + ':' + r.lo + ',' + r.la + ':' + (OR.riderInfo(r).stale ? OR.riderInfo(r).seen : '') + ':' + r.n).join('|') : '') + '#' + (pt ? pt.lo + ',' + pt.la : '');
+    if (sig === drawSig && force !== true) return; drawSig = sig;
     OR.setData('meet', { type: 'FeatureCollection', features: pt ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [pt.lo, pt.la] }, properties: { name: 'Regroup: ' + (pt.name || '') } }] : [] });
     OR.setData('riders', { type: 'FeatureCollection', features: (state.on ? state.riders : []).map(r => {
       const i = OR.riderInfo(r);
@@ -121,7 +125,7 @@
     }) });
   }
   function watch() { if (!timer) timer = setInterval(() => { if (!document.hidden) poll(); }, 3000); }
-  OR.on('style', draw);
+  OR.on('style', () => draw(true));
   OR.groupBoot = function () {
     if (!OR.groupAvailable()) return;
     OR.chatApply(); poll(); watch(); // a cheap local call, so it keeps checking (the group may be started from the phone while the car screen is up)

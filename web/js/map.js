@@ -188,7 +188,9 @@
   OR.initMap = function () {
     const m = new maplibregl.Map({
       container: 'map', style: OR.buildStyle(OR.themeNow()), center: OR.store.get('view', { c: [-2.1, 53.4] }).c, zoom: OR.store.get('view', { z: 7 }).z,
-      attributionControl: false, maxPitch: 70, dragRotate: true, touchPitch: true, fadeDuration: 100
+      attributionControl: false, maxPitch: 70, dragRotate: true, touchPitch: true, fadeDuration: 100,
+      // sharp enough on any screen; drawing at a phone's full 3x density costs smoothness for no visible gain
+      pixelRatio: Math.min(2, window.devicePixelRatio || 1), refreshExpiredTiles: false
     });
     m.__mode = OR.themeNow();
     OR.map = m;
@@ -198,7 +200,10 @@
     // icon pins are drawn when the map first needs them (and again after a style change)
     m.on('styleimagemissing', e => { if (/^pin-/.test(e.id) && OR.pinImage && !m.hasImage(e.id)) m.addImage(e.id, OR.pinImage(e.id.slice(4), 2), { pixelRatio: 2 }); });
     m.on('styledata', () => { if (m.isStyleLoaded()) addOverlays(); });
-    m.on('moveend', () => { const c = m.getCenter(); OR.store.set('view', { c: [c.lng, c.lat], z: m.getZoom() }); });
+    // remember the view, but not on every frame while the camera follows a ride (each save is a write to the phone)
+    let viewT = 0;
+    const saveView = () => { viewT = 0; const c = m.getCenter(); OR.store.set('view', { c: [c.lng, c.lat], z: m.getZoom() }); };
+    m.on('moveend', () => { if (!viewT) viewT = setTimeout(saveView, OR.ride && OR.ride.on ? 30000 : 1500); });
     m.on('error', e => { if (e && e.error && /Failed to fetch|NetworkError/.test(String(e.error.message))) return; console.warn(e && e.error); });
     m.on('click', 'ov-pois', e => { const f = e.features && e.features[0]; if (f) OR.emit('poi', f); });
     m.on('mouseenter', 'ov-pois', () => m.getCanvas().style.cursor = 'pointer');

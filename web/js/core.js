@@ -188,4 +188,20 @@ window.OR = window.OR || {};
     const el = document.getElementById('toast'); if (!el) return;
     el.textContent = msg; el.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => el.classList.remove('on'), ms || 3200);
   };
+
+  // ---------- loaded when first used ----------
+  // Tools you open now and then are fetched the first time you use them, so the app starts with less to read.
+  // Each name below starts as a stand-in that loads its file, then hands over to the real thing.
+  const loading = {};
+  OR.load = file => loading[file] || (loading[file] = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = 'js/' + file + '.js'; s.onload = res; s.onerror = () => { delete loading[file]; rej(new Error('could not load ' + file)); };
+    document.head.appendChild(s);
+  }));
+  const later = (file, names) => names.forEach(n => { if (!OR[n]) OR[n] = (...a) => OR.load(file).then(() => OR[n](...a)); });
+  later('flyover', ['flyover', 'mp4']);
+  later('ridevideo', ['rideVideo', 'videoTimes', 'videoStart', 'drawRideOverlay']);
+  later('beeline', ['sendToBeeline', 'beelineFiles']);
+  later('mapshare', ['shareToMaps', 'mapsPoints', 'googleMapsUrl', 'appleMapsUrl']);
+  later('autotrip', ['autoTripSheet', 'autoTrip']);
+  later('papers', ['pagePapers', 'showPapers']);
 })(window.OR);

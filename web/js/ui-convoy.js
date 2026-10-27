@@ -13,17 +13,20 @@
   OR.groupHazards = () => hazards;
   // shared with every OpenRoad rider (Android app), anonymous, 6 hours
   const pubOn = () => !!(N() && N().pubHazards) && OR.cfg.pubHazards !== false;
+  let lastHazSig = null;
   function pullHazards() {
     let g = [], pub = [];
     if (OR.group.state.on && N() && N().groupHazards) { try { g = JSON.parse(N().groupHazards()); } catch (e) { } }
     if (pubOn()) { try { pub = JSON.parse(N().pubHazards()).map(h => Object.assign(h, { key: 'p:' + h.hid, pub: true })); } catch (e) { } }
     hazards = g.concat(pub);
+    const sig = hazards.map(h => h.key + (h.gone || '')).join();
+    if (sig === lastHazSig) return; lastHazSig = sig; // unchanged: don't redraw the map
     if (!hazards.length) { OR.setData('haz', null); return; }
     OR.setData('haz', { type: 'FeatureCollection', features: hazards.map(h => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [h.lo, h.la] }, properties: { key: h.key, name: hazName(h.k) } })) });
   }
   OR.hazardSheet = function () {
     const grp = OR.group.state.on, pub = pubOn();
-    if (!grp && !pub) return OR.toast(N() && N().pubHazards ? 'Sharing hazards with other riders is switched off in Safety' : 'Hazard drops work in the Android app');
+    if (!grp && !pub) return OR.toast(N() && N().pubHazards ? 'Sharing hazards with other riders is switched off in Settings, Road-ahead warnings' : 'Hazard drops work in the Android app');
     let to = grp ? 'group' : 'all';
     OR.sheet('<h2>' + ic('warn') + 'Mark a hazard here</h2>' +
       (grp && pub ? '<div class="seg" id="hzTo"><button data-v="group" class="on">My group</button><button data-v="all">All OpenRoad riders</button></div>' : '') +

@@ -138,7 +138,8 @@
     function firstFix(p) { if (flew || OR.ride.on) return; flew = true; OR.map.flyTo({ center: [p.lng, p.lat], zoom: 13 }); }
     $('#northBtn').onclick = () => OR.map.easeTo({ bearing: 0, pitch: 0 });
     // the north button only shows when the map is turned or tilted
-    const nb = () => { const m = OR.map, off = Math.abs(m.getBearing()) > 1 || m.getPitch() > 2; $('#northBtn').hidden = !off; if (off) $('#northBtn svg').style.transform = 'rotate(' + (-m.getBearing()) + 'deg)'; };
+    const north = $('#northBtn'), nsvg = $('#northBtn svg'); let lastB = null;
+    const nb = () => { if (OR.ride.on) return; const m = OR.map, b = Math.round(m.getBearing()), off = Math.abs(b) > 1 || m.getPitch() > 2; if (north.hidden !== !off) north.hidden = !off; if (off && b !== lastB) { lastB = b; nsvg.style.transform = 'rotate(' + (-b) + 'deg)'; } };
     OR.map.on('rotate', nb); OR.map.on('pitch', nb);
     $('#layersBtn').onclick = mapStyleSheet;
   }
@@ -570,14 +571,7 @@
     $$('[data-near]', el).forEach(bt => bt.onclick = () => { if (innerWidth < 900) $('#panel').classList.remove('open'); const c = OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray(); findNearby(bt.dataset.near, c); });
     $('#greatRoads', el).onclick = () => { if (innerWidth < 900) $('#panel').classList.remove('open'); OR.findGreatRoads(); };
   }
-  function renderNearby() {
-    $('#v-nearby').innerHTML = '<h2 class="vh">Nearby</h2><p class="muted small">Around your position, or the middle of the map when there\'s no GPS fix.</p><div class="tiles">' +
-      NEAR.map(k => '<button class="tile" data-near="' + k + '">' + badge(OR.POI[k].i, OR.POI[k].c) + '<span>' + OR.KINDS[k].label + '</span></button>').join('') +
-      '<button class="tile" id="greatRoads">' + badge('twisty', '#8e24aa') + '<span>Great roads</span></button></div>' +
-      '<p class="small muted">Places come from OpenStreetMap. Prices aren\'t included: use the website or phone number to check and book.</p>';
-    const gr0 = $('#v-nearby #greatRoads'); if (gr0) gr0.onclick = () => { if (innerWidth < 900) $('#panel').classList.remove('open'); OR.findGreatRoads(); };
-    $$('[data-near]').forEach(bt => bt.onclick = () => { const c = OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray(); findNearby(bt.dataset.near, c); });
-  }
+
   async function findNearby(kind, ll, onPick) {
     OR.toast('Looking for ' + OR.KINDS[kind].label.toLowerCase() + '…');
     try {
@@ -595,6 +589,7 @@
   OR.findNearby = findNearby;
 
   // ---------- rides ----------
+  let ridesShown = 30; // newest first; older ones on request, so a long history doesn't slow the tab
   function renderRides() {
     const v = $('#v-rides'), list = OR.rides.list();
     const yr = new Date().getFullYear(), season = list.filter(r => new Date(r.start).getFullYear() === yr);
@@ -602,14 +597,16 @@
     v.innerHTML = '<h2 class="vh">Rides</h2><button id="freeRide" class="btn wide go">' + ic('rides') + 'Record a ride</button>' +
       '<div class="stats"><div><b>' + season.length + '</b><span>rides in ' + yr + '</span></div><div><b>' + OR.fmtDist(tot.d) + '</b><span>ridden</span></div><div><b>' + OR.fmtTime(tot.t) + '</b><span>moving</span></div>' + (tot.l ? '<div><b>' + tot.l + '°</b><span>best lean</span></div>' : '') + '</div>' +
       (list.length ? '<button id="seasonBtn" class="btn wide">' + ic('star') + 'Your riding in numbers</button>' : '') +
-      (list.length ? '<div class="list">' + list.map(r => '<div class="li"><b>' + esc(r.name) + '</b><span>' +
+      (list.length ? '<div class="list">' + list.slice(0, ridesShown).map(r => '<div class="li"><b>' + esc(r.name) + '</b><span>' +
         new Date(r.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) + '</span>' +
         '<div class="kv"><span><b>' + OR.fmtDist(r.dist) + '</b>distance</span><span><b>' + OR.fmtTime(r.moving) + '</b>moving</span><span><b>' + (r.moving ? OR.speed(r.dist / r.moving) : 0) + '</b>avg ' + OR.speedUnit() + '</span><span><b>' + OR.speed(r.max) + '</b>max ' + OR.speedUnit() + '</span>' +
         (r.leanL || r.leanR ? '<span><b>' + (r.leanL || 0) + '° / ' + (r.leanR || 0) + '°</b>lean L / R</span>' : '') + '</div>' +
         '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small" data-a="replay" data-id="' + r.id + '">Replay</button><button class="btn small" data-a="more" data-id="' + r.id + '">' + ic('menu') + 'More</button></div></div>').join('') + '</div>'
+        + (list.length > ridesShown ? '<button class="btn wide ghost" id="ridesMore">Show older rides (' + (list.length - ridesShown) + ' more)</button>' : '')
         : '<div class="empty">' + ic('rides', 'big') + '<p>Every ride is recorded with distance, time, speeds and an estimate of your lean angle. Recording carries on with the screen off in the Android app.</p></div>') +
       '<p class="small muted">Lean angle is estimated from GPS speed and how sharply you turn, so treat it as a guide rather than a measurement.</p>';
     $('#freeRide', v).onclick = () => startRide(null);
+    const rm = $('#ridesMore', v); if (rm) rm.onclick = () => { ridesShown += 40; renderRides(); };
     const ss = $('#seasonBtn', v); if (ss) ss.onclick = () => OR.seasonStats(yr);
     // the less-used things for a ride, in one sheet: share it, look at it, keep it
     const more = r => {
@@ -693,18 +690,7 @@
   }
   OR.renderBike = renderBike;
   function keep(box, id, obj, key, num, after) { const el = $('#' + id, box); el.onchange = () => { obj[key] = num ? (el.value === '' ? '' : parseFloat(el.value)) : el.value.trim(); OR.saveCfg(); if (after) after(); }; }
-  function pageBike(box) {
-    const b = OR.cfg.bike, range = OR.fuelRange(), left = OR.fuelLeft();
-    box.innerHTML = field('bName', 'Bike', b.name, 'text', 'e.g. Low Rider S') +
-      '<div class="two">' + field('bTank', 'Tank size (litres)', b.tankL, 'number', 'from the handbook') + field('bMpg', 'Real-world mpg', b.mpg, 'number', 'e.g. 45') + '</div>' +
-      field('bRes', 'Warn me with this many miles left', b.reserveMi, 'number') +
-      (range ? '<div class="stats"><div><b>' + OR.fmtDist(range) + '</b><span>full tank</span></div><div><b>' + OR.fmtDist(left) + '</b><span>left now</span></div><div><b>' + OR.fmtDist(OR.cfg.fuelSince + (OR.ride.on ? OR.ride.dist : 0)) + '</b><span>since fill-up</span></div></div>'
-        : '<p class="hint">Enter tank size and mpg to get your range, low-fuel warnings, fuel gap checks on routes and fuel costs in trips.</p>') +
-      '<button id="filled" class="btn wide">I\'ve filled up</button>';
-    const re = () => pageBike(box);
-    keep(box, 'bName', b, 'name'); keep(box, 'bTank', b, 'tankL', 1, re); keep(box, 'bMpg', b, 'mpg', 1, re); keep(box, 'bRes', b, 'reserveMi', 1, re);
-    $('#filled', box).onclick = () => { OR.filledUp(); re(); };
-  }
+
   function pageChat(box) {
     const c = OR.chatCfg(), on = OR.group && OR.group.state.on;
     box.innerHTML = (on ? '<button id="pcOpen" class="btn wide pri">' + ic('chat') + 'Open the group chat</button>' : '<p class="small">The chat works in a group ride: start or join one in the <b>Group</b> tab. The chat is there, and on the chat button in the ride bar while riding.</p><button id="pcGroup" class="btn wide">' + ic('group') + 'Group ride</button>') +
@@ -1007,7 +993,14 @@
     groupRuns(root, el => el.matches('label.f, div.two') && !el.parentElement.closest(NOCARD + ',.two,.fieldcard'), 'fieldcard');
   };
   let carding = false;
-  const cardObs = new MutationObserver(() => { if (carding) return; carding = true; try { OR.cardify($('#views')); OR.cardify($('#sheetBox')); } finally { carding = false; } });
+  const cardObs = new MutationObserver(list => {
+    if (carding) return; carding = true;
+    try {
+      const roots = new Set();
+      for (const m of list) for (const n of m.addedNodes) if (n.nodeType === 1 && (n.matches('h3,label.chk,label.f,div.two') || n.querySelector('h3,label.chk,label.f,div.two'))) roots.add(n.parentElement || n);
+      roots.forEach(r => OR.cardify(r));
+    } finally { carding = false; }
+  });
   setTimeout(() => { ['#views', '#sheetBox'].forEach(sel => { const el = $(sel); if (el) { OR.cardify(el); cardObs.observe(el, { childList: true, subtree: true }); } }); }, 0);
 
   // ---------- pop-up sheet ----------
