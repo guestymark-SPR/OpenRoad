@@ -11,24 +11,44 @@
   // ---------- hazards ----------
   let hazards = [];
   OR.groupHazards = () => hazards;
+  // shared with every OpenRoad rider (Android app), anonymous, 6 hours
+  const pubOn = () => !!(N() && N().pubHazards) && OR.cfg.pubHazards !== false;
   function pullHazards() {
-    if (!OR.group.state.on || !N().groupHazards) { hazards = []; OR.setData('haz', null); return; }
-    try { hazards = JSON.parse(N().groupHazards()); } catch (e) { return; }
+    let g = [], pub = [];
+    if (OR.group.state.on && N() && N().groupHazards) { try { g = JSON.parse(N().groupHazards()); } catch (e) { } }
+    if (pubOn()) { try { pub = JSON.parse(N().pubHazards()).map(h => Object.assign(h, { key: 'p:' + h.hid, pub: true })); } catch (e) { } }
+    hazards = g.concat(pub);
+    if (!hazards.length) { OR.setData('haz', null); return; }
     OR.setData('haz', { type: 'FeatureCollection', features: hazards.map(h => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [h.lo, h.la] }, properties: { key: h.key, name: hazName(h.k) } })) });
   }
   OR.hazardSheet = function () {
-    if (!OR.group.state.on) return OR.toast('Hazard drops work in a group ride');
-    OR.sheet('<h2>' + ic('warn') + 'Mark a hazard here</h2><p class="small muted">Riders behind you hear a warning as they get close. It stays for 8 hours.</p><div class="hzgrid">' +
+    const grp = OR.group.state.on, pub = pubOn();
+    if (!grp && !pub) return OR.toast(N() && N().pubHazards ? 'Sharing hazards with other riders is switched off in Safety' : 'Hazard drops work in the Android app');
+    let to = grp ? 'group' : 'all';
+    OR.sheet('<h2>' + ic('warn') + 'Mark a hazard here</h2>' +
+      (grp && pub ? '<div class="seg" id="hzTo"><button data-v="group" class="on">My group</button><button data-v="all">All OpenRoad riders</button></div>' : '') +
+      '<p class="small muted" id="hzWho">' + (to === 'group' ? 'Riders in your group hear a warning as they get close. It stays for 8 hours.' : 'Any OpenRoad rider coming this way hears a warning. It\'s anonymous, and goes after 6 hours or when two riders say it\'s gone.') + '</p><div class="hzgrid">' +
       OR.HAZARDS.map(h => '<button data-hz="' + h[0] + '">' + esc(h[1]) + '</button>').join('') + '</div>' + OR.field('hzNote', 'Add a few words (optional)', '', 'text', 'e.g. on the left-hand bend'), b => {
+      $$('#hzTo button', b).forEach(x => x.onclick = () => { to = x.dataset.v; $$('#hzTo button', b).forEach(y => y.classList.toggle('on', y === x)); $('#hzWho', b).textContent = to === 'group' ? 'Riders in your group hear a warning as they get close. It stays for 8 hours.' : 'Any OpenRoad rider coming this way hears a warning. It\'s anonymous, and goes after 6 hours or when two riders say it\'s gone.'; });
       $$('[data-hz]', b).forEach(x => x.onclick = () => {
         if (!OR.pos) return OR.toast('Waiting for your position');
-        N().groupHazard(x.dataset.hz, $('#hzNote', b).value.trim()); OR.closeSheet(); OR.toast(hazName(x.dataset.hz) + ' marked for the group'); setTimeout(pullHazards, 500);
+        const k = x.dataset.hz, note = $('#hzNote', b).value.trim();
+        if (to === 'group') { N().groupHazard(k, note); OR.toast(hazName(k) + ' marked for the group'); }
+        else { if (N().pubHazPos) N().pubHazPos(OR.pos.lat, OR.pos.lng); const ok = N().pubHazAdd(k, note); OR.toast(ok ? hazName(k) + ' marked for all OpenRoad riders' : 'Not marked: no connection yet, or 10 marked in the last hour'); }
+        OR.closeSheet(); setTimeout(pullHazards, 500);
       });
     });
   };
   OR.on('ready', () => { });
   function hazTap(key) {
     const h = hazards.find(x => x.key === key); if (!h) return;
+    if (h.pub) {
+      const age = Math.round((Date.now() - h.t) / 60000), d = OR.pos ? OR.dist([OR.pos.lng, OR.pos.lat], [h.lo, h.la]) : null;
+      return OR.sheet('<h2>' + ic('warn') + esc(hazName(h.k)) + '</h2><p>' + (h.x ? esc(h.x) + '<br>' : '') + 'Marked by ' + (h.mine ? 'you' : 'an OpenRoad rider') + ' ' + (age < 1 ? 'just now' : age < 90 ? age + ' min ago' : Math.round(age / 60) + ' h ago') + (d != null ? ', ' + OR.fmtDist(d) + ' from you' : '') + '.' + (h.gone ? ' One rider has said it\'s gone.' : '') + '</p>' +
+        (h.voted ? '<p class="small muted">You\'ve said it\'s gone.</p>' : '<button class="btn wide ghost" id="hzGone">' + (h.mine ? 'Remove it' : 'It\'s gone') + '</button>'), b => {
+        const g = $('#hzGone', b); if (g) g.onclick = () => { N().pubHazGone(h.hid); OR.closeSheet(); OR.toast(h.mine ? 'Removed' : 'Thanks: it goes when one more rider agrees'); setTimeout(pullHazards, 600); };
+      });
+    }
     const age = Math.round((Date.now() - h.t) / 60000), d = OR.pos ? OR.dist([OR.pos.lng, OR.pos.lat], [h.lo, h.la]) : null;
     OR.sheet('<h2>' + ic('warn') + esc(hazName(h.k)) + '</h2><p>' + (h.x ? esc(h.x) + '<br>' : '') + 'Marked by ' + (h.mine ? 'you' : esc(h.n)) + ' ' + (age < 1 ? 'just now' : age < 90 ? age + ' min ago' : Math.round(age / 60) + ' h ago') + (d != null ? ', ' + OR.fmtDist(d) + ' from you' : '') + '.</p>' +
       (h.mine ? '<button class="btn wide ghost" id="hzDel">Remove it (it\'s gone)</button>' : ''), b => {
@@ -106,10 +126,16 @@
   OR.on('ridestop', () => { chase = null; });
 
   // ---------- hooks: polling, map taps, buttons ----------
-  OR.on('group', st => {
-    pullHazards(); drawConvoy();
-    const hb = $('#hHaz'); if (hb) { hb.hidden = !st.on; if (!hb.onclick) { hb.innerHTML = ic('warn'); hb.onclick = OR.hazardSheet; } }
-  });
+  const hazBtn = () => { const hb = $('#hHaz'); if (hb) { hb.hidden = !(OR.group.state.on || pubOn()); if (!hb.onclick) { hb.innerHTML = ic('warn'); hb.onclick = OR.hazardSheet; } } };
+  OR.on('group', st => { pullHazards(); drawConvoy(); hazBtn(); });
+  OR.on('ridestart', hazBtn);
+  // public hazards: watch the area around you while the app is open, and refresh the map
+  let lastArea = 0;
+  setInterval(() => {
+    if (!pubOn() || document.hidden) return;
+    if (OR.pos && !OR.ride.on && Date.now() - lastArea > 60000 && N().pubHazPos) { lastArea = Date.now(); N().pubHazPos(OR.pos.lat, OR.pos.lng); }
+    pullHazards();
+  }, 10000);
   OR.on('hazTap', hazTap);
   OR.on('chase', c => { const n = $('#hudNote'); if (c) { n.hidden = false; n.textContent = 'Catching up with ' + c.name + '. The route follows them as they ride. Tap to stop.'; n.onclick = () => { OR.stopCatchUp(); n.hidden = true; n.onclick = null; }; } });
 })(window.OR);

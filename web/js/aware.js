@@ -274,6 +274,7 @@
   OR.on('ride', e => { if (!e || e.free) return; try { bendCheck(e); } catch (x) { } });
   setInterval(() => { if (OR.ride && OR.ride.on) try { glareCheck(); } catch (x) { } }, 60000);
 
+  if (A && A.pubHazOn) A.pubHazOn(on('pubHazards'));
   // ---------- settings (in Safety) ----------
   OR.awareSettings = function (box) {
     const el = document.createElement('div'), c = OR.cfg;
@@ -282,8 +283,9 @@
       row('bendWarn', 'Warn me about tight bends', 'Spoken a few seconds before a tight bend on your route, with a speed to take it at, from the shape of the road and the lean you usually use (now about ' + OR.comfortLean() + '°). Only when you\'re going faster than that.') +
       row('stereoTurns', 'Turn sounds in the ear the turn is on', 'A chime and the direction in your left ear for a left turn, right for right. Needs a stereo headset or intercom (most Sena and Cardo play music in stereo).') +
       row('glareWarn', 'Warn me about low sun ahead', 'When you\'re about to ride into a low sun. The route card also shows it before you go.') +
+      row('pubHazards', 'Share hazards with all OpenRoad riders', 'See and hear hazards other riders mark (gravel, diesel, a crash), and mark your own for everyone. Anonymous: no name or track is shared, just the hazard and where it is. They go after 6 hours. Android app only.') +
       row('fatigueWarn', 'Suggest a break when my riding gets tired', 'Compares how smooth your riding is now with your first half hour. A guide only: stop whenever you feel tired.');
     box.appendChild(el);
-    $$('[data-aw]', el).forEach(x => x.onchange = () => { c[x.dataset.aw] = x.checked; OR.saveCfg(); });
+    $$('[data-aw]', el).forEach(x => x.onchange = () => { c[x.dataset.aw] = x.checked; OR.saveCfg(); if (x.dataset.aw === 'pubHazards' && A && A.pubHazOn) A.pubHazOn(x.checked); });
   };
 })(window.OR);

@@ -121,6 +121,7 @@ public class RideService extends Service implements LocationListener, android.ha
 
     @Override public void onLocationChanged(Location l) {
         CrashWatch.fix(l);
+        try { PublicHazards.fix(this, l); } catch (Exception ignored) { }
         speedNow = l.hasSpeed() ? l.getSpeed() : 0;
         synchronized (points) {
             points.add(new double[]{l.getLongitude(), l.getLatitude(), l.hasSpeed() ? l.getSpeed() : 0, l.getAccuracy(), System.currentTimeMillis()});

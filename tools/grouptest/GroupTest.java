@@ -40,11 +40,19 @@ public class GroupTest {
             GroupLink guest = new GroupLink(code, "ffffff000006", one, L("guest"));
             waitFor("guest", "Sunday run", 12);
             boolean ok8 = has("guest", "e {\"id\":\"eeeeee000005\",\"title\":\"Sunday run\"}"); guest.closeQuiet();
+            // public hazards: one link per phone, areas added with watch(); a hazard kept in an area reaches a rider who arrives later
+            String sq = "PUBHAZTEST" + Integer.toHexString(new java.util.Random().nextInt());
+            GroupLink pa = new GroupLink("OPENROADPUBLICHAZARDS", "111111000001", one, L("pa")); pa.watch(sq); Thread.sleep(3000);
+            pa.sendKeptAt(sq, "h", "abc123abc123", "{\"hid\":\"abc123abc123\",\"k\":\"gravel\"}"); Thread.sleep(1500);
+            GroupLink pb = new GroupLink("OPENROADPUBLICHAZARDS", "222222000002", one, L("pb")); Thread.sleep(3000); pb.watch(sq);
+            waitFor("pb", "gravel", 10); boolean ok9 = has("pb", "h {\"hid\":\"abc123abc123\",\"k\":\"gravel\"}");
+            pb.clearKeptAt(sq, "h", "abc123abc123"); waitFor("pa", "h-clear", 10); boolean ok10 = has("pa", "h-clear {\"id\":\"abc123abc123\"}");
+            pa.closeQuiet(); pb.closeQuiet();
             boolean ok1 = has("dave", "p {\"id\":\"aaaaaa000001\",\"n\":\"Mark\""), ok2 = has("mark", "m {\"id\":\"bbbbbb000002\""), ok3 = !got.containsKey("other"), ok4 = has("late", "Mark");
             mark.close(); waitFor("dave", "left {\"id\":\"aaaaaa000001\"}", 10);
             boolean ok5 = has("dave", "left {\"id\":\"aaaaaa000001\"}");
-            System.out.println(server + ": dave sees Mark " + ok1 + " | Mark hears Dave " + ok2 + " | other group sees nothing " + ok3 + " | late joiner gets kept position " + ok4 + " | leaving clears it " + ok5 + " | late joiner gets 40 kB shared route " + ok6 + " | route cleared " + ok7 + " | event kept after a quick look " + ok8);
-            if (!(ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7 && ok8)) fails++;
+            System.out.println(server + ": dave sees Mark " + ok1 + " | Mark hears Dave " + ok2 + " | other group sees nothing " + ok3 + " | late joiner gets kept position " + ok4 + " | leaving clears it " + ok5 + " | late joiner gets 40 kB shared route " + ok6 + " | route cleared " + ok7 + " | event kept after a quick look " + ok8 + " | public hazard to a later rider " + ok9 + " | public hazard cleared " + ok10);
+            if (!(ok1 && ok2 && ok3 && ok4 && ok5 && ok6 && ok7 && ok8 && ok9 && ok10)) fails++;
             dave.close(); other.close(); late.close(); Thread.sleep(1500);
         }
         System.out.println(fails == 0 ? "ALL PASSED" : fails + " SERVER(S) FAILED");

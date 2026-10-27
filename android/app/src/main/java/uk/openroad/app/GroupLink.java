@@ -74,6 +74,22 @@ public class GroupLink {
         for (Conn k : conns) k.closeGracefully(new String[]{base + "/p/" + riderId, base + "/r/" + riderId, base + "/x/" + riderId, base + "/c/" + riderId, base + "/h/" + riderId});
     }
     public String topicBase() { return base; }
+
+    // ---------- more areas on the same link (public hazards: one area per map square, same key) ----------
+    private final java.util.List<String> bases = new java.util.concurrent.CopyOnWriteArrayList<>();
+    static String baseFor(String code) {
+        try { return "openroad/v1/" + hex(MessageDigest.getInstance("SHA-256").digest(("topic:" + clean(code)).getBytes(StandardCharsets.UTF_8))).substring(0, 24); }
+        catch (Exception e) { return "openroad/v1/x"; }
+    }
+    /** Also listen to another area's messages. */
+    public void watch(String code) {
+        String b = baseFor(code); if (bases.contains(b)) return; bases.add(b);
+        for (Conn k : conns) { try { k.send(subscribePacket(b + "/#")); } catch (Exception ignored) { } } // or on the next connect
+    }
+    public boolean watching(String code) { return bases.contains(baseFor(code)); }
+    /** Keep something in another area, under an id of my choosing. */
+    public void sendKeptAt(String code, String what, String id, String json) { publish(baseFor(code) + "/" + what + "/" + id, json, true); }
+    public void clearKeptAt(String code, String what, String id) { for (Conn k : conns) k.publish(baseFor(code) + "/" + what + "/" + id, new byte[0], true); }
     /** Disconnect without removing anything kept (used for a quick look at an event). */
     public void closeQuiet() {
         running = false;
@@ -144,6 +160,7 @@ public class GroupLink {
                     int[] h = readHeader(din); byte[] ack = readBody(din, h[1]);
                     if ((h[0] >> 4) != 2 || ack.length < 2 || ack[1] != 0) throw new IOException("refused (" + (ack.length > 1 ? ack[1] : -1) + ")");
                     send(subscribePacket(base + "/#"));
+                    for (String b2 : bases) send(subscribePacket(b2 + "/#"));
                     listener.onStatus(name, "online");
                     wait = 2000;
                     Thread pinger = new Thread(() -> { try { while (running && sock == s) { Thread.sleep(30000); send(new byte[]{(byte) 0xC0, 0}); } } catch (Exception ignored) { } });
@@ -166,8 +183,10 @@ public class GroupLink {
             int tl = ((b[0] & 0xff) << 8) | (b[1] & 0xff);
             String topic = new String(b, 2, tl, StandardCharsets.UTF_8);
             int at = 2 + tl; if (((flags >> 1) & 3) > 0) at += 2; // packet id when QoS > 0
-            if (!topic.startsWith(base + "/")) return;
-            String[] parts = topic.substring(base.length() + 1).split("/");
+            String bs = topic.startsWith(base + "/") ? base : null;
+            if (bs == null) for (String b2 : bases) if (topic.startsWith(b2 + "/")) { bs = b2; break; }
+            if (bs == null) return;
+            String[] parts = topic.substring(bs.length() + 1).split("/");
             if (parts.length != 2) return;
             String seg = parts[0];
             if (b.length - at == 0) { // something kept was cleared: a rider left, or a route or regroup point was taken down
