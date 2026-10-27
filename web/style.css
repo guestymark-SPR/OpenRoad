@@ -716,3 +716,8 @@ body.riding #radarChip{top:calc(150px + var(--safe-t))}
 .bp-prev .ref{flex:none;background:var(--pm);color:var(--ph);border:1.5px solid #fff;padding:2px 7px;margin:0 6px;font-weight:800}
 .aasteps{padding-left:22px;margin:8px 0}.aasteps li{margin:6px 0}
 .rvprev{position:relative;border-radius:14px;overflow:hidden;background:#000;margin:8px 0}.rvprev video{display:none}.rvprev canvas{display:block;width:100%;height:auto}
+/* flyover being made: only the map, and the progress card */
+body.filming #panel,body.filming #top,body.filming #nav,body.filming #hud,body.filming #chips,body.filming #radarChip,body.filming .maplibregl-ctrl,body.filming #setBtn,body.filming .grppill,body.filming #recentre{display:none!important}
+#flyCard{position:fixed;left:50%;top:calc(16px + var(--safe-t));transform:translateX(-50%);z-index:60;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:10px 14px;display:flex;gap:12px;align-items:center}
+#flyCard b{display:flex;gap:6px;align-items:center}#flyCard svg{width:20px;height:20px}
+.dstops{list-style:none;margin:6px 0;padding:0}.dstops li{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}.dstops .ds-t{font-weight:800;min-width:46px}.dstops li>span:nth-child(2){flex:1;display:flex;flex-direction:column}.dstops small{color:var(--ink-3)}

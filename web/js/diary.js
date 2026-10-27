@@ -62,7 +62,7 @@
     rides.forEach(r => { const pts = OR.rides.pts(r), ts = OR.rides.times(r); ts.forEach((tt, i) => { const d = Math.abs(tt - when); if (d < bd) { bd = d; best = pts[i]; } }); });
     return best;
   }
-  async function addPhotos(t, di, files) {
+  async function addPhotos(t, di, files, stop) {
     const d = diaryOf(t), k = dayKey(t, di), day = d.days[k] = d.days[k] || { notes: '', photos: [] }, rides = ridesOn(k);
     let n = 0;
     for (const f of files) {
@@ -70,7 +70,8 @@
         const ex = OR.readExif(await f.arrayBuffer()), id = OR.uid();
         await put(id, await shrink(f));
         let at = ex.lat != null ? [ex.lng, ex.lat] : ex.t ? placeByTime(rides, ex.t) : null;
-        day.photos.push({ id, t: ex.t || f.lastModified || Date.now(), lng: at ? at[0] : null, lat: at ? at[1] : null, caption: '', placed: ex.lat != null ? 'gps' : at ? 'time' : '' });
+        if (stop && ex.lat == null) at = [stop.lng, stop.lat];
+        day.photos.push({ id, t: ex.t || (stop ? stop.t + 60000 : f.lastModified || Date.now()), lng: at ? at[0] : null, lat: at ? at[1] : null, caption: stop && stop.name ? stop.name : '', placed: ex.lat != null ? 'gps' : at ? (stop ? 'stop' : 'time') : '' });
         n++;
       } catch (e) { }
     }
@@ -97,6 +98,7 @@
       h += '<div class="dday"><div class="dd-h"><b>Day ' + (di + 1) + '</b><span>' + OR.dayDate(t, di).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (day.title ? ' · ' + esc(day.title) : '') + '</span></div>' +
         (rides.length ? '<div class="stats"><div><b>' + OR.fmtDist(dist) + '</b><span>ridden</span></div><div><b>' + OR.fmtTime(mov) + '</b><span>riding</span></div>' + (lean ? '<div><b>' + lean + '°</b><span>best lean</span></div>' : '') + '</div>' : '<p class="small muted">No ride recorded on this date yet.</p>') +
         (day.hotel ? '<p class="small">' + ic('bed') + ' Night at <b>' + esc(day.hotel.name) + '</b></p>' : '') +
+        stopsHtml(dd, di) +
         '<div class="dphotos" data-day="' + di + '">' + dd.photos.map(p => '<button class="dph" data-ph="' + p.id + '" data-day="' + di + '"><span class="ph-load"></span></button>').join('') + '</div>' +
         '<label class="f"><span>Notes</span><textarea class="dnotes" data-day="' + di + '" rows="3" placeholder="What happened today…">' + esc(dd.notes || '') + '</textarea></label>' +
         '<div class="row"><label class="btn small">' + ic('plus') + 'Add photos<input type="file" accept="image/*" multiple hidden data-addph="' + di + '"></label>' + (rides.length ? '<button class="btn small" data-dmap="' + di + '">' + ic('map') + 'Show on the map</button>' : '') + '</div></div>';
@@ -113,6 +115,9 @@
         OR.closeSheet(); dayMap(rides, ph); if (innerWidth < 900) $('#panel').classList.remove('open');
       });
       $('#dPrint', b).onclick = () => printDiary(t);
+      $$('[data-stopph]', b).forEach(el => el.onchange = async () => { const files = Array.from(el.files || []); if (!files.length) return; const [di, si] = el.dataset.stopph.split(':').map(Number); await addPhotos(t, di, files, (diaryOf(t).days[dayKey(t, di)].stops || [])[si]); OR.openDiary(t); });
+      // stops on rides you've recorded on trip days: look for any new ones, and show them when found
+      findAllStops(t).then(n => { if (n && document.querySelector('.diary')) OR.openDiary(t); });
     });
   };
   async function photoSheet(t, di, id) {
@@ -139,16 +144,109 @@
       let ph = ''; for (const p of dd.photos) { const src = await get(p.id); if (src) ph += '<figure><img src="' + src + '"><figcaption>' + esc(p.caption || '') + '</figcaption></figure>'; }
       body += '<section><h2>Day ' + (di + 1) + ' · ' + OR.dayDate(t, di).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) + (day.title ? ' · ' + esc(day.title) : '') + '</h2>' +
         (map ? '<img class="map" src="' + map + '">' : '') + (rides.length ? '<p class="nums"><b>' + OR.fmtDist(dist) + '</b> ridden in <b>' + OR.fmtTime(mov) + '</b>' + (day.hotel ? ' · night at <b>' + esc(day.hotel.name) + '</b>' : '') + '</p>' : '') +
+        ((dd.stops || []).filter(x => x.name).length ? '<p class="stops">' + dd.stops.filter(x => x.name).map(x => '<b>' + OR.clock(new Date(x.t)) + '</b> ' + esc(x.name) + ' (' + esc(KIND_WORD[x.kind] || 'stop') + ', ' + Math.round((x.until - x.t) / 60000) + ' min' + (x.wx ? ', ' + esc(x.wx) : '') + ')').join('<br>') + '</p>' : '') +
         (dd.notes ? '<p class="notes">' + esc(dd.notes).replace(/\n/g, '<br>') + '</p>' : '') + (ph ? '<div class="photos">' + ph + '</div>' : '') + '</section>';
     }
     if (!body) return OR.toast('Nothing in the diary yet: record rides on the trip dates, or add photos and notes', 6000);
     const html = '<!doctype html><html><head><meta charset="utf-8"><title>' + esc(t.name) + '</title><style>body{font-family:sans-serif;color:#1c2226;margin:24px}h1{color:#0b6b3a}h2{border-bottom:3px solid #f5c518;padding-bottom:4px}section{page-break-after:always}' +
-      '.map{width:100%;border-radius:10px}.nums{font-size:18px}.notes{font-size:16px;line-height:1.5}.photos{display:grid;grid-template-columns:1fr 1fr;gap:10px}figure{margin:0}figure img{width:100%;border-radius:8px}figcaption{font-size:13px;color:#5c666e}</style></head><body>' +
+      '.map{width:100%;border-radius:10px}.nums{font-size:18px}.notes{font-size:16px;line-height:1.5}.stops{font-size:15px;line-height:1.6}.photos{display:grid;grid-template-columns:1fr 1fr;gap:10px}figure{margin:0}figure img{width:100%;border-radius:8px}figcaption{font-size:13px;color:#5c666e}</style></head><body>' +
       '<h1>' + esc(t.name) + '</h1><p>' + OR.dayDate(t, 0).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) + ' · made with OpenRoad · map © OpenStreetMap</p>' + body + '</body></html>';
     OR.printHtml(t.name + ' diary', html);
   }
 
   // a nudge at the end of a riding day on a trip
+  // ---------- stops that write themselves ----------
+  // A stop of 15 minutes or more on a trip day, at a café, pub or viewpoint, goes in that day's diary with the place's
+  // name, how long you stopped and the weather then. Found from your recorded rides (a gap of 15 minutes or more with
+  // the bike hardly moving, or between two rides), and live while you're stopped, with a prompt to take a photo.
+  const STOP_MS = 15 * 60000, KIND_WORD = { cafe: 'café', pub: 'pub', view: 'viewpoint' };
+  function stopsHtml(dd, di) {
+    const l = (dd.stops || []).map((x, i) => [x, i]).filter(([x]) => x.name);
+    if (!l.length) return '';
+    return '<ul class="dstops">' + l.map(([x, i]) => '<li><span class="ds-t">' + OR.clock(new Date(x.t)) + '</span><span><b>' + esc(x.name) + '</b><small>' + esc(KIND_WORD[x.kind] || 'stop') + ', ' + Math.round((x.until - x.t) / 60000) + ' min' + (x.wx ? ' · ' + esc(x.wx) : '') + '</small></span>' +
+      '<label class="mini txt">' + ic('cam') + '<input type="file" accept="image/*" capture="environment" multiple hidden data-stopph="' + di + ':' + i + '"></label></li>').join('') + '</ul>';
+  }
+  function tripOn(when) {
+    const k = OR.isoDate(new Date(when));
+    for (const t of OR.trips.list()) { const i = t.days.findIndex((_, n) => dayKey(t, n) === k); if (i >= 0) return { t, i, k }; }
+    return null;
+  }
+  // stops in a day's recorded rides
+  OR.stopsIn = function (rides) {
+    const out = [], rs = rides.slice().sort((a, b) => a.start - b.start);
+    rs.forEach((r, n) => {
+      const pts = OR.rides.pts(r), ts = OR.rides.times(r);
+      for (let i = 1; i < pts.length; i++) if (ts[i] - ts[i - 1] >= STOP_MS && OR.dist(pts[i - 1], pts[i]) < 200) out.push({ t: ts[i - 1], until: ts[i], lng: pts[i - 1][0], lat: pts[i - 1][1] });
+      const nx = rs[n + 1];
+      if (nx && pts.length) { const a = pts[pts.length - 1], b = OR.rides.pts(nx)[0], t0 = ts[ts.length - 1], t1 = nx.t0 || nx.start; if (b && t1 - t0 >= STOP_MS && OR.dist(a, b) < 300) out.push({ t: t0, until: t1, lng: a[0], lat: a[1] }); }
+    });
+    return out;
+  };
+  // what's there: the nearest named café, pub or viewpoint
+  async function placeAt(lng, lat) {
+    for (const [kind, r] of [['cafe', 150], ['pub', 150], ['view', 250]]) {
+      try { const l = (await OR.nearby(kind, lng, lat, r)).filter(x => x.name && x.name !== OR.KINDS[kind].label.replace(/s$/, '')); if (l.length) return { kind, name: l[0].name }; } catch (e) { }
+    }
+    return null;
+  }
+  async function weatherAt(lng, lat, when) {
+    try {
+      const j = await OR.json('https://api.open-meteo.com/v1/forecast?latitude=' + lat.toFixed(3) + '&longitude=' + lng.toFixed(3) + '&hourly=temperature_2m,weather_code&past_days=7&forecast_days=1&timeformat=unixtime');
+      const h = j.hourly; let k = 0; h.time.forEach((tt, i) => { if (Math.abs(tt * 1000 - when) < Math.abs(h.time[k] * 1000 - when)) k = i; });
+      if (Math.abs(h.time[k] * 1000 - when) > 2 * 3600000) return '';
+      return OR.wmo(h.weather_code[k])[0].toLowerCase() + ', ' + Math.round(h.temperature_2m[k]) + '°';
+    } catch (e) { return ''; }
+  }
+  // add a stop to the diary once (stops already looked at are remembered, named or not)
+  async function addStop(t, k, st) {
+    let d = diaryOf(t), day = d.days[k] = d.days[k] || { notes: '', photos: [] };
+    day.stops = day.stops || [];
+    const same = day.stops.find(x => Math.abs(x.t - st.t) < 20 * 60000 && OR.dist([x.lng, x.lat], [st.lng, st.lat]) < 300);
+    if (same) { if (st.until > same.until) { same.until = st.until; saveDiary(t, d); } return null; }
+    if (!OR.online()) return null;
+    const place = await placeAt(st.lng, st.lat), wx = place ? await weatherAt(st.lng, st.lat, st.t) : '';
+    d = diaryOf(t); day = d.days[k] = d.days[k] || { notes: '', photos: [] }; day.stops = day.stops || [];
+    const s2 = Object.assign({}, st, place ? { kind: place.kind, name: place.name, wx } : { name: null });
+    day.stops.push(s2); day.stops.sort((a, b) => a.t - b.t); saveDiary(t, d);
+    return s2.name ? s2 : null;
+  }
+  async function findAllStops(t) {
+    let n = 0;
+    for (let i = 0; i < t.days.length; i++) {
+      const k = dayKey(t, i), rides = ridesOn(k); if (!rides.length) continue;
+      for (const st of OR.stopsIn(rides)) if (await addStop(t, k, st)) n++;
+    }
+    return n;
+  }
+  OR.findDiaryStops = findAllStops;
+  // live: stopped for 15 minutes in one place on a trip day while recording
+  let still = null;
+  OR.on('fix', p => {
+    if (!OR.ride || !OR.ride.on) { still = null; return; }
+    const here = [p.lng, p.lat], now = p.t || Date.now();
+    if ((p.speed || 0) > 1.5 || (still && OR.dist(still.p, here) > 80)) { still = { p: here, t: now, done: false }; return; }
+    if (!still) { still = { p: here, t: now, done: false }; return; }
+    if (still.done || now - still.t < STOP_MS) return;
+    still.done = true;
+    const tr = tripOn(now); if (!tr) return;
+    addStop(tr.t, tr.k, { t: still.t, until: now, lng: still.p[0], lat: still.p[1] }).then(st => {
+      if (!st) return;
+      OR.toast('Added to today\'s diary: ' + st.name, 6000);
+      const nb = document.getElementById('hudNote'); if (!nb) return;
+      nb.hidden = false; nb.textContent = 'At ' + st.name + '. Tap to add a photo to today\'s diary.';
+      nb.onclick = () => {
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.capture = 'environment'; inp.multiple = true;
+        inp.onchange = async () => { const files = Array.from(inp.files || []); if (files.length) { const d = diaryOf(tr.t), s3 = (d.days[tr.k].stops || []).find(x => x.t === st.t); await addPhotos(tr.t, tr.i, files, s3); } };
+        inp.click(); nb.hidden = true; nb.onclick = null;
+      };
+    });
+  });
+  // after a ride on a trip day: look for stops in it
+  OR.on('ridestop', saved => {
+    if (!saved) return;
+    const tr = tripOn(saved.start);
+    if (tr) setTimeout(() => findAllStops(tr.t).then(n => { if (n) OR.toast(n + ' stop' + (n > 1 ? 's' : '') + ' added to the ' + tr.t.name + ' diary', 5000); }), 4000);
+  });
   OR.on('ridestop', saved => {
     if (!saved) return;
     const today = OR.isoDate(new Date()), t = OR.trips.list().find(x => x.days.some((_, i) => OR.isoDate(OR.dayDate(x, i)) === today));
