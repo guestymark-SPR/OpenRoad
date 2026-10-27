@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 8 and later: the phone cuts the picture to its own icon shape (circle, squircle...) -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_art" />
+    <foreground android:drawable="@android:color/transparent" />
+</adaptive-icon>
