@@ -8,13 +8,15 @@ jobs:
         run: |
           pip install -q mapbox-vector-tile
           python3 - <<'PY'
-          import json, math, urllib.request, mapbox_vector_tile as mvt, collections
-          tj = json.load(urllib.request.urlopen('https://tiles.openfreemap.org/planet'))
+          import json, math, urllib.request, mapbox_vector_tile as mvt, collections, traceback, sys
+          sys.excepthook = lambda *a: print('::notice::ERROR ' + ''.join(traceback.format_exception(*a)).replace(chr(10), ' | ')[-900:])
+          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'OpenRoad probe'})).read()
+          tj = json.loads(get('https://tiles.openfreemap.org/planet'))
           url = tj['tiles'][0]; print('::notice::tiles', url)
           lat, lon = 53.259, -1.91
           for z in (11, 12, 13):
               n = 2 ** z; x = int((lon + 180) / 360 * n); y = int((1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n)
-              raw = urllib.request.urlopen(urllib.request.Request(url.format(z=z, x=x, y=y), headers={'User-Agent': 'OpenRoad probe'})).read()
+              raw = get(url.format(z=z, x=x, y=y))
               t = mvt.decode(raw)
               tr = collections.Counter(f['properties'].get('class') for f in t.get('transportation', {}).get('features', []))
               tn = collections.Counter(f['properties'].get('class') for f in t.get('transportation_name', {}).get('features', []))
