@@ -4,24 +4,23 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: What road names and classes the map tiles carry near Buxton, by zoom
+      - name: Fetch the z12 map tiles around Buxton (for testing top rides)
         run: |
-          pip install -q mapbox-vector-tile
           python3 - <<'PY'
-          import json, math, urllib.request, mapbox_vector_tile as mvt, collections, traceback, sys
-          sys.excepthook = lambda *a: print('::notice::ERROR ' + ''.join(traceback.format_exception(*a)).replace(chr(10), ' | ')[-900:])
-          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'OpenRoad probe'})).read()
-          tj = json.loads(get('https://tiles.openfreemap.org/planet'))
-          url = tj['tiles'][0]; print('::notice::tiles', url)
-          lat, lon = 53.259, -1.91
-          for z in (11, 12, 13):
-              n = 2 ** z; x = int((lon + 180) / 360 * n); y = int((1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n)
-              raw = get(url.format(z=z, x=x, y=y))
-              t = mvt.decode(raw)
-              tr = collections.Counter(f['properties'].get('class') for f in t.get('transportation', {}).get('features', []))
-              tn = collections.Counter(f['properties'].get('class') for f in t.get('transportation_name', {}).get('features', []))
-              refs = sorted(set((f['properties'].get('ref') or '') + '|' + (f['properties'].get('name') or '') for f in t.get('transportation_name', {}).get('features', []) if f['properties'].get('class') in ('primary','secondary','tertiary')))[:15]
-              keys = sorted(set(k for f in t.get('transportation', {}).get('features', []) for k in f['properties']))
-              print(f'::notice::z{z} {len(raw)} bytes | transportation {dict(tr)} keys {keys}')
-              print(f'::notice::z{z} transportation_name {dict(tn)} sample {refs}')
+          import json, math, urllib.request, os
+          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'OpenRoad test'})).read()
+          url = json.loads(get('https://tiles.openfreemap.org/planet'))['tiles'][0]
+          os.makedirs('tiles', exist_ok=True)
+          lat, lon, z = 53.259, -1.91, 12; n = 2 ** z
+          tx = lambda lo: int((lo + 180) / 360 * n); ty = lambda la: int((1 - math.asinh(math.tan(math.radians(la))) / math.pi) / 2 * n)
+          dl, dg = 15000 / 111320, 15000 / (111320 * math.cos(math.radians(lat)))
+          c = 0
+          for x in range(tx(lon - dg), tx(lon + dg) + 1):
+              for y in range(ty(lat + dl), ty(lat - dl) + 1):
+                  open(f'tiles/{z}_{x}_{y}.pbf', 'wb').write(get(url.format(z=z, x=x, y=y))); c += 1
+          print('::notice::fetched', c)
           PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tiles
+          path: tiles
