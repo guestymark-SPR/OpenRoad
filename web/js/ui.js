@@ -336,6 +336,9 @@
       h += '<div class="row">' + (wps.length >= 2 ? '<button class="btn pri" id="planGo">' + (planning ? 'Planning…' : 'Plan route') + '</button>' : '') +
         '<button class="btn ghost" id="rev">Reverse</button><button class="btn ghost" id="loop">Back to start</button><button class="btn ghost" id="clr">Clear</button></div>';
       if (wps.length === 1) h += '<p class="hint">Now tap the map or search for where you want to go.</p>';
+      // the best biking roads near the places in this route, to add
+      const places = []; [wps[wps.length - 1], wps[0]].concat(wps.filter(w => w.type === 'break')).forEach(w => { if (w && w.name && !/\((start|end)\)$|^My position$|^Point$/.test(w.name) && !places.some(p => p.name === w.name)) places.push(w); });
+      if (places.length) h += '<div class="trchips">' + places.slice(0, 3).map((w, i) => '<button class="btn small" data-trp="' + wps.indexOf(w) + '">' + ic('twisty') + 'Top rides near ' + esc(w.name.split(',')[0]) + '</button>').join('') + '</div>';
     }
     if (planErr) h += '<p class="err">' + esc(planErr) + '</p>';
     if (OR.plan.options.length && planMode !== 'saved') {
@@ -358,6 +361,7 @@
     const on = (id, fn) => { const el = $('#' + id, v); if (el) el.onclick = fn; };
     on('fromHere', () => { OR.plan.wps.push({ lng: OR.pos.lng, lat: OR.pos.lat, name: 'My position', type: 'break' }); changed(); });
     on('planGo', doPlan);
+    $$('[data-trp]', v).forEach(b => b.onclick = () => OR.topRidesSheet(OR.plan.wps[+b.dataset.trp], OR.addRideToPlan, 'Add'));
     on('wpsAll', () => { showAllWps = true; renderPlan(); });
     on('rev', () => { wps.reverse(); fixTypes(); changed(wps.length >= 2); });
     on('loop', () => { if (wps.length) { wps.push(Object.assign({}, wps[0], { type: 'break' })); fixTypes(); changed(wps.length >= 2); } });

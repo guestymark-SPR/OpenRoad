@@ -874,3 +874,11 @@ label.chk{display:flex;align-items:center;gap:12px;flex-direction:row-reverse;ju
 [data-look=outlaw] #panel{background:var(--paper)}
 [data-look=outlaw][data-theme=night] #panel{background:var(--grain),var(--paper)}
 [data-look=outlaw] .opt-row small b{font-family:inherit;font-size:inherit;letter-spacing:0;font-weight:800}
+
+/* top rides near a place */
+.trchips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.trchips .btn svg{width:18px;height:18px;color:#8e24aa}
+.tr-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid color-mix(in srgb,var(--line) 80%,transparent)}
+.tr-row:last-child{border-bottom:0}
+.tr-n{flex:none;width:30px;height:30px;border-radius:15px;background:#8e24aa;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
+.tr-t{flex:1;min-width:0}.tr-t b{display:block;font-size:15.5px}.tr-t small{color:var(--ink-3);font-size:13px}
