@@ -144,7 +144,7 @@
     // the best stretch of each road only (a number can turn up twice when the road leaves and comes back)
     const best = {}; roads.forEach(x => { const s = x.twist * Math.sqrt(x.len / 1000); x.score = s; if (!best[x.key] || best[x.key].score < s) best[x.key] = x; });
     const list = Object.values(best).sort((a, b) => b.score - a.score).slice(0, 8);
-    await Promise.all(list.map(async x => { if (x.name) return; const m = x.pts[Math.floor(x.pts.length / 2)], nm = await OR.reverseName(m[0], m[1]).catch(() => null); if (nm) x.near = nm.split(',')[0]; }));
+    await Promise.all(list.map(async x => { if (x.name) return; const m = x.pts[Math.floor(x.pts.length / 2)], nm = await OR.reverseName(m[0], m[1]).catch(() => null); const parts = (nm || '').split(',').map(t => t.trim()).filter(t => t && !/\d/.test(t)); if (parts.length) x.near = parts[parts.length > 2 ? 1 : 0]; }));
     return (cache[ck] = list);
   };
 
