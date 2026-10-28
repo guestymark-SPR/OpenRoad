@@ -1,0 +1,17 @@
+name: Check the top-rides road query
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Overpass, Buxton, 15 km, A and B roads
+        run: |
+          Q='[out:json][timeout:50];way["highway"~"^(primary|secondary|tertiary)$"]["oneway"!="yes"]["dual_carriageway"!="yes"](around:15000,53.25900,-1.91000);out body geom qt;'
+          for S in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter; do
+            start=$(date +%s.%N)
+            code=$(curl -sS -o out.json -w '%{http_code}' --max-time 90 --data-urlencode "data=$Q" "$S" || echo fail)
+            t=$(python3 -c "import time;print(round(time.time()-$start,1))")
+            sz=$(stat -c%s out.json 2>/dev/null || echo 0)
+            n=$(python3 -c "import json;j=json.load(open('out.json'));print(len(j.get('elements',[])), (j.get('remark') or '')[:120])" 2>&1 | head -c 200)
+            echo "::notice::$S code=$code ${t}s bytes=$sz elements/remark=$n"
+          done
