@@ -4,14 +4,20 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Overpass, Buxton, 15 km, A and B roads
+      - name: Overpass servers, small and road queries, with and without a User-Agent
         run: |
-          Q='[out:json][timeout:50];way["highway"~"^(primary|secondary|tertiary)$"]["oneway"!="yes"]["dual_carriageway"!="yes"](around:15000,53.25900,-1.91000);out body geom qt;'
-          for S in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter; do
-            start=$(date +%s.%N)
-            code=$(curl -sS -o out.json -w '%{http_code}' --max-time 90 --data-urlencode "data=$Q" "$S" || echo fail)
-            t=$(python3 -c "import time;print(round(time.time()-$start,1))")
-            sz=$(stat -c%s out.json 2>/dev/null || echo 0)
-            n=$(python3 -c "import json;j=json.load(open('out.json'));print(len(j.get('elements',[])), (j.get('remark') or '')[:120])" 2>&1 | head -c 200)
-            echo "::notice::$S code=$code ${t}s bytes=$sz elements/remark=$n"
+          SMALL='[out:json][timeout:25];nwr["amenity"="fuel"](around:3000,53.25900,-1.91000);out tags center 20;'
+          ROADS='[out:json][timeout:50];way["highway"~"^(primary|secondary|tertiary)$"]["oneway"!="yes"](around:15000,53.25900,-1.91000);out body geom qt;'
+          ROADS2='[out:json][timeout:50];way["highway"~"^(primary|secondary|tertiary)$"](around:12000,53.25900,-1.91000);out geom qt;'
+          for S in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter https://maps.mail.ru/osm/tools/overpass/api/interpreter; do
+            for which in SMALL ROADS ROADS2; do Q="${!which}"
+              for ua in none app; do
+                H=(); [ $ua = app ] && H=(-H "User-Agent: OpenRoad/1.0 (motorbike navigation app; github.com/guestymark-SPR/OpenRoad)")
+                start=$(date +%s.%N); rm -f out.json
+                code=$(curl -sS -o out.json -w '%{http_code}' --max-time 70 "${H[@]}" --data-urlencode "data=$Q" "$S" 2>/dev/null || echo fail)
+                t=$(python3 -c "import time;print(round(time.time()-$start,1))"); sz=$(stat -c%s out.json 2>/dev/null || echo 0)
+                n=$(python3 -c "import json;j=json.load(open('out.json'));print(len(j.get('elements',[])), (j.get('remark') or '')[:80])" 2>/dev/null || head -c 120 out.json 2>/dev/null | tr '\n' ' ')
+                echo "::notice::$(basename $(dirname $(dirname $S))) $which ua=$ua code=$code ${t}s bytes=$sz -> $n"
+              done
+            done
           done
