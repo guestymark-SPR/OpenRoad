@@ -1,23 +1,25 @@
-name: Check the top-rides road query
+name: Check the top-rides road data
 on: workflow_dispatch
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Overpass servers, small and road queries, with and without a User-Agent
+      - name: What road names and classes the map tiles carry near Buxton, by zoom
         run: |
-          SMALL='[out:json][timeout:25];nwr["amenity"="fuel"](around:3000,53.25900,-1.91000);out tags center 20;'
-          ROADS='[out:json][timeout:50];way["highway"~"^(primary|secondary|tertiary)$"]["oneway"!="yes"](around:15000,53.25900,-1.91000);out body geom qt;'
-          ROADS2='[out:json][timeout:50];way["highway"~"^(primary|secondary|tertiary)$"](around:12000,53.25900,-1.91000);out geom qt;'
-          for S in https://overpass-api.de/api/interpreter https://overpass.private.coffee/api/interpreter https://overpass.kumi.systems/api/interpreter https://maps.mail.ru/osm/tools/overpass/api/interpreter; do
-            for which in SMALL ROADS ROADS2; do Q="${!which}"
-              for ua in none app; do
-                H=(); [ $ua = app ] && H=(-H "User-Agent: OpenRoad/1.0 (motorbike navigation app; github.com/guestymark-SPR/OpenRoad)")
-                start=$(date +%s.%N); rm -f out.json
-                code=$(curl -sS -o out.json -w '%{http_code}' --max-time 70 "${H[@]}" --data-urlencode "data=$Q" "$S" 2>/dev/null || echo fail)
-                t=$(python3 -c "import time;print(round(time.time()-$start,1))"); sz=$(stat -c%s out.json 2>/dev/null || echo 0)
-                n=$(python3 -c "import json;j=json.load(open('out.json'));print(len(j.get('elements',[])), (j.get('remark') or '')[:80])" 2>/dev/null || head -c 120 out.json 2>/dev/null | tr '\n' ' ')
-                echo "::notice::$(basename $(dirname $(dirname $S))) $which ua=$ua code=$code ${t}s bytes=$sz -> $n"
-              done
-            done
-          done
+          pip install -q mapbox-vector-tile
+          python3 - <<'PY'
+          import json, math, urllib.request, mapbox_vector_tile as mvt, collections
+          tj = json.load(urllib.request.urlopen('https://tiles.openfreemap.org/planet'))
+          url = tj['tiles'][0]; print('::notice::tiles', url)
+          lat, lon = 53.259, -1.91
+          for z in (11, 12, 13):
+              n = 2 ** z; x = int((lon + 180) / 360 * n); y = int((1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n)
+              raw = urllib.request.urlopen(urllib.request.Request(url.format(z=z, x=x, y=y), headers={'User-Agent': 'OpenRoad probe'})).read()
+              t = mvt.decode(raw)
+              tr = collections.Counter(f['properties'].get('class') for f in t.get('transportation', {}).get('features', []))
+              tn = collections.Counter(f['properties'].get('class') for f in t.get('transportation_name', {}).get('features', []))
+              refs = sorted(set((f['properties'].get('ref') or '') + '|' + (f['properties'].get('name') or '') for f in t.get('transportation_name', {}).get('features', []) if f['properties'].get('class') in ('primary','secondary','tertiary')))[:15]
+              keys = sorted(set(k for f in t.get('transportation', {}).get('features', []) for k in f['properties']))
+              print(f'::notice::z{z} {len(raw)} bytes | transportation {dict(tr)} keys {keys}')
+              print(f'::notice::z{z} transportation_name {dict(tn)} sample {refs}')
+          PY
