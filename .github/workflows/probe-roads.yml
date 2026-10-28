@@ -1,26 +1,25 @@
-name: Check the top-rides road data
+name: Check top rides with real map data
 on: workflow_dispatch
 jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch the z12 map tiles around Buxton (for testing top rides)
+      - uses: actions/checkout@v4
+      - name: Run the web app in a browser and ask for top rides near real places
         run: |
+          pip install -q playwright && python3 -m playwright install --with-deps chromium > /dev/null
+          cd web && (python3 -m http.server 8765 > /dev/null 2>&1 &) && sleep 2 && cd ..
           python3 - <<'PY'
-          import json, math, urllib.request, os
-          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'OpenRoad test'})).read()
-          url = json.loads(get('https://tiles.openfreemap.org/planet'))['tiles'][0]
-          os.makedirs('tiles', exist_ok=True)
-          lat, lon, z = 53.259, -1.91, 12; n = 2 ** z
-          tx = lambda lo: int((lo + 180) / 360 * n); ty = lambda la: int((1 - math.asinh(math.tan(math.radians(la))) / math.pi) / 2 * n)
-          dl, dg = 15000 / 111320, 15000 / (111320 * math.cos(math.radians(lat)))
-          c = 0
-          for x in range(tx(lon - dg), tx(lon + dg) + 1):
-              for y in range(ty(lat + dl), ty(lat - dl) + 1):
-                  open(f'tiles/{z}_{x}_{y}.pbf', 'wb').write(get(url.format(z=z, x=x, y=y))); c += 1
-          print('::notice::fetched', c)
+          from playwright.sync_api import sync_playwright
+          with sync_playwright() as p:
+              b = p.chromium.launch(); pg = b.new_page()
+              errs = []; pg.on('pageerror', lambda e: errs.append(str(e)))
+              pg.goto('http://127.0.0.1:8765/index.html'); pg.wait_for_timeout(4000)
+              for name, lng, lat in [('Buxton', -1.910, 53.259), ('Bala', -3.600, 52.911), ('Hawes', -2.197, 54.304), ('Bouillon (Ardennes)', 5.067, 49.794)]:
+                  try:
+                      r = pg.evaluate("async ([lng, lat]) => { const t0 = Date.now(); const l = await OR.topRides(lng, lat, 15); return [Date.now() - t0, l.map(x => x.label + (x.near ? ' near ' + x.near : '') + ' ' + (x.len/1609).toFixed(1) + 'mi twist ' + x.twist + ' ' + x.cls)] }", [lng, lat])
+                      print('::notice::' + name + ' ' + str(r[0]) + ' ms: ' + ' | '.join(r[1]))
+                  except Exception as e: print('::notice::' + name + ' FAILED ' + str(e)[:300])
+              print('::notice::page errors ' + str(errs[:3]))
+              b.close()
           PY
-      - uses: actions/upload-artifact@v4
-        with:
-          name: tiles
-          path: tiles
