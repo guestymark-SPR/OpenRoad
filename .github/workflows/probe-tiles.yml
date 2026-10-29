@@ -1,0 +1,28 @@
+name: Check what the map tiles carry (POIs, junction numbers)
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          pip install -q mapbox-vector-tile
+          python3 - <<'PY'
+          import json, math, urllib.request, mapbox_vector_tile as mvt, collections, traceback, sys
+          sys.excepthook = lambda *a: print('::notice::ERROR ' + ''.join(traceback.format_exception(*a)).replace(chr(10), ' | ')[-900:])
+          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'OpenRoad probe'})).read()
+          url = json.loads(get('https://tiles.openfreemap.org/planet'))['tiles'][0]
+          for place, lat, lon in [('M6 J15 Stoke', 52.9637, -2.2537), ('Buxton town', 53.2587, -1.9116)]:
+              for z in (13, 14):
+                  n = 2 ** z; x = int((lon + 180) / 360 * n); y = int((1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n)
+                  t = mvt.decode(get(url.format(z=z, x=x, y=y)))
+                  print(f'::notice::{place} z{z} layers {sorted(t.keys())}')
+                  poi = t.get('poi', {}).get('features', [])
+                  print(f'::notice::{place} z{z} poi classes {dict(collections.Counter(f["properties"].get("class") for f in poi))} keys {sorted(set(k for f in poi for k in f["properties"]))[:20]}')
+                  print(f'::notice::{place} z{z} poi subclasses {dict(collections.Counter(f["properties"].get("subclass") for f in poi).most_common(25))}')
+                  for ln in t:
+                      for f in t[ln]['features']:
+                          pr = f['properties']
+                          if any('junction' in str(v) or 'exit' in str(k) for k, v in pr.items()): print(f'::notice::{place} z{z} {ln} junction-ish {pr}'); break
+                  tn = [f['properties'] for f in t.get('transportation_name', {}).get('features', []) if f['properties'].get('class') == 'motorway']
+                  print(f'::notice::{place} z{z} motorway names {tn[:4]}')
+          PY
