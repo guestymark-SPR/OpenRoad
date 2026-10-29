@@ -7,22 +7,25 @@ jobs:
       - run: |
           pip install -q mapbox-vector-tile
           python3 - <<'PY'
-          import json, math, urllib.request, mapbox_vector_tile as mvt, collections, traceback, sys
-          sys.excepthook = lambda *a: print('::notice::ERROR ' + ''.join(traceback.format_exception(*a)).replace(chr(10), ' | ')[-900:])
-          get = lambda u: urllib.request.urlopen(urllib.request.Request(u, headers={'User-Agent': 'OpenRoad probe'})).read()
+          import json, math, urllib.request, urllib.parse, mapbox_vector_tile as mvt, collections, traceback, sys, time
+          get = lambda u, d=None: urllib.request.urlopen(urllib.request.Request(u, data=d, headers={'User-Agent': 'OpenRoad/1.0 (Android motorcycle navigation; github.com/guestymark-SPR/OpenRoad)'}), timeout=90).read()
           url = json.loads(get('https://tiles.openfreemap.org/planet'))['tiles'][0]
-          for place, lat, lon in [('M6 J15 Stoke', 52.9637, -2.2537), ('Buxton town', 53.2587, -1.9116)]:
-              for z in (13, 14):
-                  n = 2 ** z; x = int((lon + 180) / 360 * n); y = int((1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n)
-                  t = mvt.decode(get(url.format(z=z, x=x, y=y)))
-                  print(f'::notice::{place} z{z} layers {sorted(t.keys())}')
-                  poi = t.get('poi', {}).get('features', [])
-                  print(f'::notice::{place} z{z} poi classes {dict(collections.Counter(f["properties"].get("class") for f in poi))} keys {sorted(set(k for f in poi for k in f["properties"]))[:20]}')
-                  print(f'::notice::{place} z{z} poi subclasses {dict(collections.Counter(f["properties"].get("subclass") for f in poi).most_common(25))}')
-                  for ln in t:
-                      for f in t[ln]['features']:
-                          pr = f['properties']
-                          if any('junction' in str(v) or 'exit' in str(k) for k, v in pr.items()): print(f'::notice::{place} z{z} {ln} junction-ish {pr}'); break
-                  tn = [f['properties'] for f in t.get('transportation_name', {}).get('features', []) if f['properties'].get('class') == 'motorway']
-                  print(f'::notice::{place} z{z} motorway names {tn[:4]}')
+          for place, lat, lon in [('Buxton', 53.2587, -1.9116), ('Keele services', 52.9960, -2.2930), ('Bouillon', 49.7936, 5.0670)]:
+              c = collections.Counter(); minz = {}
+              for z in (12, 13, 14):
+                  n = 2 ** z; x0 = int((lon + 180) / 360 * n); y0 = int((1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n)
+                  for dx in (-1, 0, 1):
+                      for dy in (-1, 0, 1):
+                          try: t = mvt.decode(get(url.format(z=z, x=x0+dx, y=y0+dy)))
+                          except Exception as e: continue
+                          for f in t.get('poi', {}).get('features', []):
+                              k = f['properties'].get('class'); c[(z, k)] += 1
+              print('::notice::' + place + ' ' + str({f'z{z}:{k}': v for (z, k), v in sorted(c.items(), key=lambda a: (a[0][0], -a[1])) if k in ('fuel','lodging','cafe','restaurant','fast_food','bar','beer','motorcycle','car','parking','campsite','attraction')}))
+          q = '[out:json][timeout:25];node["highway"="motorway_junction"](52.8,-2.4,53.1,-2.1);out;'
+          for s in ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter']:
+              t0 = time.time()
+              try:
+                  j = json.loads(get(s, ('data=' + urllib.parse.quote(q)).encode()))
+                  print(f'::notice::{s} {time.time()-t0:.1f}s junctions {len(j["elements"])} sample {[e.get("tags") for e in j["elements"][:3]]}')
+              except Exception as e: print(f'::notice::{s} {time.time()-t0:.1f}s FAIL {str(e)[:120]}')
           PY
