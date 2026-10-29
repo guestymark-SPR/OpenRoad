@@ -646,7 +646,7 @@
   OR.field = field;
   const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['chat', 'chat', 'Group chat', 'Quick messages, read aloud and notifications', '#0e9f57'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Crash alert and check-in', 'Crash detection, check-in, speed and break warnings', '#e53935'], ['aware', 'warn', 'Road-ahead warnings', 'Bends, low sun, tiredness, shared hazards, bike to bike', '#ef6c00'],
     ['ice', 'helmet', 'Emergency card', 'Your ICE details for first responders', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
-    ['settings', 'gear', 'Map and routing', 'Units, colours, tolls, ferries, cameras, traffic', '#5d6d7e'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, watch alerts', '#1565c0'],
+    ['settings', 'gear', 'Map and routing', 'Units, colours, tolls, ferries, cameras, traffic', '#5d6d7e'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, watch alerts, turn countdown bar', '#1565c0'],
     ['phrases', 'chat', 'Phrasebook', 'French, Dutch and German, spoken aloud', '#1e88e5'],
     ['papers', 'id', 'Papers', 'Licence, V5C, insurance, MOT and breakdown cover', '#00897b'],
     ['auto', 'moto', 'Android Auto', 'Setting it up on a car screen', '#3949ab'],
@@ -751,10 +751,13 @@
       '<details><summary>What you can say</summary><ul class="vhelp">' + OR.VOICE_HELP.map(h => '<li><b>' + esc(h[0]) + '</b><br><span>' + esc(h[1]) + '</span></li>').join('') + '</ul></details>' +
       (A ? '<button id="sVTry" class="btn wide">' + ic('mic') + 'Try a voice command</button>' : '') +
       '<h3>Watch</h3><label class="chk"><input type="checkbox" id="sWatch"' + (c.watchTurns ? ' checked' : '') + '> Alert my watch at each turn</label>' +
-      '<p class="small muted">Each turn pops up as a notification, so a paired watch (Galaxy Watch and others) buzzes and shows it, for example "Turn left onto the A515". On a Galaxy Watch, turn on "Show phone notifications on watch while using phone" in the Galaxy Wearable app, or it only shows them when the phone screen is off.</p>';
+      '<p class="small muted">Each turn pops up as a notification, so a paired watch (Galaxy Watch and others) buzzes and shows it, for example "Turn left onto the A515". On a Galaxy Watch, turn on "Show phone notifications on watch while using phone" in the Galaxy Wearable app, or it only shows them when the phone screen is off.</p>' +
+      '<h3>Ride screen</h3><label class="chk"><input type="checkbox" id="sTurnBar"' + (c.turnBar !== false ? ' checked' : '') + '> Countdown bar for the next turn</label>' +
+      '<p class="small muted">A bar down the right side that empties as the next turn gets closer, with the distance and the turn arrow.</p>';
     box.appendChild(el);
     $('#sVBtn', el).onchange = e => { c.voiceButton = e.target.checked; OR.saveCfg(); OR.voiceApply(); };
     $('#sWatch', el).onchange = e => { c.watchTurns = e.target.checked; OR.saveCfg(); if (c.watchTurns && A && A.turnNote) A.turnNote('Watch alerts are on: turns will show here'); };
+    $('#sTurnBar', el).onchange = e => { c.turnBar = e.target.checked; OR.saveCfg(); if (!c.turnBar) countdown(null); };
     const tr = $('#sVTry', el); if (tr) tr.onclick = () => OR.voiceListen();
   }
   // crash detection, over-the-limit warning and break reminders, below the check-in
@@ -910,7 +913,7 @@
   function countdown(s) {
     const bar = $('#cdBar'), fill = $('#cdFill'), r = OR.ride;
     if (!bar) return;
-    if (!s || s.free || !r.on || r.off > 0 || r.rerouting || r.arrived) { bar.hidden = true; cd.on = false; cd.k = null; return; }
+    if (!s || s.free || OR.cfg.turnBar === false || !r.on || r.off > 0 || r.rerouting || r.arrived) { bar.hidden = true; cd.on = false; cd.k = null; return; }
     if (cd.route !== r.route || cd.k !== s.k) { cd.route = r.route; cd.k = s.k; cd.on = false; }
     if (!cd.on) { const v = Math.max((OR.pos && OR.pos.speed) || 0, 9); cd.scale = Math.min(800, Math.max(300, v * 25)); }
     if (s.toTurn > cd.scale) { bar.hidden = true; cd.on = false; return; }
