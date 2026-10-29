@@ -239,6 +239,19 @@ label.file{cursor:pointer}
 #turnText{flex:1;min-width:0}
 #thenBox{display:flex;flex-direction:column;align-items:center;font-size:13px;font-weight:700;border-left:2px solid rgba(255,255,255,.4);padding-left:12px}
 #thenBox .arrow{width:40px;height:40px;stroke:#fff;stroke-width:3}
+/* countdown bar down the right side: empties as the next turn gets closer */
+#hud>#cdBar{position:absolute;right:12px;top:calc(205px + var(--safe-t));bottom:calc(270px + var(--safe-b));width:62px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:9px 0 7px;
+  border-radius:18px;background:var(--sheet);box-shadow:var(--shadow);pointer-events:none}
+#hud>#cdBar[hidden]{display:none}
+#cdDist{font-size:15px;font-weight:800;line-height:1.1;text-align:center;white-space:nowrap}
+#cdTrack{position:relative;flex:1;min-height:60px;width:28px;border-radius:14px;background:var(--surface-2);border:2px solid var(--line);overflow:hidden}
+#cdFill{position:absolute;left:0;right:0;bottom:0;height:100%;background:var(--green);transition:height 1s linear,background-color .3s}
+#cdFill.near{background:var(--yellow)}
+#cdBar.noanim #cdFill{transition:none}
+#cdTrack .tk{position:absolute;left:0;right:0;height:3px;margin-bottom:-1.5px;background:var(--sheet)}
+#cdIcon .arrow{width:42px;height:42px;stroke:var(--ink);stroke-width:3.6}
+@media (max-height:560px){ #hud>#cdBar{display:none} }
+@media (max-height:560px) and (min-width:700px){ #hud>#cdBar:not([hidden]){display:flex;top:calc(10px + var(--safe-t));bottom:calc(120px + var(--safe-b));right:80px} }
 #limit{position:absolute;left:12px;top:calc(140px + var(--safe-t));width:66px;height:66px;border-radius:50%;background:#fff;border:7px solid var(--red);color:#111;
   display:flex;align-items:center;justify-content:center;font-weight:800;font-size:25px;box-shadow:var(--shadow)}
 #hudNote{position:absolute;top:calc(140px + var(--safe-t));left:90px;right:10px;max-width:490px;border-radius:14px;padding:12px 16px;font-weight:700;font-size:17px;background:var(--yellow);color:#1c2226;box-shadow:var(--shadow)}

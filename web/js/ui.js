@@ -880,7 +880,7 @@
     closePopup(); closeSheet();
     if (route && OR.routes.list().every(r => r.id !== route.id)) OR.routes.save(route); // so it's there with no signal
     document.body.classList.add('riding'); $('#hud').hidden = false; $('#panel').classList.remove('open');
-    $('#thenBox').hidden = true; $('#hudNote').hidden = true; $('#recentre').hidden = true; $('#limit').hidden = true;
+    $('#thenBox').hidden = true; countdown(null); $('#hudNote').hidden = true; $('#recentre').hidden = true; $('#limit').hidden = true;
     $('#turn').hidden = !route; $('#hRemainL').textContent = route ? 'to go' : 'ridden'; $('#hEtaL').textContent = route ? 'arrive' : 'riding for';
     OR.ride.fuel = route && OR.ride.fuel && OR.plan.route === route ? OR.ride.fuel : [];
     OR.startRide(route, resume);
@@ -904,6 +904,24 @@
     renderPlan();
   }
   function updateMute() { $('#hMute').innerHTML = ic(OR.cfg.voice ? 'vol' : 'mute'); $('#hMute').classList.toggle('off', !OR.cfg.voice); }
+  // countdown bar: appears about 25 seconds before each turn (300-800 m, depending on your speed) and empties
+  // as you get there. The scale is fixed once it appears, so the bar only ever goes down for that turn.
+  const cd = { route: null, k: null, scale: 0, on: false };
+  function countdown(s) {
+    const bar = $('#cdBar'), fill = $('#cdFill'), r = OR.ride;
+    if (!bar) return;
+    if (!s || s.free || !r.on || r.off > 0 || r.rerouting || r.arrived) { bar.hidden = true; cd.on = false; cd.k = null; return; }
+    if (cd.route !== r.route || cd.k !== s.k) { cd.route = r.route; cd.k = s.k; cd.on = false; }
+    if (!cd.on) { const v = Math.max((OR.pos && OR.pos.speed) || 0, 9); cd.scale = Math.min(800, Math.max(300, v * 25)); }
+    if (s.toTurn > cd.scale) { bar.hidden = true; cd.on = false; return; }
+    const pct = Math.max(0, Math.min(1, s.toTurn / cd.scale)) * 100 + '%';
+    if (!cd.on) { // first showing for this turn: jump straight to the level, then glide from there
+      bar.classList.add('noanim'); bar.hidden = false; fill.style.height = pct; void fill.offsetHeight; bar.classList.remove('noanim');
+      $('#cdIcon').innerHTML = OR.arrow(s.m.type); cd.on = true;
+    } else fill.style.height = pct;
+    fill.classList.toggle('near', s.toTurn < cd.scale * 0.25);
+    $('#cdDist').textContent = OR.fmtDist(s.toTurn, true);
+  }
   function refOf(street) { const m = String(street || '').match(/\b([A-Z]{1,3}\d{1,4}[A-Z]?)\b/); return m ? m[1] : ''; }
   function bindHud() {
     $('#hEnd').onclick = () => { if (confirm('End this ride?')) endRide(); };
@@ -922,6 +940,7 @@
       $('#hSpeed').parentNode.classList.toggle('over', !!lim && sp > lim + 2);
     });
     OR.on('ride', s => {
+      countdown(s);
       if (s.free) { $('#hRemain').textContent = OR.fmtDist(OR.ride.dist); $('#hEta').textContent = OR.fmtTime((Date.now() - OR.ride.start) / 1000); return; }
       $('#turnIcon').innerHTML = OR.arrow(s.m.type);
       $('#turnDist').textContent = OR.fmtDist(s.toTurn, true);
@@ -933,10 +952,10 @@
       // under the arrival time: how long is left
       const left = Math.max(0, (s.eta - Date.now()) / 1000); $('#hEtaL').textContent = left < 60 ? 'under 1 min' : OR.fmtTime(left) + ' left';
     });
-    OR.on('rerouting', on => { $('#hudNote').hidden = !on; $('#hudNote').textContent = 'Finding a new route…'; });
+    OR.on('rerouting', on => { if (on) countdown(null); $('#hudNote').hidden = !on; $('#hudNote').textContent = 'Finding a new route…'; });
     OR.on('breakDue', b => { const n = $('#hudNote'); n.hidden = false; n.textContent = b.line + (b.pick ? ' Tap to see stops.' : ''); n.onclick = b.pick ? () => { n.hidden = true; n.onclick = null; findNearby(b.pick.kind, [b.pick.lng, b.pick.lat]); } : null; });
     OR.on('overLimit', () => { const l = $('#limit'); if (l) { l.classList.add('over'); setTimeout(() => l.classList.remove('over'), 4000); } });
-    OR.on('arrived', () => { $('#hudNote').hidden = false; $('#hudNote').textContent = 'You\'ve arrived. Tap End to save the ride.'; });
+    OR.on('arrived', () => { countdown(null); $('#hudNote').hidden = false; $('#hudNote').textContent = 'You\'ve arrived. Tap End to save the ride.'; });
     OR.on('fuel', () => { const l = OR.fuelLeft(); if (OR.ride.on && l != null && l < (OR.cfg.bike.reserveMi || 25) * OR.MI) { $('#hudNote').hidden = false; $('#hudNote').textContent = 'Fuel low: about ' + OR.fmtDist(l) + ' left. Ride options has fuel nearby.'; } });
   }
   function rideOptions() {
