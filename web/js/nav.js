@@ -16,6 +16,21 @@
   };
   OR.stopGps = function () { if (A && A.stopGps) A.stopGps(); else if (watchId != null) { navigator.geolocation.clearWatch(watchId); watchId = null; } };
   window.onNativeFix = onFix;
+  // a rough position on opening (last known, or from the mobile network) until the GPS has a proper fix
+  window.onRoughFix = function (lat, lng, acc, t) {
+    if (ride.on || (OR.pos && !OR.pos.rough) || (OR.pos && OR.pos.t > t)) return;
+    onFix({ coords: { latitude: lat, longitude: lng, accuracy: acc, speed: null, heading: null }, timestamp: t });
+    if (OR.pos) OR.pos.rough = true;
+  };
+  // on opening the app: find where you are, so "My position" is ready in the planner and trip menus
+  OR.gpsAtStart = function () {
+    if (A && A.gpsIfAllowed) { A.gpsIfAllowed(); return; }
+    if (!A && navigator.geolocation) {
+      // a quick, rough answer first (cached or network), then the GPS
+      navigator.geolocation.getCurrentPosition(f => window.onRoughFix(f.coords.latitude, f.coords.longitude, f.coords.accuracy, f.timestamp), () => { }, { enableHighAccuracy: false, maximumAge: 2 * 3600000, timeout: 8000 });
+      OR.startGps();
+    }
+  };
   window.onGpsError = msg => OR.toast(msg || 'GPS problem', 6000);
 
   function markerEl() {

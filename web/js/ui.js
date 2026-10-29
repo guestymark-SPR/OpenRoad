@@ -25,6 +25,15 @@
     if (A && A.setPacksOnly) A.setPacksOnly(!!OR.cfg.packsOnly);
     const resume = OR.rideToResume && OR.rideToResume();
     if (resume) setTimeout(() => startRide(resume.route, resume.snap), 600); else OR.recoverRide();
+    // find where you are straight away: the map moves there and the planner offers "Start from my position"
+    let found = false;
+    OR.on('fix', p => {
+      if (found) return; found = true;
+      if (!OR.ride.on && !OR.plan.route && !OR.plan.wps.length) OR.map.jumpTo({ center: [p.lng, p.lat], zoom: Math.max(12, OR.map.getZoom()) });
+      const typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
+      if (!OR.ride.on && !typing && curTab === 'plan') renderPlan();
+    });
+    OR.gpsAtStart();
     drawWaypoints();
     OR.on('style', () => { if (OR.plan.route) showOptions(); });
     if (OR.cfg.checkinAt && OR.cfg.checkinAt < Date.now() - 864e5) OR.checkin.cancel();

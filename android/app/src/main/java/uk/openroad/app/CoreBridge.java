@@ -51,10 +51,37 @@ class CoreBridge {
             lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 500L, 0f, gps, Looper.getMainLooper()); // as often as the GPS gives them (most phones: once a second)
             Location last = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             if (last != null && System.currentTimeMillis() - last.getTime() < 60000) gps.onLocationChanged(last);
+            else roughFix();
             if (!lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) js.run("window.onGpsError&&onGpsError('Location is switched off. Turn it on in quick settings.')");
         } catch (Exception e) { js.run("window.onGpsError&&onGpsError(" + JSONObject.quote("GPS could not start: " + e.getMessage()) + ")"); }
     }
-    void gpsOff(boolean forget) { if (forget) wantGps = false; try { lm.removeUpdates(gps); } catch (Exception ignored) { } }
+    // Opening the app: a GPS fix can take a while (longer indoors), so give the app a rough position straight away
+    // from the phone's last known one or the mobile network. It only fills in until the first proper GPS fix.
+    private final LocationListener rough = new LocationListener() {
+        @Override public void onLocationChanged(Location l) { sendRough(l); }
+        @Override public void onProviderEnabled(String p) { }
+        @Override public void onProviderDisabled(String p) { }
+        @SuppressWarnings("deprecation") @Override public void onStatusChanged(String p, int s, Bundle b) { }
+    };
+    private void sendRough(Location l) {
+        js.run(String.format(Locale.US, "window.onRoughFix&&onRoughFix(%.7f,%.7f,%.1f,%d)", l.getLatitude(), l.getLongitude(), l.getAccuracy(), l.getTime()));
+    }
+    @SuppressLint("MissingPermission") @SuppressWarnings("deprecation")
+    private void roughFix() {
+        try {
+            Location best = null;
+            for (String pr : lm.getProviders(true)) {
+                Location l = lm.getLastKnownLocation(pr);
+                if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
+            }
+            if (best != null && System.currentTimeMillis() - best.getTime() < 2 * 3600000L) sendRough(best);
+            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) lm.requestSingleUpdate(LocationManager.NETWORK_PROVIDER, rough, Looper.getMainLooper());
+        } catch (Exception ignored) { }
+    }
+    // on opening: start the GPS if location is allowed; if not, it starts as soon as it's allowed (MainActivity asks)
+    @JavascriptInterface public void gpsIfAllowed() { onMain(() -> { if (hasLocation()) gpsOn(); else wantGps = true; }); }
+
+    void gpsOff(boolean forget) { if (forget) wantGps = false; try { lm.removeUpdates(gps); lm.removeUpdates(rough); } catch (Exception ignored) { } }
     void onMain(Runnable r) { new android.os.Handler(Looper.getMainLooper()).post(r); }
 
     @JavascriptInterface public boolean isNative() { return true; }
