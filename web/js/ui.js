@@ -12,7 +12,7 @@
   // ---------- startup ----------
   function boot() {
     if (!window.maplibregl) { window.__mlReady = boot; return; }
-    OR.initMap();
+    OR.initMap(); OR.mapLiveStart && OR.mapLiveStart();
     document.documentElement.dataset.theme = OR.themeNow();
     document.documentElement.dataset.look = OR.cfg.look || 'classic';
     // the fixed buttons get the same icon set as everything else
@@ -150,6 +150,9 @@
       '<p class="small muted">Satellite pictures need a signal. Offline packs show the road map.</p>' +
       '<h3 class="grp">On the map</h3><div class="menu"><button id="radarTog">' + badge('cloud', '#039be5') + '<span><b>' + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Rain radar') + '</b><small>Showers over the last 2 hours</small></span>' + ic('chev', 'chev') + '</button>' +
       '<button id="roughTog">' + badge('warn', '#ef8f00') + '<span><b>' + (OR.roughOn && OR.roughOn() ? 'Hide rough roads' : 'Rough roads I\'ve ridden') + '</b><small>Bumps and potholes your phone felt</small></span>' + ic('chev', 'chev') + '</button>' +
+      '<button id="poiTog">' + badge('fuel', '#e53935') + '<span><b>' + (c.mapPois === false ? 'Show fuel and places to stay' : 'Hide fuel and places to stay') + '</b><small>Petrol stations and hotels on the map when zoomed in close</small></span>' + ic('chev', 'chev') + '</button>' +
+      '<button id="jnTog">' + badge('map', '#0079c1') + '<span><b>' + (c.mapJunctions === false ? 'Show junction numbers' : 'Hide junction numbers') + '</b><small>Motorway junctions, from OpenStreetMap</small></span>' + ic('chev', 'chev') + '</button>' +
+      '<button id="closTog">' + badge('noentry', '#d50000') + '<span><b>' + (!(c.tomtomKey || '').trim() ? 'Road closures' : c.mapClosures === false ? 'Show road closures' : 'Hide road closures') + '</b><small>' + (!(c.tomtomKey || '').trim() ? 'Needs the free TomTom key (Settings, Map and routing)' : 'Closed roads in red, roadworks in orange, live from TomTom') + '</small></span>' + ic('chev', 'chev') + '</button>' +
       '<button id="fullTog">' + badge('full', '#5d6d7e') + '<span><b>Full-screen map</b><small>Hide the menu; the menu button brings it back</small></span>' + ic('chev', 'chev') + '</button></div><p class="small muted">Rain over the last 2 hours from RainViewer (free for personal use). It doesn\'t forecast, and it\'s coarse when zoomed in.</p><h3 class="grp">Colours</h3>' +
       '<div class="seg" id="th">' + [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']].map(([k, l]) => '<button data-v="' + k + '" class="' + (c.theme === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
       '<p class="small muted">Auto switches to night colours after sunset where you are.</p>', b => {
@@ -157,6 +160,13 @@
       const rb = $('#radarTog', b); if (rb) rb.onclick = () => { closeSheet(); OR.toggleRadar(); };
       const fs = $('#fullTog', b); if (fs) fs.onclick = () => { closeSheet(); setMenu(2); OR.toast('Tap the menu button, bottom left, to bring the menu back'); };
       const rr = $('#roughTog', b); if (rr) rr.onclick = () => { closeSheet(); OR.showRough(!OR.roughOn()); };
+      $('#poiTog', b).onclick = () => { closeSheet(); c.mapPois = c.mapPois === false; OR.saveCfg(); if (OR.map.getLayer('poi-main')) OR.map.setLayoutProperty('poi-main', 'visibility', c.mapPois ? 'visible' : 'none'); OR.toast(c.mapPois ? 'Fuel and stays show when you zoom in close' : 'Fuel and stays hidden'); };
+      $('#jnTog', b).onclick = () => { closeSheet(); c.mapJunctions = c.mapJunctions === false; OR.saveCfg(); OR.mapLiveRefresh(); };
+      $('#closTog', b).onclick = () => {
+        closeSheet();
+        if (!(c.tomtomKey || '').trim()) { OR.toast('Road closures need a free TomTom key. Add it in Settings, Map and routing.', 6000); return; }
+        c.mapClosures = c.mapClosures === false; OR.saveCfg(); OR.mapLiveRefresh(); if (c.mapClosures) { OR.refreshClosures(); OR.toast('Showing road closures around the map'); }
+      };
       $$('#th button', b).forEach(x => x.onclick = () => { c.theme = x.dataset.v; OR.saveCfg(); OR.applyTheme(); closeSheet(); });
     });
   }
@@ -169,6 +179,10 @@
       if (rider && rider.length) { OR.emit('riderTap', rider[0].properties.id); return; }
       const hz = OR.map.getLayer('ov-haz') && OR.map.queryRenderedFeatures([[e.point.x - 16, e.point.y - 30], [e.point.x + 16, e.point.y + 6]], { layers: ['ov-haz'] });
       if (hz && hz.length) { OR.emit('hazTap', hz[0].properties.key); return; }
+      const cl = OR.map.getLayer('ov-closed') && OR.map.queryRenderedFeatures([[e.point.x - 16, e.point.y - 30], [e.point.x + 16, e.point.y + 6]], { layers: ['ov-closed', 'ov-closed-l', 'ov-works-l'] });
+      if (cl && cl.length) { closureSheet(cl[0].properties.i); return; }
+      const tp = OR.map.getLayer('poi-main') && OR.map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 30], [e.point.x + 14, e.point.y + 4]], { layers: ['poi-main'] });
+      if (tp && tp.length && !OR.pickHook) { tilePoi(tp[0]); return; }
       if (OR.ride.on) return;
       const hit = OR.map.queryRenderedFeatures(e.point, { layers: ['ov-pois', 'ov-alts'].filter(l => OR.map.getLayer(l)) });
       if (hit.length && hit[0].layer.id === 'ov-alts') { const i = hit[0].properties.i; if (i != null) chooseOption(+i); return; }
@@ -177,6 +191,19 @@
       placeMenu([e.lngLat.lng, e.lngLat.lat]);
     });
     OR.on('poi', f => poiPopup(f));
+  }
+  // a petrol station or hotel from the map itself: show it like a search result, with Go here
+  function tilePoi(f) {
+    const pr = f.properties, ll = f.geometry.coordinates, fuel = pr.class === 'fuel';
+    const tags = fuel ? { amenity: 'fuel' } : { tourism: { hostel: 'hostel', motel: 'motel', guest_house: 'guest_house', camp_site: 'camp_site', chalet: 'chalet', apartment: 'apartment' }[pr.subclass] || 'hotel' };
+    const p = { id: 'tile' + ll[0].toFixed(5) + ll[1].toFixed(5), lng: ll[0], lat: ll[1], tags, name: pr['name:en'] || pr.name || (fuel ? 'Petrol station' : 'Place to stay') };
+    OR.lastPois = (OR.lastPois || []).filter(x => x.id !== p.id).concat([p]);
+    poiPopup({ properties: { id: p.id } });
+  }
+  function closureSheet(i) {
+    const x = OR.closureInfo(+i); if (!x) return;
+    sheet('<h2>' + esc(x.title) + '</h2>' + (x.where ? '<p><b>' + esc(x.where) + '</b></p>' : '') + (x.text ? '<p>' + esc(x.text) + '</p>' : '') +
+      (x.until ? '<p class="small muted">Expected until ' + esc(x.until) + '</p>' : '') + '<p class="small muted">Live from TomTom. Check the signs on the day.</p>');
   }
   function closePopup() { if (popup) { popup.remove(); popup = null; } }
   OR.closePopup = closePopup;

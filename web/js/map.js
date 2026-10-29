@@ -86,6 +86,11 @@
           filter: ['match', ['get', 'class'], ['primary', 'secondary', 'tertiary', 'minor'], true, false],
           layout: { 'symbol-placement': 'line', 'text-field': ['coalesce', ['get', 'name:en'], ['get', 'name']], 'text-font': ['Noto Sans Regular'], 'text-size': z([13, 11, 18, 14]) },
           paint: { 'text-color': c.text, 'text-halo-color': c.halo, 'text-halo-width': 1.6 } },
+        // fuel and places to stay, straight from the map tiles (works offline); the tiles carry them from zoom 14
+        { id: 'poi-main', type: 'symbol', source: 'omt', 'source-layer': 'poi', minzoom: 14, filter: ['all', ['match', ['get', 'class'], ['fuel', 'lodging'], true, false], ['!=', ['get', 'subclass'], 'charging_station']],
+          layout: { visibility: OR.cfg.mapPois === false ? 'none' : 'visible', 'icon-image': ['match', ['get', 'class'], 'fuel', 'pin-fuel', 'pin-stay'], 'icon-anchor': 'bottom', 'icon-size': z([14, 0.6, 17, 0.85]), 'icon-padding': 1,
+            'text-field': ['step', ['zoom'], '', 15, ['coalesce', ['get', 'name:en'], ['get', 'name']]], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-anchor': 'top', 'text-offset': [0, 0.2], 'text-optional': true, 'text-max-width': 8 },
+          paint: { 'text-color': c.text, 'text-halo-color': c.halo, 'text-halo-width': 1.5 } },
         { id: 'peak', type: 'symbol', source: 'omt', 'source-layer': 'mountain_peak', minzoom: 11, filter: ['all', ['has', 'name'], ['==', ['get', 'class'], 'peak']],
           layout: { 'text-field': ['concat', '▲ ', ['coalesce', ['get', 'name:en'], ['get', 'name']]], 'text-font': ['Noto Sans Italic'], 'text-size': 11, 'text-anchor': 'top' },
           paint: { 'text-color': c.text, 'text-halo-color': c.halo, 'text-halo-width': 1.4, 'text-opacity': 0.8 } },
@@ -144,8 +149,8 @@
 
   // ---------- overlays (route, alternatives, ride track, points of interest) ----------
   const EMPTY = { type: 'FeatureCollection', features: [] };
-  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY, trip: EMPTY, tripdays: EMPTY };
-  OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); };
+  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY, jn: EMPTY, closed: EMPTY, trip: EMPTY, tripdays: EMPTY };
+  OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.style && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); }; // no style: the map has been taken down
   function addOverlays() {
     const m = OR.map, night = m.__mode === 'night';
     for (const id in data) if (!m.getSource('ov-' + id)) m.addSource('ov-' + id, { type: 'geojson', data: data[id] });
@@ -183,6 +188,14 @@
     L({ id: 'ov-riders', type: 'circle', source: 'ov-riders', paint: { 'circle-radius': z([6, 7, 14, 10]), 'circle-color': ['case', ['get', 'stale'], '#8a949c', ['get', 'c']], 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } });
     L({ id: 'ov-riders-t', type: 'symbol', source: 'ov-riders', layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 14, 'text-anchor': 'bottom', 'text-offset': [0, -1.1], 'text-allow-overlap': true },
       paint: { 'text-color': '#fff', 'text-halo-color': ['case', ['get', 'stale'], '#5c666e', ['get', 'c']], 'text-halo-width': 2.6 } });
+    // road closures (solid red) and roadworks (dashed orange), with a pin to tap for details
+    L({ id: 'ov-closed-c', type: 'line', source: 'ov-closed', filter: ['all', ['!', ['has', 'pin']], ['==', ['get', 'kind'], 'closed']], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#fff', 'line-width': z([8, 5, 14, 11]), 'line-opacity': 0.9 } });
+    L({ id: 'ov-closed-l', type: 'line', source: 'ov-closed', filter: ['all', ['!', ['has', 'pin']], ['==', ['get', 'kind'], 'closed']], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#d50000', 'line-width': z([8, 3, 14, 7]) } });
+    L({ id: 'ov-works-l', type: 'line', source: 'ov-closed', filter: ['all', ['!', ['has', 'pin']], ['==', ['get', 'kind'], 'works']], paint: { 'line-color': '#ef6c00', 'line-width': z([8, 3, 14, 7]), 'line-dasharray': [2, 1.2] } });
+    L({ id: 'ov-closed', type: 'symbol', source: 'ov-closed', minzoom: 9, filter: ['has', 'pin'], layout: { 'icon-image': ['concat', 'pin-', ['get', 'kind']], 'icon-anchor': 'bottom', 'icon-size': z([9, 0.6, 14, 0.9]), 'icon-allow-overlap': true } });
+    // motorway junction numbers, like the plates on the signs
+    L({ id: 'ov-jn', type: 'symbol', source: 'ov-jn', minzoom: 9, layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': z([9, 10, 14, 13]), 'text-padding': 4, 'text-allow-overlap': false },
+      paint: { 'text-color': '#fff', 'text-halo-color': night ? '#1d5fa8' : '#0079c1', 'text-halo-width': 3.5 } });
     L({ id: 'ov-cams', type: 'symbol', source: 'ov-cams', minzoom: 9, layout: { 'icon-image': 'pin-cam', 'icon-anchor': 'bottom', 'icon-size': 0.85, 'icon-allow-overlap': true } });
   }
 
