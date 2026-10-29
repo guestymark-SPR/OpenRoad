@@ -882,3 +882,4 @@ label.chk{display:flex;align-items:center;gap:12px;flex-direction:row-reverse;ju
 .tr-row:last-child{border-bottom:0}
 .tr-n{flex:none;width:30px;height:30px;border-radius:15px;background:#8e24aa;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
 .tr-t{flex:1;min-width:0}.tr-t b{display:block;font-size:15.5px}.tr-t small{color:var(--ink-3);font-size:13px}
+#hEtaL{white-space:nowrap}

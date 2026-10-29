@@ -930,6 +930,8 @@
       const showThen = s.next && s.m.len < 300 && s.toTurn < 600;
       $('#thenBox').hidden = !showThen; if (showThen) $('#thenIcon').innerHTML = OR.arrow(s.next.type);
       $('#hRemain').textContent = OR.fmtDist(s.remain); $('#hEta').textContent = OR.clock(s.eta);
+      // under the arrival time: how long is left
+      const left = Math.max(0, (s.eta - Date.now()) / 1000); $('#hEtaL').textContent = left < 60 ? 'under 1 min' : OR.fmtTime(left) + ' left';
     });
     OR.on('rerouting', on => { $('#hudNote').hidden = !on; $('#hudNote').textContent = 'Finding a new route…'; });
     OR.on('breakDue', b => { const n = $('#hudNote'); n.hidden = false; n.textContent = b.line + (b.pick ? ' Tap to see stops.' : ''); n.onclick = b.pick ? () => { n.hidden = true; n.onclick = null; findNearby(b.pick.kind, [b.pick.lng, b.pick.lat]); } : null; });
