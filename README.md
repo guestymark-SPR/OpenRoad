@@ -6,6 +6,10 @@ Free motorbike navigation for the UK and Europe, built on open data. Sister app 
 
 ## What it does
 
+- **Today**: the Plan screen opens with whether it's a riding day where you are (dry, warm enough, not too windy, daylight) and a twisty loop from home planned to fit the dry hours, ready to ride. The same answer is on a **home-screen widget**, with buttons to ride the loop or start recording.
+- **3D hills**: hill shading on the map, and real 3D ground when you tilt it (the 3D button, or two fingers). New routes draw themselves along the road while the map flies over them.
+- **Weather on the route line**: rain, showers, storms, strong gusts and icy stretches are drawn on the route in their own colour, for the time you'll get there.
+- **Rides record themselves**: with the app open, setting off at riding speed starts recording (or follows your planned route if you're at its start); parked for 15 minutes, the ride is saved.
 - **Trip planner**: plan a tour day by day: rides, ferry and tunnel crossings (common Channel and North Sea crossings built in), hotels near where each day ends, tolls and other costs, weather for each day, totals with fuel worked out from your mpg, split per rider. Export as PDF, GPX or text.
 - **Round trips**: a loop of the length and direction you choose.
 - **While riding**: speed limit sign, UK and Ireland speed camera warnings, ride options (skip next stop, weather ahead, fuel, cafés, stays), lean angle estimate.

@@ -89,6 +89,13 @@
         </activity>
 
         <receiver android:name=".CheckIn" android:exported="false" />
+        <!-- the home-screen widget: today's riding weather (TodayWidget) -->
+        <receiver android:name=".TodayWidget" android:exported="false" android:label="OpenRoad: riding today">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today_info" />
+        </receiver>
 
         <!-- Android Auto -->
         <service android:name=".CarService" android:exported="true">

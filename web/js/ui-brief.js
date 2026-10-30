@@ -9,6 +9,37 @@
   const hhmm = d => String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   OR.wxStripHtml = () => '<div id="wxStrip">' + (strip.html || '') + '</div>';
 
+  // ---------- the weather drawn on the route line ----------
+  // Each forecast point covers the stretch of road ridden around its time. Rain, showers, storms, strong gusts and
+  // near-freezing stretches are drawn over the route in their own colour, with a label along the line.
+  const WXK = { storm: ['#6a1b9a', 'Storms'], rain: ['#1d55c4', 'Rain'], cold: ['#00838f', 'Icy'], wind: ['#ad1457', 'Gusty'], showers: ['#1e88e5', 'Showers'] };
+  const wxKind = x => x.code >= 95 ? 'storm' : (x.code >= 51 && (x.rainP || 0) >= 45) || (x.rain || 0) >= 0.6 ? 'rain' : x.temp != null && x.temp <= 3 ? 'cold' : (x.gust || 0) >= 40 ? 'wind' : (x.rainP || 0) >= 25 && x.code >= 51 ? 'showers' : '';
+  function cut(r, a, b) {
+    const s = r.shape, c = r.cum && r.cum.length === s.length ? r.cum : OR.cumulative(s), out = [];
+    const at = d => { let i = 1; while (i < s.length - 1 && c[i] < d) i++; const k = Math.max(0, Math.min(1, (d - c[i - 1]) / Math.max(1e-6, c[i] - c[i - 1]))); return { i, p: [s[i - 1][0] + (s[i][0] - s[i - 1][0]) * k, s[i - 1][1] + (s[i][1] - s[i - 1][1]) * k] }; };
+    const A = at(a), B = at(b); out.push(A.p); for (let i = A.i; i < B.i; i++) out.push(s[i]); out.push(B.p);
+    return out;
+  }
+  OR.weatherLine = function (r, w) {
+    const pts = w.filter(x => x.along != null).sort((a, b) => a.along - b.along), runs = [];
+    pts.forEach((x, i) => {
+      const from = i === 0 ? 0 : (pts[i - 1].along + x.along) / 2, to = i === pts.length - 1 ? r.dist : (x.along + pts[i + 1].along) / 2, k = wxKind(x);
+      const last = runs[runs.length - 1];
+      if (last && last.kind === k) { last.to = to; last.t1 = x.at; } else runs.push({ kind: k, from, to, t0: x.at, t1: x.at });
+    });
+    const bad = runs.filter(x => x.kind && x.to - x.from > 300);
+    return { runs: bad, fc: { type: 'FeatureCollection', features: bad.map(x => ({ type: 'Feature', properties: { kind: x.kind, c: WXK[x.kind][0], label: WXK[x.kind][1] + ' ' + OR.clock(new Date(x.t0)) },
+      geometry: { type: 'LineString', coordinates: cut(r, x.from, x.to) } })) } };
+  };
+  let wxPending = null;
+  function applyWx() { if (!OR.revealing) OR.setData('wxline', wxPending); }
+  OR.on('revealed', applyWx);
+  function keyHtml(runs) {
+    if (!runs.length) return '';
+    return '<div class="wxkey">' + runs.slice(0, 6).map(x => '<span style="--c:' + WXK[x.kind][0] + '"><i></i>' + WXK[x.kind][1] + ' ' + OR.clock(new Date(x.t0)) +
+      (x.t1 - x.t0 > 20 * 60000 ? '–' + OR.clock(new Date(x.t1)) : '') + ', ' + OR.fmtDist(x.from) + ' in</span>').join('') + '</div>';
+  }
+
   // ---------- weather strip under the chosen route ----------
   OR.on('routeShown', r => loadStrip(r));
   async function loadStrip(r) {
@@ -16,14 +47,16 @@
     const dep = depTime(), key = r.id + ':' + Math.round(dep.getTime() / 600000);
     if (strip.key === key) { put(); return; }
     strip = { key, html: '<div class="wxs"><span class="muted small">Getting the weather along the route…</span></div>' }; put();
+    wxPending = null; applyWx();
     try {
       const w = await OR.weatherAlong(r, dep);
       if (strip.key !== key) return;
+      const wl = OR.weatherLine(r, w); wxPending = wl.fc; applyWx();
       OR.setData('wx', { type: 'FeatureCollection', features: w.map(x => ({ type: 'Feature', properties: { name: Math.round(x.temp) + '°' }, geometry: { type: 'Point', coordinates: [x.lng, x.lat] } })) });
       const warns = Array.from(new Set(w.map(OR.weatherWarn).filter(Boolean)));
       strip.html = '<div class="wxs"><div class="wxs-top"><b>Weather on the way</b><label>Leave <input type="time" id="wxsDep" value="' + hhmm(dep) + '"></label></div>' +
         '<div class="wxs-row">' + w.map(x => { const c = OR.wmo(x.code); return '<div class="wxc' + (OR.weatherWarn(x) ? ' bad' : '') + '"><span>' + OR.clock(new Date(x.at)) + '</span><i aria-hidden="true">' + c[1] + '</i><b>' + Math.round(x.temp) + '°</b><small>' + Math.round(x.rainP || 0) + '%</small></div>'; }).join('') + '</div>' +
-        (warns.length ? '<p class="wxs-warn">' + esc(warns.join('. ')) + '</p>' : '<p class="wxs-ok">No bad weather expected on this route.</p>') + '</div>';
+        (warns.length ? '<p class="wxs-warn">' + esc(warns.join('. ')) + '</p>' : '<p class="wxs-ok">No bad weather expected on this route.</p>') + keyHtml(wl.runs) + '</div>';
       put();
     } catch (e) { if (strip.key === key) { strip.html = '<div class="wxs"><span class="muted small">Weather unavailable: ' + esc(e.message) + '</span></div>'; put(); } }
   }
@@ -36,7 +69,7 @@
       OR.plan.depart = d; strip.key = ''; loadStrip(OR.plan.route);
     };
   }
-  OR.on('planCleared', () => { strip = { key: '', html: '' }; OR.setData('wx', null); });
+  OR.on('planCleared', () => { strip = { key: '', html: '' }; OR.setData('wx', null); wxPending = null; OR.setData('wxline', null); });
 
   // ---------- the route brief ----------
   OR.openBrief = async function (route) {

@@ -139,6 +139,7 @@
       try { m.setTerrain(null); } catch (e) { }
       unlayers(m);
       card.remove(); document.body.classList.remove('filming');
+      if (OR.restoreHills) setTimeout(OR.restoreHills, 0);
       if (OR.ride) OR.ride.follow = follow;
       m.jumpTo({ center: before.c, zoom: before.z, bearing: before.b, pitch: before.p });
     }

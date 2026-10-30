@@ -129,6 +129,12 @@ public class MainActivity extends Activity {
 
     // a GPX file opened from Files, email or another app
     private void openFromIntent(Intent i) {
+        // a button on the home-screen widget: ride today's loop, or start recording
+        if (i != null && i.getStringExtra("widget") != null && !i.getBooleanExtra("handled", false)) {
+            i.putExtra("handled", true);
+            js("window.onWidgetAction&&onWidgetAction(" + JSONObject.quote(i.getStringExtra("widget")) + ")");
+            return;
+        }
         if (i == null || i.getData() == null || i.getBooleanExtra("handled", false)) return;
         Uri d = i.getData();
         if ("openroad".equals(d.getScheme()) && "event".equals(d.getHost())) { i.putExtra("handled", true); js("window.onEventLink&&onEventLink(" + JSONObject.quote(d.toString()) + ")"); return; }
@@ -353,6 +359,17 @@ public class MainActivity extends Activity {
                 });
                 pw.loadDataWithBaseURL("file:///android_asset/", html, "text/html", "utf-8", null);
             });
+        }
+
+        // the home-screen widget: what the Today card worked out, and asking the launcher to add the widget
+        @JavascriptInterface public void widgetUpdate(String json) { Util.kvSet(MainActivity.this, "widget", json); TodayWidget.redraw(MainActivity.this); }
+        @JavascriptInterface public boolean pinWidget() {
+            if (Build.VERSION.SDK_INT < 26) return false;
+            try {
+                android.appwidget.AppWidgetManager m = getSystemService(android.appwidget.AppWidgetManager.class);
+                if (m == null || !m.isRequestPinAppWidgetSupported()) return false;
+                return m.requestPinAppWidget(new android.content.ComponentName(MainActivity.this, TodayWidget.class), null, null);
+            } catch (Exception e) { return false; }
         }
 
         // updates

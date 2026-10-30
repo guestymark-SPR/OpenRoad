@@ -50,16 +50,49 @@
   const SAT = { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, maxzoom: 19,
     attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' };
   const FILLS = ['landuse', 'wood', 'grass', 'park', 'water', 'building'];
+  // Hills: shading from AWS Terrain Tiles (free open elevation data, the same the flyover uses), and the ground
+  // raised in 3D when the map is tilted. Needs a signal; with none the map is simply flat.
+  const DEM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+  const demSrc = () => ({ type: 'raster-dem', tiles: [DEM], tileSize: 256, encoding: 'terrarium', maxzoom: 13, attribution: 'Hills: AWS Terrain Tiles' });
+  const CAR = /car\.html$/.test(location.pathname);
+  OR.HILLS_X = 1.4; // how much the hills are raised: a little more than real, so you can see them on a phone
+  OR.hillsOn = () => OR.cfg.hills !== false;
+  OR.hills3dOn = () => OR.cfg.hills !== false && OR.cfg.hills3d !== false && !CAR;
+  function addHills(st, mode) {
+    if (!OR.hillsOn()) return;
+    const night = mode === 'night', sat = OR.cfg.mapType === 'satellite';
+    st.sources['dem-hs'] = demSrc();
+    if (!sat) {
+      const at = st.layers.findIndex(l => l.id === 'boundary');
+      st.layers.splice(at < 0 ? 1 : at, 0, { id: 'hills', type: 'hillshade', source: 'dem-hs', maxzoom: 16,
+        paint: { 'hillshade-exaggeration': night ? 0.35 : 0.45, 'hillshade-shadow-color': night ? '#000000' : '#5b5141', 'hillshade-highlight-color': night ? '#2a3238' : '#fffaf0',
+          'hillshade-accent-color': night ? '#0b0e10' : '#6f6553', 'hillshade-illumination-anchor': 'viewport' } });
+    }
+    if (OR.hills3dOn()) st.sources.dem = demSrc();
+  }
+  // The ground is raised only while the map is tilted: flat, 3D looks the same and costs the phone more to draw.
+  // Also puts the map's own terrain back after something else used it (the flyover).
+  OR.syncTerrain = function () {
+    const m = OR.map; if (!m || !m.isStyleLoaded() || document.body.classList.contains('filming')) return;
+    try {
+      const t = m.getTerrain(), want = OR.hills3dOn() && !!m.getSource('dem') && m.getPitch() > 4;
+      if (want && !t) m.setTerrain({ source: 'dem', exaggeration: OR.HILLS_X });
+      else if (!want && t && t.source === 'dem') m.setTerrain(null);
+    } catch (e) { }
+  };
+  OR.restoreHills = () => OR.syncTerrain();
   OR.buildStyle = function (mode) {
     const st = buildBase(mode);
-    if (OR.cfg.mapType !== 'satellite') return st;
+    if (OR.cfg.mapType !== 'satellite') { addHills(st, mode); return st; }
     st.sources.sat = SAT;
     st.layers = st.layers.filter(l => FILLS.indexOf(l.id) < 0);
     st.layers.splice(1, 0, { id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-brightness-max': mode === 'night' ? 0.7 : 1 } });
     st.layers.forEach(l => { if (/^(r|rc)-(minor|track|tertiary)$/.test(l.id)) l.paint['line-opacity'] = 0.75; });
+    addHills(st, mode);
     return st;
   };
-  OR.setMapType = function (t) { OR.cfg.mapType = t; OR.saveCfg(); if (OR.map) { OR.map.setStyle(OR.buildStyle(OR.map.__mode), { diff: false }); } };
+  OR.setMapType = function (t) { OR.cfg.mapType = t; OR.saveCfg(); OR.restyle(); };
+  OR.restyle = function () { if (OR.map) { OR.map.setStyle(OR.buildStyle(OR.map.__mode), { diff: false }); OR.map.once('styledata', () => OR.emit('style')); } };
   function buildBase(mode) {
     const c = PAL[mode] || PAL.day;
     return {
@@ -149,7 +182,7 @@
 
   // ---------- overlays (route, alternatives, ride track, points of interest) ----------
   const EMPTY = { type: 'FeatureCollection', features: [] };
-  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY, jn: EMPTY, closed: EMPTY, trip: EMPTY, tripdays: EMPTY };
+  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY, jn: EMPTY, closed: EMPTY, trip: EMPTY, tripdays: EMPTY, wxline: EMPTY };
   OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.style && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); }; // no style: the map has been taken down
   function addOverlays() {
     const m = OR.map, night = m.__mode === 'night';
@@ -164,6 +197,11 @@
     L({ id: 'ov-alts', type: 'line', source: 'ov-alts', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': night ? '#7c8790' : '#8f99a3', 'line-width': z([5, 4, 14, 9]), 'line-opacity': 0.75 } });
     L({ id: 'ov-route-c', type: 'line', source: 'ov-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': night ? '#000' : '#5a1a00', 'line-width': z([5, 6, 14, 13]), 'line-opacity': 0.6 } });
     L({ id: 'ov-route', type: 'line', source: 'ov-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ff6a1f', 'line-width': z([5, 4, 14, 9]) } });
+    // the weather on the route: the line turns blue where it's likely to rain when you get there, and so on (ui-brief.js)
+    L({ id: 'ov-wxline', type: 'line', source: 'ov-wxline', layout: { 'line-cap': 'butt', 'line-join': 'round' },
+      paint: { 'line-color': ['get', 'c'], 'line-width': z([5, 4, 14, 9]), 'line-dasharray': ['case', ['==', ['get', 'kind'], 'showers'], ['literal', [1.4, 0.9]], ['literal', [1, 0]]] } });
+    L({ id: 'ov-wxline-t', type: 'symbol', source: 'ov-wxline', minzoom: 6, layout: { 'symbol-placement': 'line', 'symbol-spacing': 260, 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 12.5, 'text-keep-upright': true },
+      paint: { 'text-color': '#fff', 'text-halo-color': ['get', 'c'], 'text-halo-width': 2.6 } });
     L({ id: 'ov-gaps', type: 'line', source: 'ov-gaps', layout: { 'line-cap': 'butt' }, paint: { 'line-color': '#e5243b', 'line-width': z([5, 6, 14, 12]), 'line-opacity': 0.55 } });
     L({ id: 'ov-done', type: 'line', source: 'ov-done', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#9aa3ab', 'line-width': z([5, 4, 14, 9]) } });
     L({ id: 'ov-rideview', type: 'line', source: 'ov-rideview', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#7c3aed', 'line-width': z([5, 3, 14, 7]) } });
@@ -210,7 +248,8 @@
     OR.map = m;
     m.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
     m.addControl(new maplibregl.ScaleControl({ unit: OR.cfg.units === 'km' ? 'metric' : 'imperial' }), 'bottom-left');
-    m.on('style.load', addOverlays);
+    m.on('style.load', () => { addOverlays(); OR.syncTerrain(); });
+    m.on('pitch', OR.syncTerrain);
     // icon pins are drawn when the map first needs them (and again after a style change)
     m.on('styleimagemissing', e => { if (/^pin-/.test(e.id) && OR.pinImage && !m.hasImage(e.id)) m.addImage(e.id, OR.pinImage(e.id.slice(4), 2), { pixelRatio: 2 }); });
     m.on('styledata', () => { if (m.isStyleLoaded()) addOverlays(); });

@@ -3,6 +3,16 @@
 (function (OR) {
   // class "d" = the soft fill in the icon's colour; everything else is a 1.9 px rounded stroke
   const I = {
+    // two hills (3D hills, the Today card)
+    hills: '<path class="d" d="M2.5 19.5 9 9l4 6.2 2.6-3.7 5.9 8z"/><path d="M2.5 19.5 9 9l4 6.2 2.6-3.7 5.9 8z"/><path d="m7.2 11.9 1.8 1.4 1.5-1.2"/>',
+    // a spark (what's new)
+    spark: '<path class="d" d="M12 3.5c.7 4.6 2.9 6.8 7.5 7.5-4.6.7-6.8 2.9-7.5 7.5-.7-4.6-2.9-6.8-7.5-7.5 4.6-.7 6.8-2.9 7.5-7.5z"/><path d="M12 3.5c.7 4.6 2.9 6.8 7.5 7.5-4.6.7-6.8 2.9-7.5 7.5-.7-4.6-2.9-6.8-7.5-7.5 4.6-.7 6.8-2.9 7.5-7.5z"/><path d="M19 17.5v4M17 19.5h4"/>',
+    // a dot inside a ring (recording)
+    rec: '<circle class="d" cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.6" fill="currentColor" stroke="none"/>',
+    // a phone home screen tile (widget)
+    widget: '<rect class="d" x="3.5" y="3.5" width="17" height="8" rx="2"/><rect x="3.5" y="3.5" width="17" height="8" rx="2"/><rect x="3.5" y="14.5" width="7" height="6" rx="1.6"/><rect x="13.5" y="14.5" width="7" height="6" rx="1.6"/>',
+    // a cube (3D)
+    cube: '<path class="d" d="M12 3 20 7.5v9L12 21l-8-4.5v-9z"/><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5 12 12l8-4.5M12 12v9"/>',
     // a cruiser, side on
     moto: '<circle cx="5" cy="16.5" r="3.3"/><circle cx="19" cy="16.5" r="3.3"/><circle class="d" cx="5" cy="16.5" r="3.3"/><circle class="d" cx="19" cy="16.5" r="3.3"/><path class="d" d="M9 13.2h5l1.2 2.2H9.6z"/><path d="M5 16.5 8.6 12.6h5.6l1.6 2.6H19"/><path d="M19 16.5 15.8 7.2"/><path d="M14.2 7h3.3"/><path d="M9.4 12.4c.9-2.2 2.6-3 4.6-2.7l2.1.3"/><path d="M2.4 11.6c1.6-.9 3.6-1 5.3-.4l.9 1.4"/><path d="M8.6 18h5.6"/>',
     // three riders together (group ride)

@@ -37,7 +37,7 @@
     drawWaypoints();
     OR.on('style', () => { if (OR.plan.route) showOptions(); });
     if (OR.cfg.checkinAt && OR.cfg.checkinAt < Date.now() - 864e5) OR.checkin.cancel();
-    if (!OR.store.get('seenIntro', false)) intro();
+    if (OR.welcomeBoot) OR.welcomeBoot(); else if (!OR.store.get('seenIntro', false)) intro();
     setTimeout(checkUpdate, 4000);
   }
   function renderAll() { renderPlan(); if (curTab !== 'plan') tab(curTab, true); }
@@ -162,12 +162,19 @@
       '<button id="poiTog">' + badge('fuel', '#e53935') + '<span><b>' + (c.mapPois === false ? 'Show fuel and places to stay' : 'Hide fuel and places to stay') + '</b><small>Petrol stations and hotels on the map when zoomed in close</small></span>' + ic('chev', 'chev') + '</button>' +
       '<button id="jnTog">' + badge('map', '#0079c1') + '<span><b>' + (c.mapJunctions === false ? 'Show junction numbers' : 'Hide junction numbers') + '</b><small>Motorway junctions, from OpenStreetMap</small></span>' + ic('chev', 'chev') + '</button>' +
       '<button id="closTog">' + badge('noentry', '#d50000') + '<span><b>' + (!(c.tomtomKey || '').trim() ? 'Road closures' : c.mapClosures === false ? 'Show road closures' : 'Hide road closures') + '</b><small>' + (!(c.tomtomKey || '').trim() ? 'Needs the free TomTom key (Settings, Map and routing)' : 'Closed roads in red, roadworks in orange, live from TomTom') + '</small></span>' + ic('chev', 'chev') + '</button>' +
+      '<button id="hillsTog">' + badge('hills', '#6d4c41') + '<span><b>' + (c.hills === false ? 'Show the hills' : c.hills3d === false ? 'Raise the hills in 3D' : 'Hills: shaded and 3D') + '</b><small>' + (c.hills === false ? 'Hill shading and 3D ground' : c.hills3d === false ? 'Tilt the map to see them' : 'Tap to change. 3D shows when the map is tilted') + '</small></span>' + ic('chev', 'chev') + '</button>' +
       '<button id="fullTog">' + badge('full', '#5d6d7e') + '<span><b>Full-screen map</b><small>Hide the menu; the menu button brings it back</small></span>' + ic('chev', 'chev') + '</button></div><p class="small muted">Rain over the last 2 hours from RainViewer (free for personal use). It doesn\'t forecast, and it\'s coarse when zoomed in.</p><h3 class="grp">Colours</h3>' +
       '<div class="seg" id="th">' + [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']].map(([k, l]) => '<button data-v="' + k + '" class="' + (c.theme === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
       '<p class="small muted">Auto switches to night colours after sunset where you are.</p>', b => {
       $$('#mt button', b).forEach(x => x.onclick = () => { OR.setMapType(x.dataset.v); closeSheet(); });
       const rb = $('#radarTog', b); if (rb) rb.onclick = () => { closeSheet(); OR.toggleRadar(); };
       const fs = $('#fullTog', b); if (fs) fs.onclick = () => { closeSheet(); setMenu(2); OR.toast('Tap the menu button, bottom left, to bring the menu back'); };
+      $('#hillsTog', b).onclick = () => {
+        closeSheet();
+        // off → shaded and 3D → shaded only → off
+        if (c.hills === false) { c.hills = true; c.hills3d = true; } else if (c.hills3d !== false) c.hills3d = false; else c.hills = false;
+        OR.saveCfg(); OR.restyle(); OR.toast(c.hills === false ? 'Hills off' : c.hills3d === false ? 'Hill shading on, 3D off' : 'Hills on: tap 3D to tilt the map');
+      };
       const rr = $('#roughTog', b); if (rr) rr.onclick = () => { closeSheet(); OR.showRough(!OR.roughOn()); };
       $('#poiTog', b).onclick = () => { closeSheet(); c.mapPois = c.mapPois === false; OR.saveCfg(); if (OR.map.getLayer('poi-main')) OR.map.setLayoutProperty('poi-main', 'visibility', c.mapPois ? 'visible' : 'none'); OR.toast(c.mapPois ? 'Fuel and stays show when you zoom in close' : 'Fuel and stays hidden'); };
       $('#jnTog', b).onclick = () => { closeSheet(); c.mapJunctions = c.mapJunctions === false; OR.saveCfg(); OR.mapLiveRefresh(); };
@@ -355,7 +362,7 @@
         '<button class="btn wide pri" id="loopGo"' + (from ? '' : ' disabled') + '>' + (planning ? 'Finding loops…' : 'Make a loop') + '</button>';
       if (!loopFrom && !OR.pos) h += '<p class="hint">Tap the map where the loop should start and choose "Round trip from here".</p>';
     } else if (!wps.length) {
-      h += '<div class="empty">' + ic('plan', 'big') + '<p>Search for a place or tap the map to say where you\'re going. Add via points to ride the roads you want.</p>' +
+      h += (OR.todayHtml && !tgt ? OR.todayHtml() : '') + '<div class="empty">' + ic('plan', 'big') + '<p>Search for a place or tap the map to say where you\'re going. Add via points to ride the roads you want.</p>' +
         (OR.pos ? '<button class="btn" id="fromHere">Start from my position</button>' : '') + '</div>';
     } else {
       const fold = wps.length > 5 && !showAllWps;
@@ -392,7 +399,7 @@
         '<li>' + OR.arrow(m.type) + '<span>' + esc(m.text) + (m.len > 0 ? '<small>then ' + OR.fmtDist(m.len) + '</small>' : '') + '</span></li>').join('') + '</ol></details>';
     }
     v.innerHTML = h;
-    bindModes(v); bindTarget(v);
+    bindModes(v); bindTarget(v); if (OR.bindToday) OR.bindToday(v);
     $$('#styleSeg button', v).forEach(b => b.onclick = () => { OR.cfg.style = b.dataset.s; OR.saveCfg(); renderPlan(); if (planMode === 'ab' && wps.length >= 2) doPlan(); });
     const on = (id, fn) => { const el = $('#' + id, v); if (el) el.onclick = fn; };
     on('fromHere', () => { OR.plan.wps.push({ lng: OR.pos.lng, lat: OR.pos.lat, name: 'My position', type: 'break' }); changed(); });
@@ -477,9 +484,20 @@
     } catch (e) { planErr = e.message; }
     planning = false; renderPlan();
   }
+  // put a set of round trips in the planner (Today's loop), as if made with Round trip
+  OR.useLoop = function (opts, from) {
+    planMode = 'loop'; loopFrom = { lng: from.lng, lat: from.lat, name: from.home ? 'Home' : from.name === 'here' ? 'My position' : from.name };
+    OR.plan.options = opts.slice(0, 3); OR.plan.choice = 0; OR.plan.route = OR.plan.options[0];
+    OR.plan.wps = OR.plan.route.wps.map(w => Object.assign({}, w)); OR.savePlan(); drawWaypoints(); clearRouteExtras();
+    tab('plan'); renderPlan(); showOptions(true); renderPlan();
+  };
   function showOptions(fit) {
     const o = OR.plan.options, c = OR.plan.choice; if (!o.length) return;
-    OR.setData('alts', { type: 'FeatureCollection', features: o.map((r, i) => i === c ? null : { type: 'Feature', properties: { i }, geometry: { type: 'LineString', coordinates: r.shape } }).filter(Boolean) });
+    const alts = { type: 'FeatureCollection', features: o.map((r, i) => i === c ? null : { type: 'Feature', properties: { i }, geometry: { type: 'LineString', coordinates: r.shape } }).filter(Boolean) };
+    // a new route draws itself along the road (view3d.js); picking another option just swaps the lines
+    if (fit && OR.revealRoute && OR.revealRoute(o[c], alts, fitPad())) { OR.emit('routeShown', o[c]); return; }
+    if (OR.stopReveal) OR.stopReveal();
+    OR.setData('alts', alts);
     OR.setData('route', { type: 'FeatureCollection', features: [OR.routeGeo(o[c])] });
     if (fit) fitRoute(o[c]);
     OR.emit('routeShown', o[c]);
@@ -491,9 +509,10 @@
     if (planMode === 'loop') { OR.plan.wps = OR.plan.route.wps.map(w => Object.assign({}, w)); OR.savePlan(); drawWaypoints(); }
     showOptions(); renderPlan();
   }
+  function fitPad() { return window.innerWidth >= 900 ? { top: 90, bottom: 60, left: 450, right: 80 } : { top: 90, bottom: Math.round(window.innerHeight * 0.55), left: 40, right: 40 }; }
+  OR.fitPad = fitPad;
   function fitRoute(r) {
-    const wide = window.innerWidth >= 900;
-    OR.map.fitBounds(OR.bbox(r.shape), { padding: wide ? { top: 90, bottom: 60, left: 450, right: 80 } : { top: 90, bottom: Math.round(window.innerHeight * 0.55), left: 40, right: 40 }, duration: 800, maxZoom: 14 });
+    OR.map.fitBounds(OR.bbox(r.shape), { padding: fitPad(), duration: 800, maxZoom: 14 });
   }
   OR.fitRoute = fitRoute;
   function setExtras(html) { extras.html = html; const o = $('#extraOut'); if (o) o.innerHTML = html; }
@@ -879,7 +898,14 @@
       '<h3>While riding</h3><label class="chk"><input type="checkbox" id="sCams"' + (c.cameras !== false ? ' checked' : '') + '> Speed camera warnings (UK and Ireland)</label>' +
       '<h3>Live traffic</h3>' + field('sTomtom', 'TomTom traffic key (free)', c.tomtomKey || '', 'text', 'paste your key') +
       '<p class="small muted">For roadworks, accidents and queues in the route brief. Get a free key at developer.tomtom.com (no card needed, 2,500 checks a month). It\'s kept only on this phone.</p>' +
-      '<p class="small muted">Camera warnings are switched off everywhere else because warning devices are illegal in France, Germany and Switzerland. Camera locations come from OpenStreetMap and aren\'t complete.</p>';
+      '<p class="small muted">Camera warnings are switched off everywhere else because warning devices are illegal in France, Germany and Switzerland. Camera locations come from OpenStreetMap and aren\'t complete.</p>' +
+      '<h3>Home</h3><div class="card"><div class="row-l"><span class="lbl">Today\'s forecast and loop start from</span><b>' + esc(c.home ? c.home.name || 'Home' : 'Not set') + '</b></div><button class="btn small" id="sHome">' + (c.home ? 'Change' : 'Set') + '</button></div>' +
+      '<h3>Today and recording</h3><label class="chk"><input type="checkbox" id="sToday"' + (c.today !== false ? ' checked' : '') + '> Today card on the Plan screen</label><p class="small">Whether it\'s a riding day, and when it\'s dry.</p>' +
+      '<label class="chk"><input type="checkbox" id="sTodayLoop"' + (c.todayLoop !== false ? ' checked' : '') + '> Plan a loop for today</label><p class="small">A twisty round trip from home that fits the dry hours, planned once a day.</p>' +
+      '<label class="chk"><input type="checkbox" id="sAuto"' + (c.autoRecord !== false ? ' checked' : '') + '> Record rides automatically</label><p class="small">When OpenRoad is open and you set off at riding speed, it starts recording; it stops when you\'ve been parked a while.</p>' +
+      '<h3>Map</h3><label class="chk"><input type="checkbox" id="sHills"' + (c.hills !== false ? ' checked' : '') + '> Hill shading</label><p class="small">Shows the shape of the land. Needs a signal.</p>' +
+      '<label class="chk"><input type="checkbox" id="sHills3d"' + (c.hills3d !== false ? ' checked' : '') + '> 3D hills when the map is tilted</label><p class="small">Tap 3D on the map, or tilt with two fingers. Turn off if the map feels slow on an older phone.</p>' +
+      '<label class="chk"><input type="checkbox" id="sReveal"' + (c.reveal !== false ? ' checked' : '') + '> Draw new routes along the road</label><p class="small">A new route draws itself while the map flies over it.</p>';
     const segBind = (id, fn) => $$('#' + id + ' button', box).forEach(b => b.onclick = () => { fn(b.dataset.v); OR.saveCfg(); pageSettings(box); });
     segBind('sUnits', x => { c.units = x; renderAll(); });
     segBind('sTheme', x => { c.theme = x; OR.applyTheme(); });
@@ -888,6 +914,11 @@
     $('#sTolls', box).onchange = e => { c.avoidTolls = e.target.checked; OR.saveCfg(); };
     $('#sFerry', box).onchange = e => { c.avoidFerries = e.target.checked; OR.saveCfg(); };
     $('#sCams', box).onchange = e => { c.cameras = e.target.checked; OR.saveCfg(); };
+    $('#sHome', box).onclick = () => OR.openSetup && OR.openSetup('home');
+    const tog = (id, key, after) => { $('#' + id, box).onchange = e => { c[key] = e.target.checked; OR.saveCfg(); if (after) after(); }; };
+    tog('sToday', 'today', () => renderPlan()); tog('sTodayLoop', 'todayLoop', () => OR.todayRefresh && OR.todayRefresh());
+    tog('sAuto', 'autoRecord'); tog('sReveal', 'reveal');
+    tog('sHills', 'hills', () => OR.restyle()); tog('sHills3d', 'hills3d', () => OR.restyle());
     $('#sTomtom', box).onchange = e => { c.tomtomKey = e.target.value.trim(); OR.saveCfg(); OR.toast(c.tomtomKey ? 'Traffic key saved' : 'Traffic key removed'); };
   }
   // Android Auto only lists apps from the Play Store unless "Unknown sources" is on in its developer settings
@@ -909,9 +940,10 @@
   function pageAbout(box) {
     box.innerHTML = (A ? '<div class="stats"><div><b>' + esc(A.version()) + '</b><span>your version</span></div></div><button id="sUpd" class="btn wide pri">' + ic('update') + 'Check for updates</button><p class="small muted">OpenRoad also checks each time it opens.</p>' : '') +
       '<h3>Where the data comes from</h3><p class="small">Map data © OpenStreetMap contributors. Map tiles from OpenFreeMap. Routing and speed limits by Valhalla on the FOSSGIS server. Place search by Photon (Komoot). Fuel, stays and other places from OpenStreetMap via Overpass. Weather from Open-Meteo. Satellite pictures from Esri.</p>' +
-      '<p class="small warn">Road data can be out of date. Follow road signs and the law, and set your route before you ride.</p><button class="btn ghost" id="sIntro">Show the quick guide</button>';
+      '<p class="small warn">Road data can be out of date. Follow road signs and the law, and set your route before you ride.</p><button class="btn" id="sNews">' + ic('spark') + 'What\'s new</button><button class="btn ghost" id="sIntro">Show the quick guide</button>';
     const u = $('#sUpd', box); if (u) u.onclick = () => checkUpdate(true);
     $('#sIntro', box).onclick = intro;
+    $('#sNews', box).onclick = () => OR.showNews && OR.showNews();
   }
 
   // ---------- ride ----------
@@ -928,6 +960,7 @@
     if (OR.pos) OR.map.easeTo({ center: [OR.pos.lng, OR.pos.lat], zoom: 16, pitch: 55 });
   }
   OR.startRideUi = startRide;
+  OR.endRideUi = () => { if (OR.ride.on) endRide(); };
   async function planAndRide() {
     OR.toast('Planning…');
     try { const o = await OR.planRoute(); if (OR.ride.on) OR.stopRide(); startRide(o[0]); }
