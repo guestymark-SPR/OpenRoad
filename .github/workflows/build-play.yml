@@ -4,13 +4,17 @@ name: Build for Google Play
 # no texts sent by the app; see android/app/src/play) as an Android App Bundle, signs it with the upload key (the
 # release key from secrets), and keeps it as a download on the run's page to upload in the Play Console.
 # On a pull request it also builds the GitHub version, so a change that breaks either build shows before merging.
+# The latest bundle is also kept on the play-bundles branch (OpenRoad-play.aab), where it can be fetched without signing in.
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/build-play.yml']
   pull_request:
     paths: ['web/**', 'android/**', '.github/workflows/build-apk.yml', '.github/workflows/build-play.yml']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   bundle:
@@ -65,3 +69,15 @@ jobs:
           name: OpenRoad-play-1.0.${{ github.run_number }}
           path: android/out/*.aab
           retention-days: 30
+
+      - name: Keep the latest bundle on the play-bundles branch
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/pb" && cd "$RUNNER_TEMP/pb"
+          cp "$GITHUB_WORKSPACE/android/out/OpenRoad-play-1.0.${{ github.run_number }}.aab" OpenRoad-play.aab
+          echo "OpenRoad-play.aab is version 1.0.${{ github.run_number }} (versionCode ${{ github.run_number }}), built from ${GITHUB_SHA::7}." > README.md
+          git init -q -b play-bundles && git add .
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -q -m "Play bundle 1.0.${{ github.run_number }}"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" play-bundles
