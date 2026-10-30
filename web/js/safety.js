@@ -38,7 +38,7 @@
       const c = OR.crashContact();
       el.querySelector('.cb-t').textContent = (st.test ? 'TEST: ' : '') + 'Crash detected. Are you OK?';
       el.querySelector('.cb-n').textContent = st.left;
-      el.querySelector('.cb-s').textContent = st.test ? 'This is a test. Nothing will be sent.' : (c ? c.name + ' will be texted your position' : 'Your group will be told') + ' when this reaches zero.';
+      el.querySelector('.cb-s').textContent = st.test ? 'This is a test. Nothing will be sent.' : (c && OR.canText ? c.name + ' will be texted your position' : 'Your group will be told') + ' when this reaches zero.';
     } else {
       if (el) el.remove();
       if (st.result && st.result !== 'cancelled' && st.result !== shown) { shown = st.result; OR.sheet('<h2>Crash alert</h2><p>' + OR.esc(st.result) + '</p>'); }

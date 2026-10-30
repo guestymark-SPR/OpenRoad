@@ -4,6 +4,9 @@ window.OR = window.OR || {};
 (function (OR) {
   const A = window.Android && window.Android.isNative && window.Android.isNative() ? window.Android : null;
   OR.native = A;
+  // the Google Play build updates through Play and can't send texts itself (it offers them ready to send)
+  OR.playBuild = !!(A && A.store && A.store() === 'play');
+  OR.canText = !OR.playBuild;
 
   // ---------- storage (native files on Android, localStorage in a browser) ----------
   OR.store = {

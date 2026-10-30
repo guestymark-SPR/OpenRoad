@@ -45,7 +45,7 @@
 
   // the Android app checks GitHub for a newer version (published by the build workflow)
   function checkUpdate(manual) {
-    if (!A || !A.versionCode) return;
+    if (!A || !A.versionCode || OR.playBuild) return; // the Play build is updated by Google Play
     if (manual === true) OR.toast('Checking for updates…');
     OR.json('https://github.com/guestymark-SPR/OpenRoad/releases/download/app/version.json?t=' + Date.now()).then(v => {
       if (!(v.versionCode > A.versionCode())) { if (manual === true) OR.toast('You have the latest version (' + A.version() + ')'); return; }
@@ -779,7 +779,8 @@
   }
   function pageSafety(box) {
     const ci = OR.cfg.checkin, at = OR.cfg.checkinAt;
-    box.innerHTML = '<div id="sfCheck"><h3 class="gh">Check-in</h3><p class="small">Set a time to check in. If you don\'t tap "I\'m OK" by then, the phone alarms. If there\'s still no answer after the grace time, your contact gets a text with your last position.</p>' +
+    box.innerHTML = '<div id="sfCheck"><h3 class="gh">Check-in</h3><p class="small">Set a time to check in. If you don\'t tap "I\'m OK" by then, the phone alarms. ' + (OR.canText ? 'If there\'s still no answer after the grace time, your contact gets a text with your last position.'
+      : 'If there\'s still no answer after the grace time, the phone alarms again with a text to your contact ready to send, and your group is told if you\'re in a group ride. This version of OpenRoad (from Google Play) can\'t send texts by itself.') + '</p>' +
       '<div class="two">' + field('cName', 'Contact name', ci.name) + field('cPhone', 'Contact mobile', ci.phone, 'tel', '07…') + '</div>' +
       '<div class="two">' + field('cGrace', 'Grace time (minutes)', ci.grace, 'number') + field('cEvery', 'Repeat every (hours, 0 for once)', ci.every, 'number') + '</div>' +
       (at ? '<div class="card warnc"><b>Check-in due ' + OR.clock(new Date(at)) + (new Date(at).toDateString() !== new Date().toDateString() ? ' on ' + new Date(at).toLocaleDateString('en-GB') : '') + '</b><div class="row"><button id="ciOk" class="btn pri">I\'m OK</button><button id="ciOff" class="btn ghost">Turn off</button></div></div>'
@@ -822,7 +823,8 @@
     el.innerHTML = '<h3 class="gh">Crash detection</h3>' +
       '<label class="chk"><input type="checkbox" id="sCrash"' + (s.crash ? ' checked' : '') + '> Watch for a crash while recording a ride or in a group ride</label>' +
       '<p class="small">If the phone feels a hard impact while you\'re riding and the bike then stops, it alarms for 60 seconds. If you don\'t tap "I\'m OK", ' +
-      (c ? '<b>' + esc(c.name) + '</b> (' + esc(c.phone) + ')' : '<b>your contact</b>') + ' gets a text with your position, and your group is told if you\'re in a group ride.' +
+      (OR.canText ? (c ? '<b>' + esc(c.name) + '</b> (' + esc(c.phone) + ')' : '<b>your contact</b>') + ' gets a text with your position, and your group is told if you\'re in a group ride.'
+        : 'your group is told if you\'re in a group ride, with your position. This version of OpenRoad (from Google Play) can\'t text your contact by itself.') +
       (c ? '' : ' <b>Add a contact under Check-in below (or on the Emergency card) first.</b>') + ' The text includes your blood group and medical notes from the Emergency card, if you\'ve filled them in.</p>' +
       '<p class="small muted">The phone needs to be on the bike or on you, and works best in a mount. It can\'t catch every crash, and a hard knock while stopped won\'t set it off. ' + (A ? 'Changes apply from your next ride.' : 'Crash detection needs the Android app.') + '</p>' +
       (A ? '<button id="sCrashTest" class="btn wide ghost">Test the alarm (nothing is sent)</button>' : '') +
@@ -854,7 +856,8 @@
   }
   OR.on('checkin', () => { if (morePage === 'safety' && $('#morePage')) pageSafety($('#morePage')); });
   OR.on('checkinDue', () => {
-    sheet('<div class="due"><h2>Safety check-in</h2><p>Tap below to let OpenRoad know you\'re OK. If you don\'t, ' + esc(OR.cfg.checkin.name || 'your contact') + ' will get a text with your position in ' + (OR.cfg.checkin.grace || 10) + ' minutes.</p><button id="dueOk" class="btn wide go">I\'m OK</button></div>',
+    sheet('<div class="due"><h2>Safety check-in</h2><p>Tap below to let OpenRoad know you\'re OK. If you don\'t, ' + (OR.canText ? esc(OR.cfg.checkin.name || 'your contact') + ' will get a text with your position in ' + (OR.cfg.checkin.grace || 10) + ' minutes.'
+      : 'in ' + (OR.cfg.checkin.grace || 10) + ' minutes the phone alarms again with a text to ' + esc(OR.cfg.checkin.name || 'your contact') + ' ready to send.') + '</p><button id="dueOk" class="btn wide go">I\'m OK</button></div>',
       box => $('#dueOk', box).onclick = () => { OR.checkinAlerting = false; OR.checkin.ok(); closeSheet(); });
   });
 
@@ -938,7 +941,8 @@
     const b = $('#aaOpen', box); if (b) b.onclick = () => A.openAutoSettings();
   }
   function pageAbout(box) {
-    box.innerHTML = (A ? '<div class="stats"><div><b>' + esc(A.version()) + '</b><span>your version</span></div></div><button id="sUpd" class="btn wide pri">' + ic('update') + 'Check for updates</button><p class="small muted">OpenRoad also checks each time it opens.</p>' : '') +
+    box.innerHTML = (A ? '<div class="stats"><div><b>' + esc(A.version()) + '</b><span>your version</span></div></div>' + (OR.playBuild ? '<p class="small muted">Updates come from Google Play.</p>'
+      : '<button id="sUpd" class="btn wide pri">' + ic('update') + 'Check for updates</button><p class="small muted">OpenRoad also checks each time it opens.</p>') : '') +
       '<h3>Where the data comes from</h3><p class="small">Map data © OpenStreetMap contributors. Map tiles from OpenFreeMap. Routing and speed limits by Valhalla on the FOSSGIS server. Place search by Photon (Komoot). Fuel, stays and other places from OpenStreetMap via Overpass. Weather from Open-Meteo. Satellite pictures from Esri.</p>' +
       '<p class="small warn">Road data can be out of date. Follow road signs and the law, and set your route before you ride.</p><button class="btn" id="sNews">' + ic('spark') + 'What\'s new</button><button class="btn ghost" id="sIntro">Show the quick guide</button>';
     const u = $('#sUpd', box); if (u) u.onclick = () => checkUpdate(true);

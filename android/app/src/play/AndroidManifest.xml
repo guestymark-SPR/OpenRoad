@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Google Play build. Play allows sending texts only to default SMS apps, installing updates only through Play, and
+     USE_EXACT_ALARM only to alarm and calendar apps. So check-in and crash alerts offer the text ready to send, updates
+     come from Play, and on-time check-ins ask the rider for "Alarms and reminders" (the app falls back if refused). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+</manifest>

@@ -53,6 +53,16 @@ public class MainActivity extends Activity {
         // no separate hardware layer: its texture can be dropped while another app (an incoming call) is in front, leaving a black screen
         if (Build.VERSION.SDK_INT >= 26) web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
         setContentView(web);
+        // targeting Android 15 and later the app draws behind the status and navigation bars: keep the page clear of them
+        if (Build.VERSION.SDK_INT >= 35 && getApplicationInfo().targetSdkVersion >= 35) {
+            web.setOnApplyWindowInsetsListener((v, ins) -> {
+                android.graphics.Insets b = ins.getInsets(android.view.WindowInsets.Type.systemBars() | android.view.WindowInsets.Type.displayCutout() | android.view.WindowInsets.Type.ime());
+                v.setPadding(b.left, b.top, b.right, b.bottom);
+                return android.view.WindowInsets.CONSUMED;
+            });
+        }
+        // targeting Android 16, the back gesture no longer calls onBackPressed: handle it the newer way
+        if (Build.VERSION.SDK_INT >= 33) getOnBackInvokedDispatcher().registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, this::back);
 
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -171,7 +181,9 @@ public class MainActivity extends Activity {
     }
 
     @SuppressWarnings("deprecation")
-    @Override public void onBackPressed() {
+    @Override public void onBackPressed() { back(); }
+    // back closes an open sheet or the side panel first; otherwise OpenRoad goes to the background (a ride keeps recording)
+    private void back() {
         web.evaluateJavascript("(function(){var s=document.getElementById('sheet');if(s&&!s.hidden){s.hidden=true;return 1}var p=document.getElementById('panel');if(p&&p.classList.contains('open')&&innerWidth<900){p.classList.remove('open');return 1}return 0})()",
                 v -> { if (!"1".equals(v)) moveTaskToBack(true); });
     }
@@ -192,8 +204,13 @@ public class MainActivity extends Activity {
         // safety check-in
         @JavascriptInterface public void checkInArm(String at, String phone, String name, String graceMin, String rider) {
             CheckIn.arm(MainActivity.this, Long.parseLong(at), phone, name, Integer.parseInt(graceMin.split("\\.")[0]), rider);
-            if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED)
-                runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.SEND_SMS}, REQ_SMS));
+            if (canText()) {
+                if (checkSelfPermission(Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED)
+                    runOnUiThread(() -> requestPermissions(new String[]{Manifest.permission.SEND_SMS}, REQ_SMS));
+            } else if (Build.VERSION.SDK_INT >= 31 && !((android.app.AlarmManager) getSystemService(ALARM_SERVICE)).canScheduleExactAlarms()) {
+                // Play build: ask for "Alarms and reminders" so the check-in rings on time (it still rings, a little late, without)
+                runOnUiThread(() -> { try { startActivity(new Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + getPackageName()))); } catch (Exception ignored) { } });
+            }
         }
         // bike to bike: switch on or off, asking for the Bluetooth permissions it needs (Android 12 and later)
         @JavascriptInterface public void bikeLinkSet(boolean on) {
@@ -373,6 +390,6 @@ public class MainActivity extends Activity {
         }
 
         // updates
-        @JavascriptInterface public void installUpdate(final String url) { runOnUiThread(() -> Updater.start(MainActivity.this, url, s -> js("window.onUpdateState&&onUpdateState('" + s + "')"))); }
+        @JavascriptInterface public void installUpdate(final String url) { if ("play".equals(BuildConfig.FLAVOR)) return; runOnUiThread(() -> Updater.start(MainActivity.this, url, s -> js("window.onUpdateState&&onUpdateState('" + s + "')"))); }
     }
 }

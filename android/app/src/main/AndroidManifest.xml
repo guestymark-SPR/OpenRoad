@@ -12,10 +12,7 @@
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
-    <uses-permission android:name="android.permission.SEND_SMS" />
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- texts, exact alarms and installing updates: per store, in src/github and src/play -->
     <!-- Android Auto: navigation screens and drawing the map on the car screen -->
     <!-- bike to bike: group positions over Bluetooth LE when there's no signal -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
