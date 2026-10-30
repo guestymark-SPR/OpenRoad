@@ -16,19 +16,10 @@ android {
         versionName "1.0.${runNumber}"
     }
 
-    signingConfigs {
-        release {
-            storeFile file('openroad-release.jks')
-            storePassword 'openroad'
-            keyAlias 'openroad'
-            keyPassword 'openroad'
-        }
-    }
-
+    // release builds come out unsigned: the build workflow signs them with apksigner (see android/signing/README.md)
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.release
         }
     }
 

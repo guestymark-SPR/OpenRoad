@@ -16,9 +16,12 @@ import java.io.File;
 final class Updater {
     interface State { void on(String s); }
     private static BroadcastReceiver rx;
+    // updates only ever come from this repository's releases
+    private static final String RELEASES = "https://github.com/guestymark-SPR/OpenRoad/releases/download/";
 
     @SuppressWarnings("deprecation")
     static void start(Activity a, String url, State cb) {
+        if (url == null || !url.startsWith(RELEASES) || url.contains("..")) { cb.on("error"); return; }
         try {
             if (Build.VERSION.SDK_INT >= 26 && !a.getPackageManager().canRequestPackageInstalls()) {
                 a.startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + a.getPackageName())));

@@ -41,11 +41,32 @@ jobs:
           tail -5 build.log
           exit $status
 
-      - name: Name the APK
+      # The old key (signing/legacy-openroad-release.jks) was published in this repo, so anyone has it.
+      # Releases are signed with a new key kept in secrets; the old key only vouches for the new one
+      # (a signing lineage), so phones that have OpenRoad can still update. See signing/README.md.
+      - name: Sign the APK (old key rotated to the new one)
+        env:
+          KS_B64: ${{ secrets.OPENROAD_SIGNING_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.OPENROAD_SIGNING_PASSWORD }}
         run: |
+          if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then
+            echo "::error::Signing secrets OPENROAD_SIGNING_KEYSTORE_B64 and OPENROAD_SIGNING_PASSWORD are not set. Nothing is published."
+            exit 1
+          fi
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          umask 077
+          printf '%s' "$KS_B64" | base64 -d > "$RUNNER_TEMP/new.p12"
+          OLD="--ks signing/legacy-openroad-release.jks --ks-key-alias openroad --ks-pass pass:openroad --key-pass pass:openroad"
+          NEW="--ks $RUNNER_TEMP/new.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --key-pass env:KS_PASS"
+          "$BT/apksigner" rotate --out "$RUNNER_TEMP/lineage" --old-signer $OLD --new-signer $NEW
           mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk "out/OpenRoad-1.0.${{ github.run_number }}.apk"
-          cp app/build/outputs/apk/release/app-release.apk out/OpenRoad.apk
+          "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk out/aligned.apk
+          "$BT/apksigner" sign $OLD --next-signer $NEW --lineage "$RUNNER_TEMP/lineage" --rotation-min-sdk-version 28 \
+            --out "out/OpenRoad-1.0.${{ github.run_number }}.apk" out/aligned.apk
+          "$BT/apksigner" verify --verbose --print-certs "out/OpenRoad-1.0.${{ github.run_number }}.apk" | grep -E "Verified using|Signer|certificate SHA-256" || true
+          "$BT/apksigner" verify "out/OpenRoad-1.0.${{ github.run_number }}.apk"
+          cp "out/OpenRoad-1.0.${{ github.run_number }}.apk" out/OpenRoad.apk
+          rm -f "$RUNNER_TEMP/new.p12" out/aligned.apk
 
       - name: Publish this build (download page for the phone and tablet)
         uses: softprops/action-gh-release@v2
