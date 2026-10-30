@@ -94,6 +94,9 @@ class CoreBridge {
     @JavascriptInterface public void openAutoSettings() {
         onMain(() -> { try { ctx.startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:com.google.android.projection.gearhead")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) { } });
     }
+    // which build this is: "github" (updates itself, sends texts) or "play" (updates from Play, offers texts ready to send)
+    @JavascriptInterface public String store() { return BuildConfig.FLAVOR; }
+    @JavascriptInterface public boolean canText() { return !"play".equals(BuildConfig.FLAVOR); }
     @JavascriptInterface public String version() { try { return ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionName; } catch (Exception e) { return "?"; } }
     @SuppressWarnings("deprecation")
     @JavascriptInterface public int versionCode() { try { return ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionCode; } catch (Exception e) { return 0; } }

@@ -1,0 +1,67 @@
+name: Build for Google Play
+
+# Run from the Actions tab when you want a new version on Google Play. It builds the Play version (no self-updating,
+# no texts sent by the app; see android/app/src/play) as an Android App Bundle, signs it with the upload key (the
+# release key from secrets), and keeps it as a download on the run's page to upload in the Play Console.
+# On a pull request it also builds the GitHub version, so a change that breaks either build shows before merging.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: ['web/**', 'android/**', '.github/workflows/build-apk.yml', '.github/workflows/build-play.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Bundle the app, map engine and fonts
+        run: bash fetch-assets.sh
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Build the app bundle (Play version)
+        shell: bash
+        run: |
+          set +e
+          tasks=bundlePlayRelease
+          [ "${{ github.event_name }}" = pull_request ] && tasks="$tasks assembleGithubRelease"
+          gradle $tasks --no-daemon > build.log 2>&1
+          status=$?
+          grep -E "error:|^e: |What went wrong|Could not|AAPT|Execution failed" -A2 build.log | head -60 | sed 's/^/::error::/'
+          tail -5 build.log
+          exit $status
+
+      - name: Sign with the upload key
+        env:
+          KS_B64: ${{ secrets.OPENROAD_SIGNING_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.OPENROAD_SIGNING_PASSWORD }}
+        run: |
+          if [ -z "$KS_B64" ] || [ -z "$KS_PASS" ]; then echo "::error::Signing secrets are not set."; exit 1; fi
+          umask 077
+          printf '%s' "$KS_B64" | base64 -d > "$RUNNER_TEMP/upload.p12"
+          mkdir -p out
+          cp app/build/outputs/bundle/playRelease/app-play-release.aab "out/OpenRoad-play-1.0.${{ github.run_number }}.aab"
+          jarsigner -keystore "$RUNNER_TEMP/upload.p12" -storetype PKCS12 -storepass:env KS_PASS -keypass:env KS_PASS \
+            -sigalg SHA256withRSA -digestalg SHA-256 "out/OpenRoad-play-1.0.${{ github.run_number }}.aab" openroad2
+          jarsigner -verify "out/OpenRoad-play-1.0.${{ github.run_number }}.aab" | tail -1
+          rm -f "$RUNNER_TEMP/upload.p12"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenRoad-play-1.0.${{ github.run_number }}
+          path: android/out/*.aab
+          retention-days: 30

@@ -28,13 +28,13 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.7'
+          gradle-version: '8.11.1'
 
-      - name: Build signed APK
+      - name: Build the APK (GitHub version)
         shell: bash
         run: |
           set +e
-          gradle assembleRelease --no-daemon > build.log 2>&1
+          gradle assembleGithubRelease --no-daemon > build.log 2>&1
           status=$?
           # show compile errors as annotations, so they can be read without the full log
           grep -E "error:|^e: |What went wrong|Could not|AAPT|Execution failed" -A2 build.log | head -60 | sed 's/^/::error::/'
@@ -60,7 +60,7 @@ jobs:
           NEW="--ks $RUNNER_TEMP/new.p12 --ks-type PKCS12 --ks-pass env:KS_PASS --key-pass env:KS_PASS"
           "$BT/apksigner" rotate --out "$RUNNER_TEMP/lineage" --old-signer $OLD --new-signer $NEW
           mkdir -p out
-          "$BT/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk out/aligned.apk
+          "$BT/zipalign" -f -p 4 app/build/outputs/apk/github/release/app-github-release-unsigned.apk out/aligned.apk
           "$BT/apksigner" sign $OLD --next-signer $NEW --lineage "$RUNNER_TEMP/lineage" --rotation-min-sdk-version 28 \
             --out "out/OpenRoad-1.0.${{ github.run_number }}.apk" out/aligned.apk
           "$BT/apksigner" verify --verbose --print-certs "out/OpenRoad-1.0.${{ github.run_number }}.apk" | grep -E "Verified using|Signer|certificate SHA-256" || true

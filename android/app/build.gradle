@@ -6,7 +6,7 @@ def runNumber = Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1')
 
 android {
     namespace 'uk.openroad.app'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId 'uk.openroad.app'
@@ -14,6 +14,17 @@ android {
         targetSdk 34
         versionCode runNumber
         versionName "1.0.${runNumber}"
+    }
+
+    buildFeatures { buildConfig true }
+
+    // github: the APK on this repository's Releases, which updates itself and sends check-in and crash texts.
+    // play: the Google Play build, without what Play doesn't allow (installing its own updates, sending texts,
+    // the alarm-app-only exact alarm), targeting the Android version Play requires. Each has its own manifest.
+    flavorDimensions = ['store']
+    productFlavors {
+        github { dimension 'store' }
+        play { dimension 'store'; targetSdk 36 }
     }
 
     // release builds come out unsigned: the build workflow signs them with apksigner (see android/signing/README.md)
