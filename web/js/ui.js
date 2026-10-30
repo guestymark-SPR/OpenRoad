@@ -468,7 +468,7 @@
   async function doPlan() {
     if (planning) return; planning = true; planErr = ''; clearRouteExtras(); renderPlan();
     try { await OR.planRoute(); showOptions(true); }
-    catch (e) { planErr = 'Could not plan the route: ' + e.message + (OR.online() ? '' : '. Planning needs a signal; saved routes work offline.'); }
+    catch (e) { planErr = 'Could not plan the route: ' + e.message; } // with no signal, offline planning explains itself
     planning = false; renderPlan();
   }
   OR.doPlan = doPlan;

@@ -145,6 +145,7 @@
     if (wps.length < 2) throw new Error('Add a start and a destination');
     if (wps.length > MAX_LOC) throw new Error('Too many points (' + wps.length + '). OpenRoad plans up to ' + MAX_LOC + ': remove some via points.');
     const style = STYLES[styleKey] || STYLES.twisty, multi = wps.length > 2;
+    if (!OR.online() && OR.offlinePlan) return offlineOptions(wps, styleKey);
     const results = [], errs = [];
     await Promise.all(style.tries.map(async t => {
       const o = Object.assign({}, t); if (multi) o.alternates = 0; // alternatives only work point to point
@@ -153,6 +154,8 @@
         trips.forEach((tr, k) => results.push(OR.buildRoute(tr, { mode: styleKey, variant: (o.shortest ? 'Quiet back roads' : k ? 'Alternative ' + k : style.label) })));
       } catch (e) { errs.push(e.message); }
     }));
+    // no answer from the server because there's no signal: plan from the map on the phone instead
+    if (!results.length && errs.length && OR.offlinePlan && errs.every(OR.isNetErr)) return offlineOptions(wps, styleKey);
     if (!results.length) throw new Error(errs[0] || 'No route found');
     const uniq = [];
     for (const r of results) if (!uniq.some(u => Math.abs(u.dist - r.dist) < 300 && Math.abs(u.time - r.time) < 60)) uniq.push(r);
@@ -166,6 +169,11 @@
     opts = opts.slice(0, 3);
     opts.forEach(r => { r.wps = wps.map(w => Object.assign({}, w)); r.name = r.name || defaultName(wps); });
     return opts;
+  }
+  async function offlineOptions(wps, styleKey) {
+    const r = await OR.offlinePlan(wps, styleKey);
+    OR.toast('No signal: planned from the map on your phone. Directions are simpler than usual; check the route before you ride.', 7000);
+    return [r];
   }
   OR.planRoute = async function () {
     const opts = await planOptions(OR.plan.wps, OR.cfg.style);
@@ -191,10 +199,19 @@
     }
     const wps = [{ lng: pos[0], lat: pos[1], name: 'Here', type: 'break' }].concat(rest).slice(0, MAX_LOC);
     const t = (STYLES[route.mode] || STYLES.twisty).tries[0];
-    const trips = await routeTrips(wps, Object.assign({}, t, { alternates: 0 }), b => {
-      if (pos[2] != null) { b.locations[0].heading = Math.round(pos[2]); b.locations[0].heading_tolerance = 60; }
-    });
-    const r = OR.buildRoute(trips[0], { mode: route.mode, name: route.name, variant: 'Rerouted' });
+    let r;
+    try {
+      if (!OR.online()) throw new Error('no connection');
+      const trips = await routeTrips(wps, Object.assign({}, t, { alternates: 0 }), b => {
+        if (pos[2] != null) { b.locations[0].heading = Math.round(pos[2]); b.locations[0].heading_tolerance = 60; }
+      });
+      r = OR.buildRoute(trips[0], { mode: route.mode, name: route.name, variant: 'Rerouted' });
+    } catch (e) {
+      // no signal: reroute from the map on the phone (a GPX track keeps its own mode, planned as a twisty ride)
+      if (!OR.offlinePlan || !OR.isNetErr(e)) throw e;
+      r = await OR.offlinePlan([Object.assign({ heading: pos[2] }, wps[0])].concat(wps.slice(1)), STYLES[route.mode] ? route.mode : 'twisty');
+      r.mode = route.mode; r.name = route.name; r.variant = 'Rerouted offline';
+    }
     r.wps = wps; r.id = route.id; r.originalId = route.originalId || route.id;
     return r;
   };

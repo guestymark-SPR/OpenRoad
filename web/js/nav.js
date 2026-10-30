@@ -198,7 +198,7 @@
   }
 
   async function offRoute(p, L) {
-    if (OR.online()) {
+    if (OR.online() || OR.offlinePlan) { // with no signal, rerouteFrom plans from the map on the phone
       ride.rerouting = true; OR.emit('rerouting', true); OR.say('Finding a new route');
       try {
         const r = await OR.rerouteFrom([p.lng, p.lat, p.heading], ride.route, ride.along);
