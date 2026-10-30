@@ -30,7 +30,7 @@
       if (f === 1 && wt === 2) name = td.decode(r.bytes());
       else if (f === 2 && wt === 2) feats.push(r.bytes());
       else if (f === 3 && wt === 2) keys.push(td.decode(r.bytes()));
-      else if (f === 4 && wt === 2) { const v = pb(r.bytes()); let val = null; while (v.pos < v.end) { const t2 = v.varint(), f2 = t2 >> 3, w2 = t2 & 7; if (f2 === 1) val = td.decode(v.bytes()); else if (f2 === 4 || f2 === 5) val = v.varint(); else if (f2 === 7) val = !!v.varint(); else v.skip(w2); } vals.push(val); }
+      else if (f === 4 && wt === 2) { const v = pb(r.bytes()); let val = null; while (v.pos < v.end) { const t2 = v.varint(), f2 = t2 >> 3, w2 = t2 & 7; if (f2 === 1) val = td.decode(v.bytes()); else if (f2 === 4 || f2 === 5) val = v.varint(); else if (f2 === 6) { const n = v.varint(); val = n % 2 ? -(n + 1) / 2 : n / 2; } else if (f2 === 7) val = !!v.varint(); else v.skip(w2); } vals.push(val); }
       else if (f === 5 && wt === 0) extent = r.varint();
       else r.skip(wt);
     }
@@ -91,6 +91,7 @@
     if (buf[0] === 0x1f && buf[1] === 0x8b && window.DecompressionStream) buf = new Uint8Array(await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
     return buf;
   }
+  OR.vt = { decodeTile, clip, getTile }; // shared with offline planning (offroute.js)
   const CLASS_OK = { trunk: 1, primary: 1, secondary: 1, tertiary: 1 };
   async function roadsFromTiles(lng, lat, km) {
     const z = 12, n = 1 << z, R = km * 1000, dLat = R / 111320, dLng = R / (111320 * Math.cos(lat * Math.PI / 180));

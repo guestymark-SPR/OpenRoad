@@ -19,6 +19,7 @@ Free motorbike navigation for the UK and Europe, built on open data. Sister app 
 - **Turn-by-turn ride mode**: big arrow and distance, spoken directions through your helmet headset (music is turned down while it speaks), automatic rerouting when you go off route, re-centre and overview.
 - **GPX**: import routes and tracks (follow a track exactly, or plan through its points), export any route or ride.
 - **Offline maps**: download country packs on Wi-Fi (Maps tab), or save the map along a planned route. Saved routes keep their directions with no signal.
+- **Planning with no signal**: with no signal, routes are planned on the phone from the downloaded maps, and going off route reroutes from them too. Simpler than online planning (no turn restrictions, plainer directions), up to about 150 miles between stops.
 - **Trip tools**: fuel range from tank size and mpg, fuel stations along a route with warnings for gaps too long for your range, low-fuel voice warning, places to stay, campsites, cafés and pubs nearby, ride log with season totals, ICE card.
 - **Safety check-in**: set a time; if you don't tap "I'm OK", the phone alarms, then texts your contact your last position.
 
@@ -35,7 +36,7 @@ Free motorbike navigation for the UK and Europe, built on open data. Sister app 
 | Satellite | Esri World Imagery |
 | Offline packs | Built from [Geofabrik](https://download.geofabrik.de) extracts with [Planetiler](https://github.com/onthegomap/planetiler) |
 
-Map data © OpenStreetMap contributors. Route planning and search need a signal; maps and saved routes work offline.
+Map data © OpenStreetMap contributors. Place search needs a signal; maps, saved routes and planning from the downloaded maps work offline.
 
 ## Building
 
@@ -47,6 +48,6 @@ Map data © OpenStreetMap contributors. Route planning and search need a signal;
 ## Not yet
 
 - iPhone app (the web version runs in Safari; a proper iOS app needs an Apple Developer account).
-- Route planning with no signal (needs an on-device router).
+- Place search with no signal, and turn restrictions in offline planning.
 
 Road data can be out of date. Follow road signs and the law.
