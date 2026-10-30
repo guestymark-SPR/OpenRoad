@@ -89,4 +89,8 @@ jobs:
           jq -n --argjson v "$N" --arg n "1.0.$N" --arg notes "$NOTES" --arg apk "https://github.com/$R/releases/download/app/OpenRoad.apk" \
             '{versionCode:$v,versionName:$n,notes:$notes,apk:$apk}' > out/version.json
           gh release view app --repo "$R" > /dev/null 2>&1 || gh release create app --repo "$R" --title "OpenRoad (latest)" --notes "The latest OpenRoad app. The app checks here for updates." --latest=false
-          gh release upload app out/OpenRoad.apk out/version.json --repo "$R" --clobber
+          # GitHub's API sometimes answers 500 mid-upload: try each file a few times.
+          # The APK goes first, so version.json never points phones at an APK that isn't there yet.
+          up() { for i in 1 2 3 4 5; do gh release upload app "$1" --repo "$R" --clobber && return 0; echo "::warning::upload of $1 failed (try $i), retrying"; sleep $((i * 10)); done; return 1; }
+          up out/OpenRoad.apk
+          up out/version.json
