@@ -45,6 +45,8 @@ window.OR = window.OR || {};
   };
   OR.json = (url, opt) => OR.http(url, opt).then(t => JSON.parse(t));
   OR.online = () => navigator.onLine !== false;
+  // a phone on its side: the panel and ride cards sit in a column on the left (style.css), so the map works around it
+  OR.sideways = () => { try { return matchMedia('(orientation: landscape) and (max-height: 560px)').matches; } catch (e) { return false; } };
 
   // ---------- settings ----------
   const DEF = {
