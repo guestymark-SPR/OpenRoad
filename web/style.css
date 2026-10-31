@@ -981,3 +981,51 @@ body.filming #tiltBtn{display:none}
 .wl-s.on .art .draw{stroke-dasharray:420;stroke-dashoffset:420;animation:drawln 1.8s .2s ease-in-out forwards}
 @keyframes drawln{to{stroke-dashoffset:0}}
 .tdl-b .btn{white-space:nowrap;padding:6px 8px}.tdl-b .btn svg{width:20px;height:20px}
+
+/* ---------- phone on its side: everything in a column on the left, the map on the right ---------- */
+/* A phone in landscape is short and wide. Stacking the search, panel, menu and ride bar top and bottom left a thin
+   strip of map, so here they share one column down the left and the map has the whole right-hand side. */
+@media (orientation:landscape) and (max-height:560px){
+  :root{--col:340px;--rcol:300px;--sl:env(safe-area-inset-left,0px)}
+  /* planning: search, chips, panel and menu in the column */
+  #top{left:calc(8px + var(--sl));right:auto;width:var(--col);max-width:none;top:calc(6px + var(--safe-t));box-sizing:border-box}
+  #chips{left:calc(8px + var(--sl));right:auto;width:var(--col);max-width:none;top:calc(62px + var(--safe-t))}
+  #panel,#panel.open,body.split #panel.open{left:calc(8px + var(--sl));right:auto;width:var(--col);bottom:calc(8px + var(--safe-b));top:auto;height:auto;border-radius:20px}
+  #panel.open{top:calc(62px + var(--safe-t))}
+  #panel:not(.open) #views{display:none}
+  #panel.open ~ #chips{display:none}
+  #nav{padding:4px 6px}
+  #nav .navsign button,#nav button{min-height:44px;font-size:11.5px;margin:1px 0}
+  #grab{height:16px}
+  #fabs{top:calc(6px + var(--safe-t));gap:6px}
+  .fab{width:44px;height:44px}
+  .grppill{top:calc(6px + var(--safe-t));right:62px}
+  #radarChip{left:calc(var(--col) + 24px + var(--sl));transform:none;top:calc(8px + var(--safe-t))}
+  #toast{left:calc(50% + var(--col) / 2);max-width:calc(100vw - var(--col) - 40px)}
+  .maplibregl-ctrl-bottom-left{left:calc(var(--col) + 16px + var(--sl))}
+  /* pop-ups open in the column too, so the map stays in view beside them */
+  #sheet{background:transparent;pointer-events:none;align-items:stretch;justify-content:flex-start}
+  #sheetBox{pointer-events:auto;position:fixed;left:calc(8px + var(--sl));top:calc(6px + var(--safe-t));bottom:calc(8px + var(--safe-b));width:var(--col);max-width:none;max-height:none;border-radius:20px;box-shadow:var(--shadow)}
+  #chat{left:auto;right:auto;left:calc(8px + var(--sl));width:var(--col);top:6px;bottom:8px;border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+  #replayBar{right:auto;width:var(--col);left:calc(8px + var(--sl))}
+  /* riding: the turn card on top of the column, the ride bar at its foot, the road ahead on the right */
+  #turn{left:calc(8px + var(--sl));right:auto;width:var(--rcol);max-width:none;top:calc(6px + var(--safe-t));padding:8px 12px;gap:10px;box-sizing:border-box}
+  #turn .arrow{width:54px;height:54px}
+  #turnDist{font-size:32px}
+  #turnStreet{font-size:16px}#turnStreet .ref{font-size:15px}
+  #hudBar{left:calc(8px + var(--sl));right:auto;width:var(--rcol);bottom:calc(6px + var(--safe-b));padding:6px 8px;gap:4px;box-sizing:border-box}
+  #hudBar .stat{min-width:0;flex:1;padding:0 2px}
+  .stat b{font-size:22px}.stat.speed b{font-size:32px}
+  .hudBtns{width:100%;margin:2px 0 0;gap:6px}
+  .hudBtns .hb{flex:1;min-width:0;min-height:46px}
+  #limit{left:calc(var(--rcol) + 18px + var(--sl));top:calc(8px + var(--safe-t));width:58px;height:58px}
+  #hudNote{left:calc(var(--rcol) + 18px + var(--sl));right:70px;top:calc(8px + var(--safe-t))}
+  #limit:not([hidden]) ~ #hudNote{top:calc(76px + var(--safe-t))}
+  #recentre{left:calc(var(--rcol) + 18px + var(--sl));bottom:calc(8px + var(--safe-b))}
+  #convoy{left:calc(var(--rcol) + 18px + var(--sl));right:70px;bottom:calc(8px + var(--safe-b))}
+  body.riding #fabs{top:auto;bottom:calc(8px + var(--safe-b))}
+  body.riding #toast{top:auto;bottom:calc(10px + var(--safe-b))}
+  body.riding .grppill{top:calc(6px + var(--safe-t));bottom:auto}
+  body.riding #radarChip{top:auto;bottom:calc(70px + var(--safe-b))}
+  #hud>#cdBar:not([hidden]){right:62px;top:calc(8px + var(--safe-t));bottom:calc(8px + var(--safe-b))}
+}

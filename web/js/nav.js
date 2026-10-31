@@ -121,7 +121,8 @@
     if (ride.on && ride.follow) {
       sm.zoom += (sm.zoomT - sm.zoom) * (1 - Math.exp(-dt / 1.2));
       sm.pitch += (55 - sm.pitch) * (1 - Math.exp(-dt / 0.8));
-      const base = OR.mapBasePad || { top: 0, bottom: 0, left: 0, right: 0 }, H = OR.map.getContainer().clientHeight;
+      // phone on its side: the turn card and ride bar fill a column on the left, so follow the bike in the space beside it
+      const base = OR.mapBasePad || (OR.sideways && OR.sideways() ? { top: 0, bottom: 0, left: 316, right: 0 } : { top: 0, bottom: 0, left: 0, right: 0 }), H = OR.map.getContainer().clientHeight;
       const pad = { top: base.top + (H - base.top - base.bottom) * 0.44, bottom: base.bottom, left: base.left, right: base.right };
       let cam = { center: [sm.lng, sm.lat], bearing: sm.hd, zoom: sm.zoom, pitch: sm.pitch, padding: pad };
       if (!sm.wasFollow) { const c = OR.map.getCenter(); sm.blendFrom = { lng: c.lng, lat: c.lat, b: OR.map.getBearing(), z: OR.map.getZoom(), p: OR.map.getPitch() }; sm.blendT = now; sm.zoom = OR.map.getZoom(); }

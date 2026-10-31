@@ -509,7 +509,10 @@
     if (planMode === 'loop') { OR.plan.wps = OR.plan.route.wps.map(w => Object.assign({}, w)); OR.savePlan(); drawWaypoints(); }
     showOptions(); renderPlan();
   }
-  function fitPad() { return window.innerWidth >= 900 ? { top: 90, bottom: 60, left: 450, right: 80 } : { top: 90, bottom: Math.round(window.innerHeight * 0.55), left: 40, right: 40 }; }
+  function fitPad() {
+    if (OR.sideways()) return { top: 30, bottom: 30, left: 370, right: 70 }; // phone on its side: the column on the left
+    return window.innerWidth >= 900 ? { top: 90, bottom: 60, left: 450, right: 80 } : { top: 90, bottom: Math.round(window.innerHeight * 0.55), left: 40, right: 40 };
+  }
   OR.fitPad = fitPad;
   function fitRoute(r) {
     OR.map.fitBounds(OR.bbox(r.shape), { padding: fitPad(), duration: 800, maxZoom: 14 });
