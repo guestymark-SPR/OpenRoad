@@ -76,7 +76,7 @@ jobs:
         run: |
           mkdir d && cd d
           gh release download maps --repo "$R" -p '*.json' --clobber || true
-          rm -f packs.json
+          rm -f packs.json search.json   # search.json is the place search list (build-search.yml), not a pack
           ls *.json > /dev/null 2>&1 || { echo '{"packs":[]}' > packs.json; }
           if ls *.json > /dev/null 2>&1 && [ ! -s packs.json ]; then
             jq -s --arg base "https://github.com/$R/releases/download/maps/" 'map(. + {url: ($base + .id + ".mbtiles")}) | sort_by(.name) | {packs: .}' *.json > packs.json
