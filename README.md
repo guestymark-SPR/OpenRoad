@@ -20,6 +20,7 @@ Free motorbike navigation for the UK and Europe, built on open data. Sister app 
 - **GPX**: import routes and tracks (follow a track exactly, or plan through its points), export any route or ride.
 - **Offline maps**: download country packs on Wi-Fi (Maps tab), or save the map along a planned route. Saved routes keep their directions with no signal.
 - **Planning with no signal**: with no signal, routes are planned on the phone from the downloaded maps, and going off route reroutes from them too. Simpler than online planning (no turn restrictions, plainer directions), up to about 150 miles between stops.
+- **Searching with no signal**: with a country's pack on the phone, towns, villages, fuel, cafés, pubs, places to stay, sights and (in Great Britain) every postcode can be found with no signal. The list downloads by itself on Wi-Fi.
 - **Trip tools**: fuel range from tank size and mpg, fuel stations along a route with warnings for gaps too long for your range, low-fuel voice warning, places to stay, campsites, cafés and pubs nearby, ride log with season totals, ICE card.
 - **Safety check-in**: set a time; if you don't tap "I'm OK", the phone alarms, then texts your contact your last position.
 
@@ -35,8 +36,9 @@ Free motorbike navigation for the UK and Europe, built on open data. Sister app 
 | Weather | [Open-Meteo](https://open-meteo.com) |
 | Satellite | Esri World Imagery |
 | Offline packs | Built from [Geofabrik](https://download.geofabrik.de) extracts with [Planetiler](https://github.com/onthegomap/planetiler) |
+| Search with no signal | OpenStreetMap places from Geofabrik extracts; GB postcodes from Ordnance Survey [Code-Point Open](https://www.ordnancesurvey.co.uk/products/code-point-open) (contains OS data © Crown copyright and database right; Royal Mail data © Royal Mail copyright and database right; National Statistics data © Crown copyright and database right) |
 
-Map data © OpenStreetMap contributors. Place search needs a signal; maps, saved routes and planning from the downloaded maps work offline.
+Map data © OpenStreetMap contributors. Maps, saved routes, planning and searching for places and postcodes work offline from the downloaded packs; street addresses need a signal.
 
 ## Building
 
@@ -44,10 +46,11 @@ Map data © OpenStreetMap contributors. Place search needs a signal; maps, saved
 - `android/` wraps it for Android and adds offline maps, voice, screen-off recording, check-in texts and updates.
 - **Build OpenRoad APK** workflow runs on every push to `main` and publishes a signed APK.
 - **Build map packs** workflow (run it from the Actions tab) builds offline packs for the countries you list, e.g. `great-britain,france,belgium`. Countries over ~1.8 GB are split into parts automatically.
+- **Build place search** workflow builds the search-with-no-signal list for the countries you list (it also runs when its script changes). Run it for any country you add a map pack for.
 
 ## Not yet
 
 - iPhone app (the web version runs in Safari; a proper iOS app needs an Apple Developer account).
-- Place search with no signal, and turn restrictions in offline planning.
+- Street addresses with no signal, and turn restrictions in offline planning.
 
 Road data can be out of date. Follow road signs and the law.

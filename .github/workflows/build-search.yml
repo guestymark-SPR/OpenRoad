@@ -1,0 +1,96 @@
+name: Build place search
+
+# Builds the index the app searches with no signal (towns, villages, fuel, cafés, pubs, stays, sights and,
+# for Great Britain, every postcode) for each country, and publishes it on the release "maps" beside the
+# map packs, with search.json listing every country's files. The app downloads it with the country's pack.
+# Country names are Geofabrik ids, the same as for map packs (see tools/regions.json).
+on:
+  workflow_dispatch:
+    inputs:
+      countries:
+        description: Countries (comma separated Geofabrik ids)
+        default: great-britain,belgium,france,luxembourg,netherlands
+  push:
+    branches: [main]
+    paths: [.github/workflows/build-search.yml, tools/places.py]
+
+permissions:
+  contents: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      list: ${{ steps.l.outputs.list }}
+    steps:
+      - id: l
+        env:
+          C: ${{ inputs.countries || 'great-britain,belgium,france,luxembourg,netherlands' }}
+        run: echo "list=$(echo "$C" | tr -d ' ' | jq -Rc 'split(",") | map(select(length>0))')" >> "$GITHUB_OUTPUT"
+
+  index:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        country: ${{ fromJson(needs.setup.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tools
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq osmium-tool
+          pip install -q pyproj
+      - name: Places from OpenStreetMap
+        run: |
+          URL=$(curl -fsSL https://download.geofabrik.de/index-v1-nogeom.json | jq -r --arg c "${{ matrix.country }}" '.features[] | select(.properties.id == $c) | .properties.urls.pbf')
+          test -n "$URL"
+          curl -fsSL -o src.osm.pbf "$URL"
+          osmium tags-filter src.osm.pbf \
+            nwr/place=city,town,village,hamlet,suburb,quarter,neighbourhood \
+            nwr/amenity=fuel,cafe,pub \
+            nwr/tourism=hotel,guest_house,motel,hostel,camp_site,attraction,museum,viewpoint \
+            nwr/historic=castle nwr/shop=motorcycle -o picked.osm.pbf
+          osmium export picked.osm.pbf -f geojsonseq --geometry-types=point,polygon -o picked.geojsonseq
+          rm src.osm.pbf
+      - name: Postcodes (Great Britain, Ordnance Survey Code-Point Open)
+        if: matrix.country == 'great-britain'
+        run: |
+          curl -fsSL -o codepo.zip "https://api.os.uk/downloads/v1/products/CodePointOpen/downloads?area=GB&format=CSV&redirect"
+          unzip -q codepo.zip -d codepo
+      - name: Make the index
+        run: |
+          NAME=$(jq -r --arg c "${{ matrix.country }}" '.[$c] // ($c | gsub("-";" ") | ascii_upcase)' tools/regions.json)
+          CP=""; [ -d codepo/Data/CSV ] && CP=codepo/Data/CSV
+          python3 tools/places.py "${{ matrix.country }}" "$NAME" picked.geojsonseq out $CP
+          ls -la out
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for a in $(gh release view maps --repo ${{ github.repository }} --json assets -q '.assets[].name' | grep -E "^search-${{ matrix.country }}(-[0-9]+\.txt|\.meta)$" || true); do
+            gh release delete-asset maps "$a" --repo ${{ github.repository }} -y
+          done
+          gh release upload maps out/* --repo ${{ github.repository }} --clobber
+
+  catalogue:
+    needs: index
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write search.json from every index on the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          R: ${{ github.repository }}
+        run: |
+          mkdir d && cd d
+          gh release download maps --repo "$R" -p 'search-*.meta' --clobber || true
+          if ls *.meta > /dev/null 2>&1; then
+            jq -s --arg base "https://github.com/$R/releases/download/maps/" 'map({key: .id, value: (. + {base: $base})}) | from_entries | {countries: .}' *.meta > search.json
+          else
+            echo '{"countries":{}}' > search.json
+          fi
+          cat search.json
+          gh release upload maps search.json --repo "$R" --clobber

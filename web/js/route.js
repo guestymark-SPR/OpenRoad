@@ -7,7 +7,20 @@
   const MAX_LOC = 60;    // longer routes are planned 10 points at a time and joined
 
   // ---------- place search ----------
+  // Online first. With a search index on the phone (offsearch.js), no signal searches that straight away, and a
+  // slow or failed answer from the internet falls back to it after a few seconds.
   OR.search = function (q) {
+    const off = OR.offSearch;
+    if (!off || !off.ready()) return photon(q);
+    if (!OR.online()) return off.find(q);
+    return new Promise((ok, fail) => {
+      let settled = false;
+      const local = () => { if (settled) return; settled = true; off.find(q).then(ok, fail); };
+      const t = setTimeout(local, 5000);
+      photon(q).then(l => { if (settled) return; settled = true; clearTimeout(t); ok(l); }, () => { clearTimeout(t); local(); });
+    });
+  };
+  function photon(q) {
     const c = OR.map.getCenter();
     const url = PHOTON + '?limit=7&lang=en&q=' + encodeURIComponent(q) + '&lat=' + c.lat.toFixed(3) + '&lon=' + c.lng.toFixed(3);
     return OR.json(url).then(j => (j.features || []).map(f => {
@@ -16,7 +29,7 @@
       const sub = [p.street && p.name ? p.street : '', p.city !== main ? p.city : '', p.county, p.postcode, p.country].filter(Boolean).join(', ');
       return { name: main, sub, lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] };
     }));
-  };
+  }
   // "52.1, -1.2" or "52.1 -1.2" typed straight in
   OR.parseLatLon = function (q) {
     const m = q.trim().match(/^(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)$/);

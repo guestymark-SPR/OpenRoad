@@ -121,7 +121,7 @@
       const ll = OR.parseLatLon(s);
       if (ll) return showResults([ll]);
       res.hidden = false; res.innerHTML = '<div class="muted pad">Searching…</div>';
-      OR.search(s).then(showResults).catch(e => { res.innerHTML = '<div class="muted pad">Search needs a signal (' + esc(e.message) + ')</div>'; });
+      OR.search(s).then(showResults).catch(e => { res.innerHTML = '<div class="muted pad">Search needs a signal (' + esc(e.message) + ')' + (A && !(OR.offSearch && OR.offSearch.ready()) ? '. With a map pack on the phone (Maps tab), towns and postcodes can be found with no signal too.' : '') + '</div>'; });
     };
     q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(go, 450); });
     q.addEventListener('keydown', e => { if (e.key === 'Enter') { clearTimeout(timer); go(); } });
@@ -883,12 +883,35 @@
         (have ? '<button class="btn small ghost" data-del="' + p.id + '">Delete</button>' : '') + '</div></div>';
     }).join('') + '</div>';
     if (info) h += '<h3>Saved map tiles</h3><p class="small">' + info.tiles + ' tiles, ' + Math.round(info.bytes / 1048576) + ' MB, from browsing and Save offline on routes.</p><button class="btn ghost" id="clrCache">Clear saved tiles</button>';
-    h += '<p class="small muted">Planning routes and searching need a signal. Planned and saved routes keep their directions with no signal.</p>';
+    h += searchCard();
+    h += '<p class="small muted">With a pack on the phone, routes can be planned and towns, postcodes, fuel and cafés found with no signal (simpler than with a signal). Planned and saved routes keep their directions.</p>';
     box.innerHTML = h;
+    const sg = $('#osGet', box); if (sg) sg.onclick = () => { OR.offSearch.sync(true).catch(e => OR.toast('Couldn\'t download the search: ' + e.message)); };
     $$('[data-get]', box).forEach(b => b.onclick = () => { const p = catalogue.find(c => c.id === b.dataset.get); packState[p.id] = { state: 'downloading', done: 0, total: p.size }; OR.packs.download(p); pageMaps(box); });
     $$('[data-del]', box).forEach(b => b.onclick = () => { if (confirm('Delete this map pack?')) { OR.packs.del(b.dataset.del); pageMaps(box); } });
     const cc = $('#clrCache', box); if (cc) cc.onclick = () => { if (confirm('Clear saved map tiles? Country packs are kept.')) { A.clearTiles(); pageMaps(box); } };
   }
+  // search with no signal (offsearch.js): one index per country that has a pack here
+  let searchState = null;
+  function searchCard() {
+    const os = OR.offSearch; if (!os || !window.indexedDB) return '';
+    const want = os.wanted(), have = os.have();
+    if (!want.length) return '';
+    const n = x => Number(x || 0).toLocaleString('en-GB');
+    let h = '<h3>Search with no signal</h3><div class="list">' + want.map(id => {
+      const x = have[id], busy = searchState && searchState.id === id && os.busy === id;
+      const what = x ? n(x.places) + ' places' + (x.postcodes ? ' and ' + n(x.postcodes) + ' postcodes' : '') + ', from ' + esc(new Date(x.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })) : 'Not on this phone yet';
+      return '<div class="li"><b>' + esc(x ? x.name : id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())) + '</b><span>' + (busy ? 'Downloading ' + searchState.done + ' of ' + searchState.total + '…' : what) +
+        (searchState && searchState.id === id && searchState.state === 'error' ? '. ' + esc(searchState.error) : '') + '</span></div>';
+    }).join('') + '</div>';
+    h += os.busy ? '' : '<button class="btn ghost" id="osGet">' + (want.every(id => have[id]) ? 'Check for newer search data' : 'Download search') + '</button>';
+    return h + '<p class="small muted">Downloads by itself on Wi-Fi, and when a pack finishes installing.</p>';
+  }
+  OR.on('offsearch', s => {
+    searchState = s;
+    if (s.state === 'done') OR.toast('Search with no signal is ready for ' + (OR.offSearch.have()[s.id] || {}).name);
+    if (morePage === 'maps' && $('#morePage')) pageMaps($('#morePage'));
+  });
   OR.on('pack', s => { packState[s.id] = s; if (s.state === 'done') { OR.toast('Map pack installed'); OR.map.setStyle(OR.buildStyle(OR.map.__mode), { diff: false }); } if (morePage === 'maps' && $('#morePage')) pageMaps($('#morePage')); });
   OR.on('tiles', s => { if (s.done === s.total) OR.toast('Map saved for offline: ' + (s.total - s.failed) + ' of ' + s.total + ' tiles' + (s.failed ? '. ' + s.failed + ' failed: try again with a better signal' : ''), 6000); });
 
@@ -946,7 +969,8 @@
   function pageAbout(box) {
     box.innerHTML = (A ? '<div class="stats"><div><b>' + esc(A.version()) + '</b><span>your version</span></div></div>' + (OR.playBuild ? '<p class="small muted">Updates come from Google Play.</p>'
       : '<button id="sUpd" class="btn wide pri">' + ic('update') + 'Check for updates</button><p class="small muted">OpenRoad also checks each time it opens.</p>') : '') +
-      '<h3>Where the data comes from</h3><p class="small">Map data © OpenStreetMap contributors. Map tiles from OpenFreeMap. Routing and speed limits by Valhalla on the FOSSGIS server. Place search by Photon (Komoot). Fuel, stays and other places from OpenStreetMap via Overpass. Weather from Open-Meteo. Satellite pictures from Esri.</p>' +
+      '<h3>Where the data comes from</h3><p class="small">Map data © OpenStreetMap contributors. Map tiles from OpenFreeMap. Routing and speed limits by Valhalla on the FOSSGIS server. Place search by Photon (Komoot). Fuel, stays and other places from OpenStreetMap via Overpass. Weather from Open-Meteo. Satellite pictures from Esri. Postcodes with no signal from Ordnance Survey Code-Point Open: contains OS data © Crown copyright and database right ' + new Date().getFullYear() + ', Royal Mail data © Royal Mail copyright and database right ' + new Date().getFullYear() + ', National Statistics data © Crown copyright and database right ' + new Date().getFullYear() + '.</p>' +
+      '<h3>Privacy</h3><p class="small">Your rides, routes and settings stay on your phone. Read what OpenRoad sends where, and why, in the privacy policy.</p><a class="btn ghost" target="_blank" rel="noopener" href="https://guestymark-spr.github.io/OpenRoad/privacy.html">Privacy policy</a>' +
       '<p class="small warn">Road data can be out of date. Follow road signs and the law, and set your route before you ride.</p><button class="btn" id="sNews">' + ic('spark') + 'What\'s new</button><button class="btn ghost" id="sIntro">Show the quick guide</button>';
     const u = $('#sUpd', box); if (u) u.onclick = () => checkUpdate(true);
     $('#sIntro', box).onclick = intro;
