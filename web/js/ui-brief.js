@@ -56,7 +56,7 @@
       const warns = Array.from(new Set(w.map(OR.weatherWarn).filter(Boolean)));
       strip.html = '<div class="wxs"><div class="wxs-top"><b>Weather on the way</b><label>Leave <input type="time" id="wxsDep" value="' + hhmm(dep) + '"></label></div>' +
         '<div class="wxs-row">' + w.map(x => { const c = OR.wmo(x.code); return '<div class="wxc' + (OR.weatherWarn(x) ? ' bad' : '') + '"><span>' + OR.clock(new Date(x.at)) + '</span><i aria-hidden="true">' + c[1] + '</i><b>' + Math.round(x.temp) + '°</b><small>' + Math.round(x.rainP || 0) + '%</small></div>'; }).join('') + '</div>' +
-        (warns.length ? '<p class="wxs-warn">' + esc(warns.join('. ')) + '</p>' : '<p class="wxs-ok">No bad weather expected on this route.</p>') + keyHtml(wl.runs) + '</div>';
+        (warns.length ? '<p class="wxs-warn">' + esc(warns.join('. ')) + '</p>' : '<p class="wxs-ok">No bad weather expected on this route.</p>') + keyHtml(wl.runs) + (OR.windHtml ? OR.windHtml(r, w) : '') + '</div>';
       put();
     } catch (e) { if (strip.key === key) { strip.html = '<div class="wxs"><span class="muted small">Weather unavailable: ' + esc(e.message) + '</span></div>'; put(); } }
   }

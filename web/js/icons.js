@@ -71,6 +71,7 @@
     mute: '<path class="d" d="M4 9.2v5.6h3.8l5 4.2V5L7.8 9.2z"/><path d="M4 9.2v5.6h3.8l5 4.2V5L7.8 9.2zM16 9.5l5 5M21 9.5l-5 5"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
     home: '<path class="d" d="M4 11 12 4l8 7v9H4z"/><path d="M4 11 12 4l8 7v9H4z M10 20v-5h4v5"/>',
+    wind: '<path d="M3 9h11a3 3 0 1 0-3-3 M3 15h15a3 3 0 1 1-3 3 M3 12h7"/>',
     search: '<circle class="d" cx="10.5" cy="10.5" r="6.5"/><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>'
   };
   I.rides = I.moto; I.bike = I.moto;

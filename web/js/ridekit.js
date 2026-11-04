@@ -27,13 +27,13 @@
     pts.push({ p: end, at: t0 + t * 1000, along: route.dist, end: true });
     const use = pts.slice(0, 14);
     const q = '?latitude=' + use.map(x => x.p[1].toFixed(3)).join(',') + '&longitude=' + use.map(x => x.p[0].toFixed(3)).join(',') +
-      '&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,weather_code&wind_speed_unit=mph&timeformat=unixtime&forecast_days=' + OR.FORECAST_DAYS;
+      '&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code&wind_speed_unit=mph&timeformat=unixtime&forecast_days=' + OR.FORECAST_DAYS;
     let j = await OR.json(METEO + q); if (!Array.isArray(j)) j = [j];
     return use.map((x, i) => {
       const h = j[i] && j[i].hourly; if (!h) return null;
       let k = 0, best = 1e15; h.time.forEach((tt, n) => { const d = Math.abs(tt * 1000 - x.at); if (d < best) { best = d; k = n; } });
       return { lng: x.p[0], lat: x.p[1], at: x.at, along: x.along, end: x.end, temp: h.temperature_2m[k], rainP: h.precipitation_probability[k], rain: h.precipitation[k],
-        wind: h.wind_speed_10m[k], gust: h.wind_gusts_10m[k], code: h.weather_code[k] };
+        wind: h.wind_speed_10m[k], gust: h.wind_gusts_10m[k], dir: h.wind_direction_10m ? h.wind_direction_10m[k] : null, code: h.weather_code[k] };
     }).filter(Boolean);
   };
   // One day's forecast at a place (for trip days)
