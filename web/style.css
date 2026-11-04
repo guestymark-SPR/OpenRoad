@@ -1172,3 +1172,19 @@ body.glove #recentre{min-height:64px;font-size:20px}
 
 /* smoother panel: the browser is told what will change, and the contents don't re-layout while it moves */
 #panel{will-change:height;transition:height .36s cubic-bezier(.22,.9,.25,1)}
+
+/* ---------- lighter look: slimmer tab bar, more room, pictures on empty pages ---------- */
+svg.art{width:min(260px,78%);height:auto;display:block;margin:6px auto 2px;stroke:none;stroke-width:0;fill:none;overflow:visible;animation:orFloat 5s ease-in-out infinite}
+.empty svg.art{width:min(260px,78%);height:auto;padding:0;background:none;box-shadow:none;border-radius:0}
+#nav{padding:6px 10px calc(6px + var(--safe-b))}
+.navsign{padding:4px;border-radius:13px}
+#nav .navsign button{min-height:48px;font-size:12px;gap:0}
+#nav .navsign button svg{width:22px;height:22px}
+@media (max-width:899px) and (orientation:portrait){body.haspeek #panel:not(.open){height:calc(196px + var(--safe-b))}#optCards{bottom:calc(208px + var(--safe-b))}}
+.card{padding:14px 16px;margin:12px 0}
+#views{padding:4px 18px 22px}
+.vh{margin:8px 0 16px}
+h3,.gh{margin:26px 2px 10px}
+.btn.wide{margin:12px 0}
+.empty{padding:26px 14px}
+.empty p{line-height:1.5}

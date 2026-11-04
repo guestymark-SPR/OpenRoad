@@ -182,13 +182,15 @@
 
   // ---------- overlays (route, alternatives, ride track, points of interest) ----------
   const EMPTY = { type: 'FeatureCollection', features: [] };
-  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY, jn: EMPTY, closed: EMPTY, tips: EMPTY, trip: EMPTY, tripdays: EMPTY, wxline: EMPTY };
+  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY, jn: EMPTY, twmap: EMPTY, closed: EMPTY, tips: EMPTY, trip: EMPTY, tripdays: EMPTY, wxline: EMPTY };
   OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.style && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); }; // no style: the map has been taken down
   function addOverlays() {
     const m = OR.map, night = m.__mode === 'night';
     for (const id in data) if (!m.getSource('ov-' + id)) m.addSource('ov-' + id, { type: 'geojson', data: data[id] });
     const L = (o) => { if (!m.getLayer(o.id)) m.addLayer(o); };
     // a whole trip: each day's rides in its own colour, ferries dashed, and a "Day 1" plate where each day ends
+    // the bendy roads on the map: violet for bendy, magenta for very bendy (twistymap.js)
+    L({ id: 'ov-twmap', type: 'line', source: 'ov-twmap', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['match', ['get', 'k'], 2, '#d81b60', '#7e57c2'], 'line-width': z([9, 2.4, 13, 4.5, 15, 7]), 'line-opacity': 0.85 } });
     L({ id: 'ov-trip-c', type: 'line', source: 'ov-trip', filter: ['!=', ['get', 'ferry'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#fff', 'line-width': z([5, 6, 14, 12]), 'line-opacity': ['case', ['get', 'dim'], 0.35, 0.9] } });
     L({ id: 'ov-trip', type: 'line', source: 'ov-trip', filter: ['!=', ['get', 'ferry'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'c'], 'line-width': z([5, 4, 14, 8]), 'line-opacity': ['case', ['get', 'dim'], 0.35, 1] } });
     L({ id: 'ov-trip-f', type: 'line', source: 'ov-trip', filter: ['==', ['get', 'ferry'], true], paint: { 'line-color': '#1e88e5', 'line-width': 3, 'line-dasharray': [2, 2] } });

@@ -12,7 +12,7 @@
   // ---------- startup ----------
   function boot() {
     if (!window.maplibregl) { window.__mlReady = boot; return; }
-    OR.initMap(); OR.mapLiveStart && OR.mapLiveStart(); OR.tipsStart && OR.tipsStart(); if (OR.peekDraw) { OR.peekDraw(); setInterval(OR.peekDraw, 60000); };
+    OR.initMap(); OR.mapLiveStart && OR.mapLiveStart(); OR.tipsStart && OR.tipsStart(); OR.twistyMapStart && OR.twistyMapStart(); if (OR.peekDraw) { OR.peekDraw(); setInterval(OR.peekDraw, 60000); };
     document.documentElement.dataset.theme = OR.themeNow();
     document.documentElement.dataset.look = OR.cfg.look || 'classic';
     // the fixed buttons get the same icon set as everything else
@@ -157,7 +157,7 @@
     const c = OR.cfg;
     sheet('<h2>Map</h2><div class="seg big" id="mt"><button data-v="road" class="' + (c.mapType !== 'satellite' ? 'on' : '') + '">' + ic('map') + 'Road</button><button data-v="satellite" class="' + (c.mapType === 'satellite' ? 'on' : '') + '">' + ic('layers') + 'Satellite</button></div>' +
       '<p class="small muted">Satellite pictures need a signal. Offline packs show the road map.</p>' +
-      '<h3 class="grp">On the map</h3><div class="menu"><button id="radarTog">' + badge('cloud', '#039be5') + '<span><b>' + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Rain radar') + '</b><small>Showers over the last 2 hours</small></span>' + ic('chev', 'chev') + '</button>' +
+      '<h3 class="grp">On the map</h3><div class="menu"><button id="twTog">' + badge('twisty', '#d81b60') + '<span><b>' + (OR.twistyOn() ? 'Hide bendy roads' : 'Show bendy roads') + '</b><small>Roads coloured by how much they bend: violet bendy, magenta very bendy</small></span>' + ic('chev', 'chev') + '</button><button id="radarTog">' + badge('cloud', '#039be5') + '<span><b>' + (OR.radar && OR.radar.on() ? 'Turn rain radar off' : 'Rain radar') + '</b><small>Showers over the last 2 hours</small></span>' + ic('chev', 'chev') + '</button>' +
       '<button id="roughTog">' + badge('warn', '#ef8f00') + '<span><b>' + (OR.roughOn && OR.roughOn() ? 'Hide rough roads' : 'Rough roads I\'ve ridden') + '</b><small>Bumps and potholes your phone felt</small></span>' + ic('chev', 'chev') + '</button>' +
       '<button id="poiTog">' + badge('fuel', '#e53935') + '<span><b>' + (c.mapPois === false ? 'Show fuel and places to stay' : 'Hide fuel and places to stay') + '</b><small>Petrol stations and hotels on the map when zoomed in close</small></span>' + ic('chev', 'chev') + '</button>' +
       '<button id="jnTog">' + badge('map', '#0079c1') + '<span><b>' + (c.mapJunctions === false ? 'Show junction numbers' : 'Hide junction numbers') + '</b><small>Motorway junctions, from OpenStreetMap</small></span>' + ic('chev', 'chev') + '</button>' +
@@ -167,6 +167,7 @@
       '<div class="seg" id="th">' + [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']].map(([k, l]) => '<button data-v="' + k + '" class="' + (c.theme === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>' +
       '<p class="small muted">Auto switches to night colours after sunset where you are.</p>', b => {
       $$('#mt button', b).forEach(x => x.onclick = () => { OR.setMapType(x.dataset.v); closeSheet(); });
+      const tw = $('#twTog', b); if (tw) tw.onclick = () => { closeSheet(); OR.twistyToggle(!OR.twistyOn()); };
       const rb = $('#radarTog', b); if (rb) rb.onclick = () => { closeSheet(); OR.toggleRadar(); };
       const fs = $('#fullTog', b); if (fs) fs.onclick = () => { closeSheet(); setMenu(2); OR.toast('Tap the menu button, bottom left, to bring the menu back'); };
       $('#hillsTog', b).onclick = () => {
@@ -377,7 +378,7 @@
         '<button class="btn wide pri" id="loopGo"' + (from ? '' : ' disabled') + '>' + (planning ? 'Finding loops…' : 'Make a loop') + '</button>';
       if (!loopFrom && !OR.pos) h += '<p class="hint">Tap the map where the loop should start and choose "Round trip from here".</p>';
     } else if (!wps.length) {
-      h += (OR.homeHtml && !tgt ? OR.homeHtml() : '') + (OR.todayHtml && !tgt ? OR.todayHtml() : '') + '<div class="empty">' + ic('plan', 'big') + '<p>Search for a place or tap the map to say where you\'re going. Add via points to ride the roads you want.</p>' +
+      h += (OR.homeHtml && !tgt ? OR.homeHtml() : '') + (OR.todayHtml && !tgt ? OR.todayHtml() : '') + '<div class="empty">' + (OR.art ? OR.art('plan') : ic('plan', 'big')) + '<p>Search for a place or tap the map to say where you\'re going. Add via points to ride the roads you want.</p>' +
         (OR.pos ? '<button class="btn" id="fromHere">Start from my position</button>' : '') + '</div>';
     } else {
       const fold = wps.length > 5 && !showAllWps;
@@ -593,7 +594,7 @@
       (list.length ? '<div class="list">' + list.map(r => '<div class="li"><b>' + esc(r.name) + '</b><span>' + OR.fmtDist(r.dist) + ', ' + OR.fmtTime(r.time) + (r.twist ? ', ' + OR.bendLabel(r.twist).toLowerCase() : '') + '</span>' +
         (r.roads && r.roads.length ? '<span class="refs">' + r.roads.map(chip).join('') + '</span>' : '') +
         '<div class="row"><button class="btn small" data-a="open" data-id="' + r.id + '">Show</button><button class="btn small pri" data-a="ride" data-id="' + r.id + '">Ride</button><button class="btn small" data-a="send" data-id="' + r.id + '">' + ic('share') + 'Send</button><button class="btn small ghost icon-only" data-a="del" data-id="' + r.id + '" aria-label="Delete">' + ic('x') + '</button></div></div>').join('') + '</div>'
-        : '<div class="empty">' + ic('save', 'big') + '<p>Routes you save or import appear here and work with no signal. GPX files from Calimoto, Kurviger or friends open straight in.</p></div>');
+        : '<div class="empty">' + (OR.art ? OR.art('save') : ic('save', 'big')) + '<p>Routes you save or import appear here and work with no signal. GPX files from Calimoto, Kurviger or friends open straight in.</p></div>');
   }
   function bindSaved(v) {
     $('#gpxIn', v).onchange = e => { const f = e.target.files[0]; if (f) f.text().then(t => importGpx(t, f.name)); e.target.value = ''; };
@@ -683,7 +684,7 @@
         (r.leanL || r.leanR ? '<span><b>' + (r.leanL || 0) + '° / ' + (r.leanR || 0) + '°</b>lean L / R</span>' : '') + '</div>' +
         '<div class="row"><button class="btn small" data-a="show" data-id="' + r.id + '">Show</button><button class="btn small" data-a="replay" data-id="' + r.id + '">Replay</button><button class="btn small" data-a="more" data-id="' + r.id + '">' + ic('menu') + 'More</button></div></div>').join('') + '</div>'
         + (list.length > ridesShown ? '<button class="btn wide ghost" id="ridesMore">Show older rides (' + (list.length - ridesShown) + ' more)</button>' : '')
-        : '<div class="empty">' + ic('rides', 'big') + '<p>Every ride is recorded with distance, time, speeds and an estimate of your lean angle. Recording carries on with the screen off in the Android app.</p></div>') +
+        : '<div class="empty">' + (OR.art ? OR.art('rides') : ic('rides', 'big')) + '<p>Every ride is recorded with distance, time, speeds and an estimate of your lean angle. Recording carries on with the screen off in the Android app.</p></div>') +
       '<p class="small muted">Lean angle is estimated from GPS speed and how sharply you turn, so treat it as a guide rather than a measurement.</p>';
     $('#freeRide', v).onclick = () => startRide(null);
     const rm = $('#ridesMore', v); if (rm) rm.onclick = () => { ridesShown += 40; renderRides(); };

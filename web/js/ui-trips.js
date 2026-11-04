@@ -23,7 +23,7 @@
         return '<button class="li trip" data-id="' + t.id + '"><b>' + esc(t.name) + '</b><span>' + OR.dayDate(t, 0).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + t.days.length + ' day' + (t.days.length > 1 ? 's' : '') + '</span>' +
           '<span class="kv"><span><b>' + OR.fmtDist(c.tot.dist) + '</b>riding</span><span><b>' + OR.money(c.tot.all, t) + '</b>total</span></span></button>';
       }).join('') + '</div>'
-        : '<div class="empty">' + ic('trips', 'big') + '<p>Plan a tour step by step: each day\'s ride, ferry or tunnel crossings, fuel, hotels and what it all costs, split between riders.</p></div>');
+        : '<div class="empty">' + (OR.art ? OR.art('trips') : ic('trips', 'big')) + '<p>Plan a tour step by step: each day\'s ride, ferry or tunnel crossings, fuel, hotels and what it all costs, split between riders.</p></div>');
     $('#autoTrip', v).onclick = () => OR.autoTripSheet();
     $('#aiRide', v).onclick = () => OR.aiPlanSheet();
     $('#newTrip', v).onclick = newTrip;
