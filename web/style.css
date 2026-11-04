@@ -1161,3 +1161,11 @@ h3::after,.gh::after{content:"";flex:1;height:1px;background:linear-gradient(90d
 #optCards .oc.on{border-color:var(--green-2)}
 #optCards .oc b{font-size:16px}#optCards .oc .nums{font-weight:800;font-size:18px}#optCards .oc small{color:var(--ink-3)}
 @media (max-width:899px) and (orientation:portrait){body:has(#panel:not(.open)) #optCards:not([hidden]){display:flex}}
+
+/* ---------- glove mode: big buttons only at riding speed ---------- */
+body.glove #fabs,body.glove #hMute,body.glove #hMore,body.glove #hChat{display:none!important}
+body.glove .hb{min-width:84px;min-height:84px;border-radius:22px}
+body.glove .hb svg{width:38px;height:38px}
+body.glove .hb.end{min-width:110px;font-size:22px}
+body.glove #hudBar .stat b{font-size:calc(1em + 6px)}
+body.glove #recentre{min-height:64px;font-size:20px}
