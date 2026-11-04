@@ -695,7 +695,7 @@
       const row = (a, i, c, t, d) => '<button data-a="' + a + '" data-id="' + r.id + '">' + badge(i, c) + '<span><b>' + t + '</b><small>' + d + '</small></span>' + ic('chev', 'chev') + '</button>';
       sheet('<h2>' + ic('rides') + esc(r.name) + '</h2><h3 class="grp">Share</h3><div class="menu">' + row('card', 'star', '#ef8f00', 'Picture', 'A map card with your numbers, for WhatsApp or Facebook') +
         row('fly', 'pass', '#7e57c2', 'Flyover video', '30 seconds flying over the hills you rode') + row('gfly', 'group', '#e53935', 'Group ride film', 'The flyover with every rider\'s line in their colour') + row('video', 'cam', '#d81b60', 'Helmet-cam video', 'Your footage with speed, lean and a map on it') + '</div>' +
-        '<h3 class="grp">Look back</h3><div class="menu">' + row('coach', 'lean', '#1565c0', 'Corner coach', 'Your smoothest bends, and ones to work on') + '</div>' +
+        '<h3 class="grp">Look back</h3><div class="menu">' + row('coach', 'lean', '#1565c0', 'Corner coach', 'Your smoothest bends, and ones to work on') + row('cmp', 'twisty', '#7e57c2', 'Same road, last time', 'Compare with an earlier ride on the same roads') + '</div>' +
         '<h3 class="grp">Keep</h3><div class="menu">' + row('route', 'save', '#0e9f57', 'Save as a route', 'Ride it again with directions') + row('gpx', 'dl', '#5d6d7e', 'GPX file', 'For other apps and Garmin') + row('del', 'x', '#c62828', 'Delete', 'Remove this ride from the phone') + '</div>', b => {
         const del = b.querySelector('button[data-a=del]'); if (del) del.classList.add('danger');
         $$('button[data-a]', b).forEach(x => x.onclick = () => { closeSheet(); act(x.dataset.a, r); });
@@ -710,6 +710,7 @@
       if (b.dataset.a === 'replay') OR.replayRide(r);
       if (b.dataset.a === 'card') OR.rideCard(r);
       if (b.dataset.a === 'coach') OR.cornerCoach(r);
+      if (b.dataset.a === 'cmp') OR.rideCompare(r);
       if (b.dataset.a === 'video') OR.rideVideo(r);
       if (b.dataset.a === 'gfly') OR.groupFilmSheet(r);
       if (b.dataset.a === 'fly') { OR.closeSheet && OR.closeSheet(); if (innerWidth < 900) $('#panel').classList.remove('open'); OR.flyover(r); }
