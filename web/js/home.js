@@ -6,11 +6,12 @@
   const recents = () => OR.store.get('recentPlaces', []);
   const remember = p => { const l = recents().filter(x => x.name !== p.name); l.unshift({ name: p.name, sub: p.sub || '', lng: p.lng, lat: p.lat }); OR.store.set('recentPlaces', l.slice(0, 6)); };
 
-  OR.homeHtml = function () {
+  OR.homeHtml = function (part) {
     const last = OR.rides && OR.rides.list ? OR.rides.list().filter(r => r.end)[0] : null;
     const home = OR.cfg.home && OR.cfg.home.lng != null ? OR.cfg.home : null;
-    let h = '<button class="whereto" id="whereBtn">' + OR.ic('search') + '<span><b>Where to?</b><small>Search a place, postcode or road</small></span></button>';
-    if (home) h += '<div class="chips homechips"><button class="btn small" id="goHome">' + OR.ic('home') + 'Home</button></div>';
+    let h = part === 'rest' ? '' : '<button class="whereto" id="whereBtn">' + OR.ic('search') + '<span><b>Where to?</b><small>Search a place, postcode or road</small></span></button>';
+    if (home && part !== 'rest') h += '<div class="chips homechips"><button class="btn small" id="goHome">' + OR.ic('home') + 'Home</button></div>';
+    if (part === 'top') return h;
     h += OR.parkedHtml ? OR.parkedHtml() : '';
     if (last) h += '<button class="lastride" id="lastRide"><span class="lr-t">Last ride</span><b>' + esc(last.name) + '</b><small>' + OR.fmtDist(last.dist) + ' on ' + new Date(last.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + '</small>' + OR.ic('chev', 'chev') + '</button>';
     return h;

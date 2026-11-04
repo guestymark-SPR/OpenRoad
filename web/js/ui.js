@@ -358,6 +358,7 @@
   function renderPlan() {
     const v = $('#v-plan'), wps = OR.plan.wps, r = OR.plan.route, tgt = OR.plan.target;
     let h = '';
+    if (!wps.length && planMode === 'ab' && !tgt && OR.homeHtml) h += OR.homeHtml('top');
     if (tgt) {
       const t = OR.trips.get(tgt.tripId);
       h += '<div class="banner"><div><b>Planning a ride for your trip</b><span>' + esc(t ? t.name + ', ' + OR.dayLabel(t, tgt.day) : '') + '</span></div>' +
@@ -378,7 +379,7 @@
         '<button class="btn wide pri" id="loopGo"' + (from ? '' : ' disabled') + '>' + (planning ? 'Finding loops…' : 'Make a loop') + '</button>';
       if (!loopFrom && !OR.pos) h += '<p class="hint">Tap the map where the loop should start and choose "Round trip from here".</p>';
     } else if (!wps.length) {
-      h += (OR.homeHtml && !tgt ? OR.homeHtml() : '') + (OR.todayHtml && !tgt ? OR.todayHtml() : '') + '<div class="empty">' + (OR.art ? OR.art('plan') : ic('plan', 'big')) + '<p>Search for a place or tap the map to say where you\'re going. Add via points to ride the roads you want.</p>' +
+      h += (OR.todayHtml && !tgt ? OR.todayHtml() : '') + (OR.homeHtml && !tgt ? OR.homeHtml('rest') : '') + '<div class="empty">' + (OR.art ? OR.art('plan') : ic('plan', 'big')) + '<p>Search for a place or tap the map to say where you\'re going. Add via points to ride the roads you want.</p>' +
         (OR.pos ? '<button class="btn" id="fromHere">Start from my position</button>' : '') + '</div>';
     } else {
       const fold = wps.length > 5 && !showAllWps;
@@ -726,7 +727,8 @@
   OR.field = field;
   const PAGES = [['group', 'group', 'Group ride', 'See your riding group live on the map', '#e53935'], ['chat', 'chat', 'Group chat', 'Quick messages, read aloud and notifications', '#0e9f57'], ['bike', 'moto', 'My bike and fuel', 'Range, mpg and low-fuel warnings', '#0e9f57'], ['maint', 'wrench', 'Maintenance', 'Services, tyres, pre-ride check and MOT', '#1565c0'], ['safety', 'shield', 'Crash alert and check-in', 'Crash detection, check-in, speed and break warnings', '#e53935'], ['aware', 'warn', 'Road-ahead warnings', 'Bends, low sun, tiredness, shared hazards, bike to bike', '#ef6c00'],
     ['ice', 'helmet', 'Emergency card', 'Your ICE details for first responders', '#ef8f00'], ['maps', 'map', 'Offline maps', 'Country packs for riding with no signal', '#1e88e5'],
-    ['settings', 'gear', 'Map and routing', 'Units, colours, tolls, ferries, cameras, traffic', '#5d6d7e'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, watch alerts, turn countdown bar', '#1565c0'],
+    ['settings', 'gear', 'Routing and traffic', 'Tolls, ferries, cameras, traffic key, AI planner', '#5d6d7e'], ['screen', 'speed', 'Ride screen', 'Big numbers, glove mode, buzz, regroup alerts', '#00897b'],
+    ['today', 'sun', 'Home and today', 'Home place, Today card, recording rides by themselves', '#f9a825'], ['mapset', 'map', 'Map display', 'Hill shading, 3D hills, routes drawing themselves', '#1e88e5'], ['data', 'save', 'Back up and restore', 'Keep your settings and rides in a file', '#8e6bd6'], ['voice', 'mic', 'Voice and watch', 'Voice commands, intercom button, watch alerts, turn countdown bar', '#1565c0'],
     ['phrases', 'chat', 'Phrasebook', 'French, Dutch and German, spoken aloud', '#1e88e5'],
     ['papers', 'id', 'Papers', 'Licence, V5C, insurance, MOT and breakdown cover', '#00897b'],
     ['auto', 'moto', 'Android Auto', 'Setting it up on a car screen', '#3949ab'],
@@ -741,8 +743,16 @@
         '<div class="q-row"><span>' + ic(c.voice ? 'vol' : 'mute') + 'Spoken directions</span>' + qs('qVoice', c.voice ? 'on' : 'off', [['on', 'On'], ['off', 'Off']]) + '</div>' +
         '<div class="q-row"><span>' + ic('map') + 'Units</span>' + qs('qUnits', c.units, [['mi', 'Miles'], ['km', 'Km']]) + '</div>' +
         '<div class="q-row"><span>' + ic('star') + 'Look</span>' + qs('qLook', c.look || 'classic', [['outlaw', 'Outlaw'], ['classic', 'Classic']]) + '</div></div>' +
-        sec('Riding', ['settings', 'voice', 'aware', 'maps']) + sec('Safety', ['safety', 'ice']) + sec('Group rides', ['chat']) + sec('Riding abroad', ['papers', 'phrases']) + sec('App', ['auto', 'about']) +
+        '<input id="setFind" type="search" class="setfind" placeholder="Find a setting, like tolls or glove" autocomplete="off" aria-label="Find a setting">' +
+        '<div id="setList">' + sec('Riding', ['settings', 'screen', 'voice', 'aware', 'maps']) + sec('Plan and map', ['today', 'mapset']) + sec('Safety', ['safety', 'ice']) + sec('Group rides', ['chat']) + sec('Riding abroad', ['papers', 'phrases']) + sec('App', ['data', 'auto', 'about']) + '</div>' +
         (A ? '<p class="small muted center">OpenRoad ' + esc(A.version()) + '</p>' : '');
+      const KW = { settings: 'toll ferry camera traffic tomtom closure ai anthropic key planner voice test', screen: 'glove haptic buzz vibrate big numbers speed regroup hud', voice: 'voice mic intercom headset watch turn bar countdown', aware: 'bend sun tired hazard warning', maps: 'offline download country pack', today: 'home forecast loop record automatic', mapset: 'hill shading 3d tilt reveal', safety: 'crash check-in alarm break speed limit', ice: 'emergency contact medical', chat: 'message quick', papers: 'licence insurance mot v5c', phrases: 'french dutch german language', data: 'backup restore export import file', auto: 'android auto car screen', about: 'update version privacy data welcome' };
+      const find = $('#setFind', v), applyFind = () => {
+        const q = find.value.trim().toLowerCase();
+        $$('#setList .menu button', v).forEach(b => { const pg = PAGES.find(x => x[0] === b.dataset.p); b.hidden = !!q && !((pg[2] + ' ' + pg[3] + ' ' + (KW[pg[0]] || '')).toLowerCase().includes(q)); });
+        $$('#setList .menu', v).forEach(m => { const none = !$$('button:not([hidden])', m).length; m.hidden = none; if (m.previousElementSibling) m.previousElementSibling.hidden = none; });
+      };
+      find.oninput = applyFind;
       $$('.menu button', v).forEach(b => b.onclick = () => { morePage = b.dataset.p; renderMore(); $('#views').scrollTop = 0; });
       const qb = (id, fn) => $$('#' + id + ' button', v).forEach(x => x.onclick = () => { fn(x.dataset.v); OR.saveCfg(); renderMore(); });
       qb('qTheme', x => { c.theme = x; OR.applyTheme(); });
@@ -754,7 +764,7 @@
     const p = PAGES.find(x => x[0] === morePage);
     v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'Settings</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ phrases: p => OR.pagePhrases(p), voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: pageSettings, about: pageAbout, auto: pageAuto, aware: p => OR.awareSettings && OR.awareSettings(p) })[morePage]($('#morePage', v));
+    ({ phrases: p => OR.pagePhrases(p), voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: p => pageSettings(p, 'routing'), screen: p => pageSettings(p, 'screen'), today: p => pageSettings(p, 'today'), mapset: p => pageSettings(p, 'mapset'), data: p => pageSettings(p, 'data'), about: pageAbout, auto: pageAuto, aware: p => OR.awareSettings && OR.awareSettings(p) })[morePage]($('#morePage', v));
   }
   // pages that now have their own tab
   OR.openMore = p => {
@@ -833,7 +843,6 @@
       (A ? '<button id="sVTry" class="btn wide">' + ic('mic') + 'Try a voice command</button>' : '') +
       '<h3>Watch</h3><label class="chk"><input type="checkbox" id="sWatch"' + (c.watchTurns ? ' checked' : '') + '> Alert my watch at each turn</label>' +
       '<p class="small muted">Each turn pops up as a notification, so a paired watch (Galaxy Watch and others) buzzes and shows it, for example "Turn left onto the A515". On a Galaxy Watch, turn on "Show phone notifications on watch while using phone" in the Galaxy Wearable app, or it only shows them when the phone screen is off.</p>' +
-      '<h3>Your data</h3><button class="btn wide" id="sBackup">' + ic('save') + 'Back up and restore</button>' +
       '<h3>Ride screen</h3><label class="chk"><input type="checkbox" id="sTurnBar"' + (c.turnBar !== false ? ' checked' : '') + '> Countdown bar for the next turn</label>' +
       '<p class="small muted">A bar down the right side that empties as the next turn gets closer, with the distance and the turn arrow.</p>';
     box.appendChild(el);
@@ -938,33 +947,36 @@
   OR.on('pack', s => { packState[s.id] = s; if (s.state === 'done') { OR.toast('Map pack installed'); OR.map.setStyle(OR.buildStyle(OR.map.__mode), { diff: false }); } if (morePage === 'maps' && $('#morePage')) pageMaps($('#morePage')); });
   OR.on('tiles', s => { if (s.done === s.total) OR.toast('Map saved for offline: ' + (s.total - s.failed) + ' of ' + s.total + ' tiles' + (s.failed ? '. ' + s.failed + ' failed: try again with a better signal' : ''), 6000); });
 
-  function pageSettings(box) {
-    const c = OR.cfg;
-    const seg = (id, val, opts) => '<div class="seg" id="' + id + '">' + opts.map(([k, l]) => '<button data-v="' + k + '" class="' + (val === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
-    box.innerHTML = '<h3>Units</h3>' + seg('sUnits', c.units, [['mi', 'Miles and mph'], ['km', 'Kilometres']]) +
-      '<h3>Map colours</h3>' + seg('sTheme', c.theme, [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']]) +
-      '<h3>Spoken directions</h3>' + seg('sVoice', c.voice ? 'on' : 'off', [['on', 'On'], ['off', 'Off']]) + '<button class="btn wide" id="sTest">' + ic('vol') + 'Test the voice</button>' +
-      '<p class="small muted">Directions play through the phone\'s audio, so pair your helmet headset with the phone over Bluetooth. Music is turned down while it speaks.</p>' +
-      '<h3>Routes</h3><label class="chk"><input type="checkbox" id="sTolls"' + (c.avoidTolls ? ' checked' : '') + '> Avoid toll roads</label>' +
-      '<label class="chk"><input type="checkbox" id="sFerry"' + (c.avoidFerries ? ' checked' : '') + '> Avoid ferries</label>' +
-      '<h3>While riding</h3><label class="chk"><input type="checkbox" id="sCams"' + (c.cameras !== false ? ' checked' : '') + '> Speed camera warnings (UK and Ireland)</label>' +
-      '<h3>Ride screen</h3><label class="chk"><input type="checkbox" id="sHaptic"' + (c.haptics !== false ? ' checked' : '') + '> Buzz when you tap buttons</label><label class="chk"><input type="checkbox" id="sRegroup"' + (c.regroup !== false ? ' checked' : '') + '> Group leader: tell me when the group spreads out</label><label class="chk"><input type="checkbox" id="sGlove"' + (c.glove !== false ? ' checked' : '') + '> Glove mode: big buttons only above about 15 mph</label><p class="small muted">Swipe up on the map for the whole route, swipe down to put the map back on you.</p><button class="btn wide" id="sHud">' + ic('speed') + 'Choose the three big numbers</button>' +
-      '<h3>AI ride planner</h3><button class="btn wide" id="sAi">' + ic('spark') + (c.aiKey ? 'AI planner: key saved. Change it' : 'Set up the AI ride planner') + '</button><p class="small muted">Describe a ride in words (Trips, Describe a ride). Uses your own Anthropic key, so you pay Anthropic directly and only for what you use.</p>' +
-      '<h3>Live traffic</h3>' + field('sTomtom', 'TomTom traffic key (free)', c.tomtomKey || '', 'text', 'paste your key') +
-      '<p class="small muted">For roadworks, accidents and queues in the route brief, road closures on the map, and routes that go round closed roads. Get a free key at developer.tomtom.com (no card needed, 2,500 checks a month). It\'s kept only on this phone.</p>' +
-      '<label class="chk"><input type="checkbox" id="sAvoidCl"' + (c.avoidClosures !== false ? ' checked' : '') + '> Plan routes around road closures</label><p class="small">Uses the key: a few checks for each route you plan.</p>' +
-      '<p class="small muted">Camera warnings are switched off everywhere else because warning devices are illegal in France, Germany and Switzerland. Camera locations come from OpenStreetMap and aren\'t complete.</p>' +
-      '<h3>Home</h3><div class="card"><div class="row-l"><span class="lbl">Today\'s forecast and loop start from</span><b>' + esc(c.home ? c.home.name || 'Home' : 'Not set') + '</b></div><button class="btn small" id="sHome">' + (c.home ? 'Change' : 'Set') + '</button></div>' +
-      '<h3>Today and recording</h3><label class="chk"><input type="checkbox" id="sToday"' + (c.today !== false ? ' checked' : '') + '> Today card on the Plan screen</label><p class="small">Whether it\'s a riding day, and when it\'s dry.</p>' +
-      '<label class="chk"><input type="checkbox" id="sTodayLoop"' + (c.todayLoop !== false ? ' checked' : '') + '> Plan a loop for today</label><p class="small">A twisty round trip from home that fits the dry hours, planned once a day.</p>' +
-      '<label class="chk"><input type="checkbox" id="sAuto"' + (c.autoRecord !== false ? ' checked' : '') + '> Record rides automatically</label><p class="small">When OpenRoad is open and you set off at riding speed, it starts recording; it stops when you\'ve been parked a while.</p>' +
-      '<h3>Map</h3><label class="chk"><input type="checkbox" id="sHills"' + (c.hills !== false ? ' checked' : '') + '> Hill shading</label><p class="small">Shows the shape of the land. Needs a signal.</p>' +
-      '<label class="chk"><input type="checkbox" id="sHills3d"' + (c.hills3d !== false ? ' checked' : '') + '> 3D hills when the map is tilted</label><p class="small">Tap 3D on the map, or tilt with two fingers. Turn off if the map feels slow on an older phone.</p>' +
-      '<label class="chk"><input type="checkbox" id="sReveal"' + (c.reveal !== false ? ' checked' : '') + '> Draw new routes along the road</label><p class="small">A new route draws itself while the map flies over it.</p>';
+  // Settings pages: one short page for each job, rather than one long list
+  function pageSettings(box, which) {
+    which = which || 'routing';
+    const c = OR.cfg, $ = (q, r) => (r || document).querySelector(q) || {}; // a control that isn't on this page is skipped
+    const chk = (id, on, label, note) => '<label class="chk"><input type="checkbox" id="' + id + '"' + (on ? ' checked' : '') + '> ' + label + '</label>' + (note ? '<p class="small muted">' + note + '</p>' : '');
+    const S = {
+      routing: '<div class="sgrp"><h3>Routes</h3>' + chk('sTolls', c.avoidTolls, 'Avoid toll roads') + chk('sFerry', c.avoidFerries, 'Avoid ferries') +
+        chk('sCams', c.cameras !== false, 'Speed camera warnings (UK and Ireland)', 'Camera warnings are switched off everywhere else because warning devices are illegal in France, Germany and Switzerland. Camera locations come from OpenStreetMap and aren\'t complete.') + '</div>' +
+        '<div class="sgrp"><h3>Spoken directions</h3><button class="btn wide" id="sTest">' + ic('vol') + 'Test the voice</button>' +
+        '<p class="small muted">Directions play through the phone\'s audio, so pair your helmet headset with the phone over Bluetooth. Music is turned down while it speaks. On/off and units are at the top of Settings.</p></div>' +
+        '<div class="sgrp"><h3>Live traffic</h3>' + field('sTomtom', 'TomTom traffic key (free)', c.tomtomKey || '', 'text', 'paste your key') +
+        '<p class="small muted">For roadworks, accidents and queues in the route brief, road closures on the map, and routes that go round closed roads. Get a free key at developer.tomtom.com (no card needed, 2,500 checks a month). It\'s kept only on this phone.</p>' +
+        chk('sAvoidCl', c.avoidClosures !== false, 'Plan routes around road closures', 'Uses the key: a few checks for each route you plan.') + '</div>' +
+        '<div class="sgrp"><h3>AI ride planner</h3><button class="btn wide" id="sAi">' + ic('spark') + (c.aiKey ? 'AI planner: key saved. Change it' : 'Set up the AI ride planner') + '</button><p class="small muted">Describe a ride in words (Trips, Describe a ride). Uses your own Anthropic key, so you pay Anthropic directly and only for what you use.</p></div>',
+      screen: '<div class="sgrp"><h3>Big numbers</h3><button class="btn wide" id="sHud">' + ic('speed') + 'Choose the three big numbers</button></div>' +
+        '<div class="sgrp"><h3>On the bike</h3>' + chk('sGlove', c.glove !== false, 'Glove mode', 'Big buttons only above about 15 mph. Swipe up on the map for the whole route, swipe down to put the map back on you.') +
+        chk('sHaptic', c.haptics !== false, 'Buzz when you tap buttons') +
+        chk('sRegroup', c.regroup !== false, 'Group leader: tell me when the group spreads out') + '</div>',
+      today: '<div class="sgrp"><h3>Home</h3><div class="card"><div class="row-l"><span class="lbl">Today\'s forecast and loop start from</span><b>' + esc(c.home ? c.home.name || 'Home' : 'Not set') + '</b></div><button class="btn small" id="sHome">' + (c.home ? 'Change' : 'Set') + '</button></div></div>' +
+        '<div class="sgrp"><h3>Plan screen</h3>' + chk('sToday', c.today !== false, 'Today card on the Plan screen', 'Whether it\'s a riding day, and when it\'s dry.') +
+        chk('sTodayLoop', c.todayLoop !== false, 'Plan a loop for today', 'A twisty round trip from home that fits the dry hours, planned once a day.') + '</div>' +
+        '<div class="sgrp"><h3>Recording</h3>' + chk('sAuto', c.autoRecord !== false, 'Record rides automatically', 'When OpenRoad is open and you set off at riding speed, it starts recording; it stops when you\'ve been parked a while.') + '</div>',
+      mapset: '<div class="sgrp"><h3>Hills</h3>' + chk('sHills', c.hills !== false, 'Hill shading', 'Shows the shape of the land. Needs a signal.') +
+        chk('sHills3d', c.hills3d !== false, '3D hills when the map is tilted', 'Tap 3D on the map, or tilt with two fingers. Turn off if the map feels slow on an older phone.') + '</div>' +
+        '<div class="sgrp"><h3>Routes on the map</h3>' + chk('sReveal', c.reveal !== false, 'Draw new routes along the road', 'A new route draws itself while the map flies over it.') + '</div>',
+      data: '<div class="sgrp"><h3>Your data</h3><button class="btn wide" id="sBackup">' + ic('save') + 'Back up and restore</button>' +
+        '<p class="small muted">Saves your settings, bike, rides, routes and trips to one file you can keep, and puts them back on a new phone. Offline map packs and photos are not included.</p></div>'
+    };
+    box.innerHTML = S[which] || S.routing;
     const segBind = (id, fn) => $$('#' + id + ' button', box).forEach(b => b.onclick = () => { fn(b.dataset.v); OR.saveCfg(); pageSettings(box); });
-    segBind('sUnits', x => { c.units = x; renderAll(); });
-    segBind('sTheme', x => { c.theme = x; OR.applyTheme(); });
-    segBind('sVoice', x => { c.voice = x === 'on'; updateMute(); });
     $('#sTest', box).onclick = () => { const was = c.voice; c.voice = true; OR.say('In half a mile, turn left onto the A537.'); c.voice = was; };
     $('#sTolls', box).onchange = e => { c.avoidTolls = e.target.checked; OR.saveCfg(); };
     $('#sFerry', box).onchange = e => { c.avoidFerries = e.target.checked; OR.saveCfg(); };
@@ -1095,16 +1107,14 @@
     OR.on('fuel', () => { const l = OR.fuelLeft(); if (OR.ride.on && l != null && l < (OR.cfg.bike.reserveMi || 25) * OR.MI) { $('#hudNote').hidden = false; $('#hudNote').textContent = 'Fuel low: about ' + OR.fmtDist(l) + ' left. Ride options has fuel nearby.'; } });
   }
   function rideOptions() {
-    const r = OR.ride.route;
+    const r = OR.ride.route, grpOn = OR.group && OR.group.state.on;
     const t = (id, i, c, l) => '<button class="tile" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>';
-    const grp = (title, tiles) => tiles ? '<h3 class="grp">' + title + '</h3><div class="tiles">' + tiles + '</div>' : '';
+    const grp = (title, tiles) => tiles ? '<h3 class="grp">' + title + '</h3><div class="tiles rq">' + tiles + '</div>' : '';
     sheet('<h2>Ride options</h2>' +
-      grp('This route', r ? t('roSkip', 'skip', '#ff6a1f', 'Skip next stop') + t('roView', 'map', '#1e88e5', 'Route overview') + t('roWx', 'cloud', '#039be5', 'Weather ahead') + t('roRain', 'loop', '#0277bd', 'Dodge the rain') : '') +
-      grp('Find nearby', t('roFuel', 'fuel', '#e53935', 'Fuel') + t('roCafe', 'cup', '#8d5a3b', 'Cafés') + t('roStay', 'bed', '#7e57c2', 'Stays') + t('roFill', 'fuel', '#0e9f57', 'I\'ve filled up')) +
-      grp('Group', OR.group && OR.group.state.on ? t('roGroup', 'group', '#e53935', 'Group') + t('roChat', 'chat', '#0e9f57', 'Group chat') : '') +
-      grp('Share', t('roFollow', 'near', '#0e9f57', OR.followActive && OR.followActive() ? 'Live link on' : 'Let someone follow me')) +
-      grp('Help and papers', t('roWhere', 'near', '#e53935', 'Where am I') + t('roIce', 'helmet', '#ef8f00', 'Emergency card') + t('roPapers', 'id', '#00897b', 'My papers') + t('roPhrase', 'chat', '#1e88e5', 'Phrasebook')) +
-      grp('Bike', t('roSpeedo', 'lean', '#1565c0', 'Speedo check')) +
+      grp('Route', r ? t('roSkip', 'skip', '#ff6a1f', 'Skip next stop') + t('roView', 'map', '#1e88e5', 'Overview') + t('roWx', 'cloud', '#039be5', 'Weather') + t('roRain', 'loop', '#0277bd', 'Dodge rain') : '') +
+      grp('Nearby', t('roFuel', 'fuel', '#e53935', 'Fuel') + t('roCafe', 'cup', '#8d5a3b', 'Cafés') + t('roStay', 'bed', '#7e57c2', 'Stays') + t('roFill', 'fuel', '#0e9f57', 'Filled up')) +
+      grp(grpOn ? 'Group and sharing' : 'Sharing', (grpOn ? t('roGroup', 'group', '#e53935', 'Group') + t('roChat', 'chat', '#0e9f57', 'Chat') : '') + t('roFollow', 'near', '#0e9f57', OR.followActive && OR.followActive() ? 'Link is on' : 'Follow me')) +
+      grp('Help and bike', t('roWhere', 'near', '#e53935', 'Where am I') + t('roIce', 'helmet', '#ef8f00', 'Emergency') + t('roPapers', 'id', '#00897b', 'Papers') + t('roPhrase', 'chat', '#1e88e5', 'Phrases') + t('roSpeedo', 'lean', '#1565c0', 'Speedo check')) +
       (OR.ride.leanL || OR.ride.leanR ? '<p class="small muted">Lean so far: ' + Math.round(OR.ride.leanL) + '° left, ' + Math.round(OR.ride.leanR) + '° right (estimated).</p>' : ''), b => {
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();
