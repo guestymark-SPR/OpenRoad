@@ -73,13 +73,14 @@
     }
     if (st.on) return inGroup(box, st);
     const g = G();
-    box.innerHTML = '<p class="small">Everyone in the group sees each other live on the map, with names, so if the pack splits or someone takes a wrong turn you can see where they are. It keeps sharing with the screen off.</p>' +
+    box.innerHTML = '<div class="ghero"><span class="gh-i">' + ic('group') + '</span><div><b>Ride together</b><span>Everyone sees each other live on the map, even with the screen off, so nobody gets lost.</span></div></div>' +
+      '<div class="gact"><button id="gNew" class="tile big">' + OR.badge('group', '#e53935') + '<span>Start a group</span></button>' +
+      (OR.native.scanQr ? '<button id="gScan" class="tile big">' + OR.badge('qr', '#1e88e5') + '<span>Scan a QR code</span></button>' : '') + '</div>' +
+      '<div class="joinrow">' + OR.field('gCode', 'Or type a code to join', g.lastCode || '', 'text', 'e.g. 7KQ4-9MZT-H2XB') + '<button id="gJoin" class="btn pri">Join</button></div>' +
+      '<details class="gdet"' + (g.name ? '' : ' open') + '><summary>' + ic('gear') + 'Your name, colour and alerts' + (g.name ? ' <small>' + esc(g.name) + '</small>' : '') + '</summary>' +
       OR.field('gName', 'Your name on the map', g.name || '', 'text', 'e.g. Mark') +
       '<label class="f"><span>Your colour</span><div class="swatches">' + OR.GROUP_COLOURS.map(c => '<button type="button" class="sw' + (c === (g.colour || OR.GROUP_COLOURS[0]) ? ' on' : '') + '" data-c="' + c + '" style="--c:' + c + '" aria-label="Colour"></button>').join('') + '</div></label>' +
-      '<label class="f"><span>Tell me when a rider is more than</span><select id="gSplit">' + [1, 2, 3, 5, 10].map(n => '<option value="' + n + '"' + (n === (parseFloat(g.splitMi) || 2) ? ' selected' : '') + '>' + (OR.cfg.units === 'km' ? Math.round(n * 1.609) + ' km' : n + (n === 1 ? ' mile' : ' miles')) + ' away</option>').join('') + '</select></label>' +
-      '<button id="gNew" class="btn wide pri">' + ic('group') + 'Start a new group</button>' +
-      (OR.native.scanQr ? '<button id="gScan" class="btn wide">' + ic('qr') + 'Scan a QR code to join</button>' : '') +
-      '<div class="joinrow">' + OR.field('gCode', 'Or type the code', g.lastCode || '', 'text', 'e.g. 7KQ4-9MZT-H2XB') + '<button id="gJoin" class="btn">Join</button></div>' +
+      '<label class="f"><span>Tell me when a rider is more than</span><select id="gSplit">' + [1, 2, 3, 5, 10].map(n => '<option value="' + n + '"' + (n === (parseFloat(g.splitMi) || 2) ? ' selected' : '') + '>' + (OR.cfg.units === 'km' ? Math.round(n * 1.609) + ' km' : n + (n === 1 ? ' mile' : ' miles')) + ' away</option>').join('') + '</select></label></details>' +
       '<div class="card note"><b>How it works</b><p class="small">Starting a group gives you a code to send to your mates. Anyone with the code can see the group, so only share it with the people riding. ' +
       'Positions are encrypted with the code on your phone before they leave it, and pass through free public relay servers (HiveMQ and EMQX), which can\'t read them. Those servers are free test services with no guarantee they\'ll always be up, so the app uses both at once. ' +
       'It sends your position every 5 seconds when moving and every 30 seconds when stopped, using about 1 to 3 MB of data an hour. Leaving the group removes your position.</p></div>';
@@ -109,12 +110,12 @@
       (lost.length ? '<div class="card warnc"><b>' + lost.map(r => esc(r.n)).join(', ') + ' not heard from for 3 minutes or more.</b><p class="small">They may have no signal or have stopped the app. They\'re shown where they were last seen.</p></div>' : '') +
       '<label class="f"><span>My role in the group</span><select id="gRole"><option value="">Rider</option><option value="lead">Leader (out front)</option><option value="sweep">Sweep (back marker)</option></select></label>' +
       roleLine(st) +
-      '<button id="gChat" class="btn wide pri">' + ic('chat') + 'Group chat' + (st.unread ? ' (' + st.unread + ' new)' : '') + '</button>' +
-      '<button id="gAll" class="btn wide">' + ic('map') + 'Show everyone on the map</button>' +
-      routeSection(st) + meetSection(st) + hazSection() +
+      '<div class="gact"><button id="gChat" class="tile big">' + OR.badge('chat', '#0e9f57') + '<span>Group chat' + (st.unread ? ' <i class="new">' + st.unread + ' new</i>' : '') + '</span></button>' +
+      '<button id="gAll" class="tile big">' + OR.badge('map', '#1e88e5') + '<span>Show everyone</span></button></div>' +
       '<h3 class="gh">Riders (' + (rs.length + 1) + ' including you)</h3>' +
       (rs.length ? '<div class="riders">' + rs.map(riderRow).join('') + '</div>' : '<p class="small muted">Nobody else yet. Send them the code: they open the Group tab and scan your QR code or type the code.</p>') +
-      '<h3 class="gh">Quick message to the group</h3>' + quickTiles() + msgList(st) +
+      '<details class="gdet"><summary>' + ic('near') + 'Route, meeting point and hazards</summary>' + routeSection(st) + meetSection(st) + hazSection() + '</details>' +
+      '<details class="gdet"><summary>' + ic('chat') + 'Quick message to the group</summary>' + quickTiles() + msgList(st) + '</details>' +
       '<button id="gLeave" class="btn wide ghost">Leave the group</button>' +
       '<p class="small muted">Messages and warnings are read out, with the screen off too. Turn voice off in Settings to stop them.</p>';
     bindCommon(box);

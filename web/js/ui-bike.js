@@ -154,44 +154,46 @@
     setTimeout(() => { const el = document.createElement('div'); el.innerHTML = speedoCard(); box.appendChild(el); const rs = el.querySelector('#spReset'); if (rs) rs.onclick = () => { if (confirm('Clear your speedo readings?')) { OR.store.set('speedo', []); OR.pageBike(box); } }; }, 0);
     const b = OR.cfg.bike, prof = OR.BIKES[b.profile], range = OR.fuelRange(), left = OR.fuelLeft();
     const lm = OR.learnedMpg(), pace = OR.pace(), brk = OR.breaks(), mm = OR.monthlyMiles(), costs = OR.runningCosts();
-    let h = '<div id="bikePage"></div>' + (OR.bikePhotoCard ? OR.bikePhotoCard() : '');
+    let h = '<div id="bikePage"></div>'; const photo = OR.bikePhotoCard ? OR.bikePhotoCard() : '';
     setTimeout(() => OR.bindBikePhoto && OR.bindBikePhoto(box), 0);
     // which bike
-    h += '<div class="bikecard"><div class="bk-h">' + OR.badge('moto', 'var(--green)') + '<div><b>' + esc(prof ? prof.name : (b.name || 'Your bike')) + '</b><span>' + (prof ? 'Set up with Harley-Davidson\'s figures' : 'Choose your bike to load its figures and service schedule') + '</span></div></div>' +
+    const bikecard = '<div class="bikecard"><div class="bk-h">' + OR.badge('moto', 'var(--green)') + '<div><b>' + esc(prof ? prof.name : (b.name || 'Your bike')) + '</b><span>' + (prof ? 'Set up with Harley-Davidson\'s figures' : 'Choose your bike to load its figures and service schedule') + '</span></div></div>' +
       '<label class="f"><span>Bike</span><select id="bProf"><option value="">Other (enter your own)</option>' + Object.keys(OR.BIKES).map(k => '<option value="' + k + '"' + (b.profile === k ? ' selected' : '') + '>' + esc(OR.BIKES[k].name) + '</option>').join('') + '</select></label>' +
       (prof ? '<table class="facts">' + prof.facts.map(f => '<tr><td>' + esc(f[0]) + '</td><td>' + esc(f[1]) + '</td></tr>').join('') + '</table><p class="small muted">' + esc(prof.pressureNote) + ' <a href="' + prof.sources[0] + '" target="_blank">Harley spec</a>, <a href="' + prof.sources[1] + '" target="_blank">service intervals</a>.</p>'
         : OR.field('bName', 'Name', b.name, 'text', 'e.g. Low Rider S')) + '</div>';
 
     // fuel
-    h += '<h3>' + OR.ic('fuel') + 'Fuel</h3><div class="stats">' +
+    const hero = '<h3>' + OR.ic('fuel') + 'Fuel</h3><div class="stats">' +
       '<div><b>' + (lm ? lm.mpg.toFixed(1) : '–') + '</b><span>' + (lm ? 'mpg, your real economy' : 'real mpg: log 2 full tanks') + '</span></div>' +
       '<div><b>' + (range ? OR.fmtDist(range) : '–') + '</b><span>range on a full tank</span></div>' +
       '<div><b>' + (left != null ? OR.fmtDist(left) : '–') + '</b><span>left now (estimate)</span></div></div>' +
       '<button class="btn wide pri" id="bFill">' + OR.ic('fuel') + 'I\'ve filled up</button>';
+    h += hero + bikecard;
     const byStyle = ['slow', 'mixed', 'fast'].map(s => [s, OR.learnedMpg(s)]).filter(x => x[1]);
     if (byStyle.length) h += '<div class="learned"><p class="lbl">By riding style</p>' + byStyle.map(([s, l]) => '<div class="lr"><span>' + OR.STYLE_NAMES[s] + '</span><b>' + l.mpg.toFixed(1) + ' mpg</b></div>').join('') +
       '<p class="small muted">Routes and trips use the economy that fits their roads.</p></div>';
-    h += '<div class="two">' + OR.field('bTank', 'Tank size (litres)', b.tankL, 'number') + OR.field('bMpg', lm ? 'Your mpg before learning' : 'Starting mpg (until it learns)', b.mpg, 'number') + '</div>' +
+    h += '<details><summary>' + OR.ic('gear') + 'Tank and fuel settings</summary><div class="two">' + OR.field('bTank', 'Tank size (litres)', b.tankL, 'number') + OR.field('bMpg', lm ? 'Your mpg before learning' : 'Starting mpg (until it learns)', b.mpg, 'number') + '</div>' +
       OR.field('bRes', 'Warn me with this many miles left', b.reserveMi, 'number') +
-      '<label class="f"><span>Fuel for live prices abroad</span><select id="bGrade">' + Object.keys(OR.FUEL_GRADES).map(k => '<option value="' + k + '"' + ((OR.cfg.fuelGrade || 'e10') === k ? ' selected' : '') + '>' + OR.FUEL_GRADES[k] + '</option>').join('') + '</select></label>';
+      '<label class="f"><span>Fuel for live prices abroad</span><select id="bGrade">' + Object.keys(OR.FUEL_GRADES).map(k => '<option value="' + k + '"' + ((OR.cfg.fuelGrade || 'e10') === k ? ' selected' : '') + '>' + OR.FUEL_GRADES[k] + '</option>').join('') + '</select></label></details>';
     const fl = OR.fuelLog.list();
     if (fl.length) h += '<details><summary>' + OR.ic('fuel') + 'Fill-ups (' + fl.length + ')</summary><div class="list">' + fl.slice(0, 30).map((f, i) => '<div class="li fill"><div class="svc-h"><b>' + f.litres.toFixed(1) + ' L' + (f.price ? ' at ' + money(f.price, f.cur) : '') + '</b>' + (f.price ? '<span class="tag okc">' + money(f.litres * f.price, f.cur) + '</span>' : '') + '</div><span>' + fmtD(f.t) + (f.full ? ', full tank' : ', part fill') + (f.odo ? ', ' + Math.round(f.odo).toLocaleString('en-GB') + ' mi' : '') + '</span><div class="row"><button class="mini" data-delfill="' + i + '" aria-label="Delete">' + OR.ic('x') + '</button></div></div>').join('') + '</div></details>';
 
     // riding
-    h += '<h3>' + OR.ic('lean') + 'How you ride</h3><div class="learned">' +
+    h += '<details><summary>' + OR.ic('lean') + 'How you ride</summary><div class="learned">' +
       '<div class="lr"><span>Pace</span><b>' + (pace ? (Math.abs(pace.factor - 1) < 0.03 ? 'Same as the planner' : Math.round(Math.abs(pace.factor - 1) * 100) + '% ' + (pace.factor > 1 ? 'slower' : 'quicker') + ' than the planner') : 'Ride 2 planned routes to learn') + '</b></div>' +
       '<div class="lr"><span>Breaks</span><b>' + (brk ? 'about ' + Math.round(brk.perHour / 60) + ' min per hour of riding' : 'learning') + '</b></div>' +
       '<div class="lr"><span>Usual mileage</span><b>' + (mm ? Math.round(mm).toLocaleString('en-GB') + ' mi a month' : 'learning') + '</b></div>' +
-      '<p class="small muted">' + (pace ? 'Arrival times, route times and trip timetables now use your pace' + (brk ? ' and your usual breaks' : '') + '. ' : '') + 'Learned from your recorded rides' + (pace ? ' (' + pace.n + ' on planned routes)' : '') + '.</p></div>';
+      '<p class="small muted">' + (pace ? 'Arrival times, route times and trip timetables now use your pace' + (brk ? ' and your usual breaks' : '') + '. ' : '') + 'Learned from your recorded rides' + (pace ? ' (' + pace.n + ' on planned routes)' : '') + '.</p></div></details>';
 
     // wear and costs
     const tf = OR.treadForecast('front'), tr = OR.treadForecast('rear'), lf = OR.tyreLife('front'), lr = OR.tyreLife('rear');
-    h += '<h3>' + OR.ic('wrench') + 'Wear and running costs</h3><div class="learned">' +
+    h += '<details><summary>' + OR.ic('wrench') + 'Wear and running costs</summary><div class="learned">' +
       '<div class="lr"><span>Cost per mile (last 12 months)</span><b>' + (costs.perMile != null ? '£' + costs.perMile.toFixed(2) : 'learning') + '</b></div>' +
       '<div class="lr"><span>Fuel spent (12 months)</span><b>£' + Math.round(costs.fuel) + '</b></div>' +
       '<div class="lr"><span>Servicing and parts (12 months)</span><b>£' + Math.round(costs.work) + '</b></div>' +
       [['Front', tf, lf], ['Rear', tr, lr]].map(([n, f, l]) => '<div class="lr"><span>' + n + ' tyre</span><b>' + (f ? (f.milesTo2 < 1 ? 'down to 2 mm' : '2 mm in about ' + Math.round(f.milesTo2).toLocaleString('en-GB') + ' mi' + (f.months != null ? ' (' + (f.months < 1 ? 'within a month' : 'about ' + Math.round(f.months) + ' month' + (Math.round(f.months) === 1 ? '' : 's')) + ')' : '')) : l ? 'your tyres last about ' + Math.round(l.miles).toLocaleString('en-GB') + ' mi' : 'log tread twice to forecast') + '</b></div>').join('') +
-      '<p class="small muted">Costs come from your fill-ups (pounds only) and the prices in Maintenance, Service history. Tyre forecasts come from your tread readings.</p></div>';
+      '<p class="small muted">Costs come from your fill-ups (pounds only) and the prices in Maintenance, Service history. Tyre forecasts come from your tread readings.</p></div></details>';
+    h += photo;
     box.innerHTML = h;
     bind(box);
   };
