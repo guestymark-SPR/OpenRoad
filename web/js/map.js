@@ -158,6 +158,7 @@
     return { rise: new Date(base + (720 - 4 * (lon + ha) - eq) * 60000), set: new Date(base + (720 - 4 * (lon - ha) - eq) * 60000) };
   };
   OR.themeNow = function () {
+    if (OR.cfg.look === 'dusk') return 'night';
     if (OR.cfg.theme !== 'auto') return OR.cfg.theme;
     const c = OR.map ? OR.map.getCenter() : { lat: 53.5, lng: -2.2 };
     const t = OR.sunTimes(c.lat, c.lng), now = new Date();
@@ -168,6 +169,7 @@
     const m = OR.themeNow();
     document.documentElement.dataset.theme = m;
     document.documentElement.dataset.look = OR.cfg.look || 'classic';
+    if (OR.map && OR.map.getLayer && OR.map.getLayer('ov-route-glow')) OR.map.setPaintProperty('ov-route-glow', 'line-opacity', OR.cfg.look === 'dusk' ? 0.55 : 0);
     if (OR.map && OR.map.__mode !== m) {
       OR.map.__mode = m;
       OR.map.setStyle(OR.buildStyle(m), { diff: false });
@@ -197,6 +199,7 @@
     L({ id: 'ov-tripdays', type: 'symbol', source: 'ov-tripdays', layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 13, 'text-allow-overlap': true, 'text-anchor': 'bottom', 'text-offset': [0, -0.4] },
       paint: { 'text-color': '#fff', 'text-halo-color': ['get', 'c'], 'text-halo-width': 3 } });
     L({ id: 'ov-alts', type: 'line', source: 'ov-alts', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': night ? '#7c8790' : '#8f99a3', 'line-width': z([5, 4, 14, 9]), 'line-opacity': 0.75 } });
+    L({ id: 'ov-route-glow', type: 'line', source: 'ov-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ff6a1f', 'line-width': z([5, 14, 14, 30]), 'line-blur': 12, 'line-opacity': OR.cfg.look === 'dusk' ? 0.55 : 0 } });
     L({ id: 'ov-route-c', type: 'line', source: 'ov-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': night ? '#000' : '#5a1a00', 'line-width': z([5, 6, 14, 13]), 'line-opacity': 0.6 } });
     L({ id: 'ov-route', type: 'line', source: 'ov-route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ff6a1f', 'line-width': z([5, 4, 14, 9]) } });
     // the weather on the route: the line turns blue where it's likely to rain when you get there, and so on (ui-brief.js)

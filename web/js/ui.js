@@ -742,7 +742,7 @@
         '<div class="quick"><div class="q-row"><span>' + ic('sun') + 'Map colours</span>' + qs('qTheme', c.theme, [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']]) + '</div>' +
         '<div class="q-row"><span>' + ic(c.voice ? 'vol' : 'mute') + 'Spoken directions</span>' + qs('qVoice', c.voice ? 'on' : 'off', [['on', 'On'], ['off', 'Off']]) + '</div>' +
         '<div class="q-row"><span>' + ic('map') + 'Units</span>' + qs('qUnits', c.units, [['mi', 'Miles'], ['km', 'Km']]) + '</div>' +
-        '<div class="q-row"><span>' + ic('star') + 'Look</span>' + qs('qLook', c.look || 'classic', [['outlaw', 'Outlaw'], ['classic', 'Classic']]) + '</div></div>' +
+        '<div class="q-row"><span>' + ic('star') + 'Look</span>' + qs('qLook', c.look || 'classic', [['dusk', 'Dusk'], ['outlaw', 'Outlaw'], ['classic', 'Classic']]) + '</div></div>' +
         '<input id="setFind" type="search" class="setfind" placeholder="Find a setting, like tolls or glove" autocomplete="off" aria-label="Find a setting">' +
         '<div id="setList">' + sec('Riding', ['settings', 'screen', 'voice', 'aware', 'maps']) + sec('Plan and map', ['today', 'mapset']) + sec('Safety', ['safety', 'ice']) + sec('Group rides', ['chat']) + sec('Riding abroad', ['papers', 'phrases']) + sec('App', ['data', 'auto', 'about']) + '</div>' +
         (A ? '<p class="small muted center">OpenRoad ' + esc(A.version()) + '</p>' : '');

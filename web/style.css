@@ -1287,3 +1287,47 @@ a.lnk{color:var(--yellow);font-weight:700}
   background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 [data-look=outlaw] #panel::after{display:none}
 :root:not([data-look=outlaw]) .whereto{box-shadow:inset 0 0 0 2.5px #fff,inset 0 0 0 5.5px #0b6b3a,0 12px 22px -14px rgba(0,0,0,.9)}
+
+/* ===== Dusk look: frosted glass over the map, ember-orange glow (always dark) ===== */
+:root[data-look=dusk],:root[data-look=dusk][data-theme=night],:root[data-look=dusk][data-theme=day]{
+  --green:#121828; --green-2:#ff6a1f; --yellow:#ff9d4a; --red:#ff5a4d; --ok:#4fd08a; --warn:#ffb454; --bad:#ff7a6e;
+  --paper:#0a0e1a; --surface:#161c2d; --surface-2:#1f283c; --ink:#f4f1ee; --ink-2:#c3c8d4; --ink-3:#8c95a8; --line:rgba(255,255,255,.11); --sheet:#0d1220;
+  --glass:rgba(14,19,34,.66); --glass-b:rgba(255,255,255,.14); --ember:linear-gradient(135deg,#ff5a14,#ff9d4a); --glow:0 0 22px rgba(255,106,31,.45);
+}
+[data-look=dusk] #panel{background:rgba(10,14,26,.72);-webkit-backdrop-filter:blur(22px) saturate(1.35);backdrop-filter:blur(22px) saturate(1.35);border-top:1px solid var(--glass-b);border-radius:28px 28px 0 0;box-shadow:0 -18px 40px -20px rgba(0,0,0,.8)}
+[data-look=dusk] #panel::after{display:none}
+[data-look=dusk] #top,[data-look=dusk] .fab,[data-look=dusk] #menuBtn,[data-look=dusk] #chips .chip,[data-look=dusk] #chips button{background:var(--glass);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid var(--glass-b);box-shadow:0 8px 20px -12px #000}
+[data-look=dusk] #top .logo{background:var(--ember);box-shadow:var(--glow)}[data-look=dusk] #top .logo svg{stroke:#1a0d02;fill:none}
+[data-look=dusk] #grab span{width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.35);opacity:1}
+/* titles: big and clean, with a glowing ember bar */
+:root[data-look=dusk] .vh{background:none;box-shadow:none;padding:0 0 0 14px;margin:6px 0 16px;font-size:31px;font-weight:800;letter-spacing:-.02em;position:relative}
+:root[data-look=dusk] .vh::before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:5px;height:auto;flex:none;border-radius:3px;background:var(--ember);box-shadow:var(--glow)}
+:root[data-look=dusk] h3.grp::after,:root[data-look=dusk] h3.gh::after{height:1px;opacity:1;background:linear-gradient(90deg,rgba(255,255,255,.28),transparent)}
+:root[data-look=dusk] h3.grp,:root[data-look=dusk] h3.gh{color:var(--ink-3);font-weight:700;letter-spacing:.04em}
+/* cards are glass */
+[data-look=dusk] .card,[data-look=dusk] .menu:not(.tmenu),[data-look=dusk] .stats>div,[data-look=dusk] .li,[data-look=dusk] .sgrp .chk,[data-look=dusk] details.gdet,[data-look=dusk] #v-bike details,[data-look=dusk] .rider,[data-look=dusk] .optcard,[data-look=dusk] .bikecard,[data-look=dusk] .lastride,[data-look=dusk] .aistep{background:linear-gradient(160deg,rgba(255,255,255,.085),rgba(255,255,255,.03));border:1px solid var(--glass-b);box-shadow:0 10px 24px -16px #000,inset 0 1px 0 rgba(255,255,255,.08);border-radius:22px}
+[data-look=dusk] .quick{background:linear-gradient(135deg,rgba(255,106,31,.22),rgba(255,157,74,.06));border:1px solid rgba(255,157,74,.3);box-shadow:0 12px 26px -16px rgba(255,106,31,.7)}
+[data-look=dusk] .whereto{background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.04))!important;border:1px solid var(--glass-b)!important;color:#fff;box-shadow:0 14px 30px -18px #000,inset 0 1px 0 rgba(255,255,255,.12)}
+[data-look=dusk] .whereto svg{color:var(--yellow);filter:drop-shadow(0 0 8px rgba(255,106,31,.7))}
+[data-look=dusk] .whereto small{color:var(--ink-2)}
+[data-look=dusk] .btn.go,[data-look=dusk] .btn.pri,[data-look=dusk] .btn.go:active{background:var(--ember);border:0;color:#1a0d02;text-shadow:none;box-shadow:var(--glow),inset 0 1px 0 rgba(255,255,255,.35)}
+[data-look=dusk] .btn.go svg,[data-look=dusk] .btn.pri svg{color:#1a0d02;stroke:#1a0d02}
+[data-look=dusk] .btn{border:1px solid var(--glass-b);background:rgba(255,255,255,.07)}
+[data-look=dusk] .modes{background:rgba(255,255,255,.06);box-shadow:none;border:1px solid var(--glass-b)}
+[data-look=dusk] .modes button.on{background:var(--ember);color:#1a0d02;box-shadow:var(--glow)}
+[data-look=dusk] .seg{background:rgba(255,255,255,.06);border:1px solid var(--glass-b);box-shadow:none}
+[data-look=dusk] .seg button.on{background:var(--ember);color:#1a0d02;box-shadow:0 0 14px rgba(255,106,31,.4)}
+[data-look=dusk] .quick .seg button.on{background:var(--ember);color:#1a0d02}
+/* nav: a glass pill, the open tab glows */
+[data-look=dusk] .navsign{background:var(--glass);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:0 10px 26px -12px #000,inset 0 0 0 1px var(--glass-b);border-radius:26px;padding:5px}
+[data-look=dusk] #nav .navsign button{border-radius:20px;color:var(--ink-2)}
+[data-look=dusk] #nav .navsign button svg{stroke:var(--ink-2)}
+[data-look=dusk] #nav .navsign button.on{background:var(--ember);color:#1a0d02;box-shadow:var(--glow)}
+[data-look=dusk] #nav .navsign button.on svg{stroke:#1a0d02}
+[data-look=dusk] .tmenu button,[data-look=dusk] .tiles.rq .tile{backdrop-filter:none}
+[data-look=dusk] input,[data-look=dusk] select,[data-look=dusk] textarea{background:rgba(255,255,255,.06);border:1px solid var(--glass-b);color:var(--ink)}
+[data-look=dusk] .sgrp h3::before{background:var(--ember)}
+[data-look=dusk] #v-rides .list .li{border-left:1px solid var(--glass-b);background:linear-gradient(160deg,rgba(255,106,31,.14),rgba(255,255,255,.03))}
+:root[data-look=dusk] #grab span{width:44px;height:5px;border-radius:3px;background:rgba(255,255,255,.35);opacity:1}
+:root[data-look=dusk] .whereto{box-shadow:0 14px 30px -18px #000,inset 0 1px 0 rgba(255,255,255,.12)}
+:root[data-look=dusk] .vh{color:#fff}
