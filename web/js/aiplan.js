@@ -24,7 +24,7 @@
 
   function parse(text) {
     const a = text.indexOf('{'), b = text.lastIndexOf('}');
-    if (a < 0 || b < a) throw new Error('The AI did not answer with a ride');
+    if (a < 0 || b < a) throw new Error('That did not look like a ride. Copy all of the AI\'s reply and try again.');
     return JSON.parse(text.slice(a, b + 1));
   }
 
@@ -58,9 +58,51 @@
     return { out, dropped };
   }
 
+  async function finish(plan, out, here) {
+    if (plan.error) throw new Error(plan.error);
+    if (!Array.isArray(plan.stops) || !plan.stops.length) throw new Error('The AI gave no places to ride to');
+    out.innerHTML = '<div class="spin"></div><p class="small" style="text-align:center">Finding the places on the map…</p>';
+    const { out: found, dropped } = await lookUp(plan.stops.slice(0, 6), here);
+    if (!found.length) throw new Error('None of the places could be found on the map');
+    show(plan, found, dropped, here);
+  }
+  const askText = (want, here) => SYSTEM + '\n\n' + (here ? 'The rider is currently near latitude ' + here.lat.toFixed(1) + ', longitude ' + here.lng.toFixed(1) + ' (rounded). Start there unless they name another start.' : 'The rider has not shared where they are: use the start they name.') + '\n\nRide wanted: ' + want;
+  async function copy(t) {
+    try { await navigator.clipboard.writeText(t); return true; } catch (e) { }
+    try { if (OR.native && OR.native.copyText) { OR.native.copyText(t); return true; } } catch (e) { }
+    return false;
+  }
+  // no key: copy the request, ask the Claude app (or any AI chat), paste the reply back
+  function manualSheet(preset) {
+    OR.sheet('<h2>' + OR.ic('spark') + 'Describe your ride</h2>' +
+      '<p class="small">No key needed. You use the Claude app you already have.</p>' +
+      '<textarea id="aiWant" rows="3" maxlength="500" placeholder="e.g. a relaxed three hour loop through the Peaks with a pub lunch">' + esc(preset || '') + '</textarea>' +
+      '<ol class="small"><li>Tap <b>Send to an app</b> and pick the Claude app, or tap <b>Copy</b> and paste it into Claude yourself.</li><li>Send it.</li><li>Copy Claude\'s whole answer, come back, and tap <b>Paste the answer</b>.</li></ol>' +
+      '<div class="row"><button class="btn pri" id="aiShare">' + OR.ic('share') + 'Send to an app</button><button class="btn" id="aiCopy">Copy</button></div>' +
+      '<textarea id="aiReply" rows="3" placeholder="Claude\'s answer goes here"></textarea>' +
+      '<div class="row"><button class="btn" id="aiPaste">Paste the answer</button><button class="btn go" id="aiGo">' + OR.ic('spark') + 'Plan it</button></div><div id="aiOut"></div>' +
+      '<p class="small muted">The request holds what you typed and where you are to about 10 km, and it goes only where you paste it. OpenRoad finds the places on the map and plans the roads itself. Got an Anthropic key? <a href="#" id="aiKeyLink">Use it for one-tap planning</a>.</p>', b => {
+      const want = () => b.querySelector('#aiWant').value.trim(), here = () => OR.pos ? { lat: OR.pos.lat, lng: OR.pos.lng } : null;
+      b.querySelector('#aiKeyLink').onclick = e => { e.preventDefault(); keySheet(); };
+      b.querySelector('#aiCopy').onclick = async () => {
+        if (want().length < 5) { OR.toast('Say a little more about the ride first'); return; }
+        const t = askText(want(), here());
+        OR.toast(await copy(t) ? 'Copied. Paste it into the Claude app.' : 'Could not copy. Press and hold the box to copy.', 5000);
+      };
+      b.querySelector('#aiShare').onclick = () => { if (want().length < 5) { OR.toast('Say a little more about the ride first'); return; } OR.share(askText(want(), here()), 'Plan a motorbike ride'); };
+      b.querySelector('#aiPaste').onclick = async () => { try { b.querySelector('#aiReply').value = await navigator.clipboard.readText(); } catch (e) { OR.toast('Press and hold the box, then Paste'); } };
+      b.querySelector('#aiGo').onclick = async () => {
+        const out = b.querySelector('#aiOut'), txt = b.querySelector('#aiReply').value;
+        if (!txt.trim()) { OR.toast('Paste Claude\'s answer first'); return; }
+        out.innerHTML = '<div class="spin"></div>'; b.querySelector('#aiGo').disabled = true;
+        try { await finish(parse(txt), out, here()); }
+        catch (e) { b.querySelector('#aiGo').disabled = false; out.innerHTML = '<p class="card warnc">' + esc(/Unexpected|JSON/.test(String(e.message)) ? 'That did not look like the answer. Copy all of Claude\'s reply, starting at the curly bracket.' : e.message) + '</p>'; }
+      };
+    });
+  }
+
   OR.aiPlanSheet = function (preset) {
-    if (!(OR.native && OR.native.fetchTextH)) { OR.toast('The AI ride planner needs the OpenRoad Android app', 5000); return; }
-    if (!OR.aiKey()) { keySheet(); return; }
+    if (!OR.aiKey() || !(OR.native && OR.native.fetchTextH)) { manualSheet(preset); return; }
     OR.sheet('<h2>' + OR.ic('spark') + 'Describe your ride</h2>' +
       '<p class="small">Say it how you would to a mate. For example: <i>a relaxed three hour loop through the Peaks with a pub lunch</i>, or <i>fast run to Whitby, coming back on the twisty roads</i>.</p>' +
       '<textarea id="aiWant" rows="4" maxlength="500" placeholder="What kind of ride?">' + esc(preset || '') + '</textarea>' +
@@ -75,12 +117,7 @@
         try {
           const here = OR.pos ? { lat: OR.pos.lat, lng: OR.pos.lng } : null;
           const plan = await ask(want, here);
-          if (plan.error) throw new Error(plan.error);
-          if (!Array.isArray(plan.stops) || !plan.stops.length) throw new Error('The AI gave no places to ride to');
-          out.innerHTML = '<div class="spin"></div><p class="small" style="text-align:center">Finding the places on the map…</p>';
-          const { out: found, dropped } = await lookUp(plan.stops.slice(0, 6), here);
-          if (!found.length) throw new Error('None of the places could be found on the map');
-          show(plan, found, dropped, here);
+          await finish(plan, out, here);
         } catch (e) { b.querySelector('#aiGo').disabled = false; out.innerHTML = '<p class="card warnc">' + esc(friendly(e)) + '</p>'; }
       };
     });
@@ -109,13 +146,14 @@
 
   function keySheet() {
     OR.sheet('<h2>' + OR.ic('spark') + 'AI ride planner key</h2>' +
-      '<p class="small">The planner uses your own Anthropic account, so there is no OpenRoad fee and nothing runs on a server of ours. Each ride costs a small fraction of a penny to a few pence, billed by Anthropic to your account.</p>' +
+      '<p class="small">For one-tap planning. The planner uses your own Anthropic account, so there is no OpenRoad fee and nothing runs on a server of ours. Each ride costs a small fraction of a penny to a few pence, billed by Anthropic to your account.</p>' +
       '<ol class="small"><li>Go to <b>console.anthropic.com</b>, sign in and add a little credit.</li><li>Make an API key and paste it here.</li></ol>' +
       '<label class="f"><span>Anthropic API key</span><input id="aiKeyIn" type="password" autocomplete="off" placeholder="sk-ant-…" value="' + esc(OR.cfg.aiKey || '') + '"></label>' +
       '<label class="f"><span>Model</span><select id="aiModelIn">' + OR.AI_MODELS.map(m => '<option value="' + m[0] + '"' + (m[0] === model() ? ' selected' : '') + '>' + m[1] + '</option>').join('') + '</select></label>' +
       '<p class="small muted">The key stays on this phone and goes only to Anthropic. Anyone who can open your phone\'s OpenRoad settings could see it.</p>' +
-      '<button class="btn go wide" id="aiSave">Save</button>' + (OR.aiKey() ? '<button class="btn wide ghost" id="aiClear">Remove the key</button>' : ''), b => {
+      '<button class="btn go wide" id="aiSave">Save</button><button class="btn wide ghost" id="aiNoKey">No key: use the Claude app instead</button>' + (OR.aiKey() ? '<button class="btn wide ghost" id="aiClear">Remove the key</button>' : ''), b => {
       b.querySelector('#aiSave').onclick = () => { OR.cfg.aiKey = b.querySelector('#aiKeyIn').value.trim(); OR.cfg.aiModel = b.querySelector('#aiModelIn').value; OR.saveCfg(); OR.closeSheet(); if (OR.cfg.aiKey) OR.aiPlanSheet(); };
+      b.querySelector('#aiNoKey').onclick = () => manualSheet();
       const c = b.querySelector('#aiClear'); if (c) c.onclick = () => { delete OR.cfg.aiKey; OR.saveCfg(); OR.closeSheet(); OR.toast('Key removed'); };
     });
   }
