@@ -3,7 +3,7 @@
 'use strict';
 (function (OR) {
   const $ = OR.$, $$ = OR.$$, esc = OR.esc, A = OR.native, ic = (n, c) => OR.ic(n, c);
-  const NEWS_ID = '2026-10-30';
+  const NEWS_ID = '2026-11-04';
 
   // ---------- the pictures (simple drawings, so they work offline and in both themes) ----------
   const ART = {
@@ -26,18 +26,16 @@
   };
 
   const NEWS = [
-    { art: 'today', title: 'Should I ride today?', text: 'The Plan screen now opens with today\'s riding weather where you are: when it\'s dry, how warm, how windy. And a twisty loop from your door, planned to fit the dry hours. One tap and you\'re riding.',
-      tryLabel: 'Show me', go: () => { OR.tab('plan'); OR.setPlanMode && OR.setPlanMode('ab'); OR.todayRefresh && OR.todayRefresh(); } },
-    { art: 'hills', title: '3D hills', text: 'The map shows the shape of the land, and tilts into real 3D hills. Tap the new 3D button on the map, or tilt with two fingers. Riding mode tilts too, so you see the climb ahead.',
-      tryLabel: 'Tilt the map', go: () => { const m = OR.map; m.easeTo({ pitch: 62, bearing: m.getBearing() - 25, zoom: Math.max(11, Math.min(13, m.getZoom())), duration: 1600 }); } },
-    { art: 'reveal', title: 'Routes draw themselves', text: 'Plan a route and watch it draw along the road while the map flies over it, then settle so you can see it all.',
-      tryLabel: 'Show me', go: () => { if (OR.plan.route && OR.showOptions) OR.showOptions(true); else { OR.tab('plan'); OR.toast('Search for a place or tap the map to plan a route', 5000); } } },
-    { art: 'weather', title: 'Weather on the route', text: 'The route line turns blue where it\'s likely to rain when you get there, and shows storms, strong gusts and icy stretches too, with the time on the line. No more guessing which bit will be wet.',
-      tryLabel: 'Show me', go: () => { if (OR.plan.route && OR.showOptions) OR.showOptions(true); else { OR.tab('plan'); OR.toast('Plan a route: its weather shows on the line', 5000); } } },
-    { art: 'rec', title: 'Rides record themselves', text: 'Forgot to press record? Not any more. With OpenRoad open, set off at riding speed and it starts recording by itself, and saves the ride when you\'ve been parked a while. Near the start of a planned route, it follows the route.',
-      tryLabel: 'Settings', go: () => { OR.openMore && OR.openMore('settings'); } },
-    { art: 'widget', title: 'On your home screen', text: 'Add the OpenRoad widget to see today\'s riding weather without opening the app, with buttons to ride today\'s loop or start recording.',
-      android: true, tryLabel: 'Add the widget', go: () => { if (A && A.pinWidget && A.pinWidget()) return; OR.toast('Press and hold an empty part of your home screen, tap Widgets, then find OpenRoad', 8000); } }
+    { art: 'reveal', title: 'Share to OpenRoad', text: 'In Google Maps, WhatsApp or Messages, share a place and pick OpenRoad. It asks if you want to go there, add it as a stop, or just see it on the map.',
+      android: true, tryLabel: 'Got it', go: () => { } },
+    { art: 'today', title: 'Where to?', text: 'The Plan screen starts with a Where to? card, your Home, and your last ride. Swipe the panel up or down with a thumb. On the road, bigger buttons and swipes replace the small controls.',
+      tryLabel: 'Show me', go: () => { OR.tab('plan'); } },
+    { art: 'reveal', title: 'Describe a ride', text: 'Type what you fancy, like "a twisty loop with a café stop, about 3 hours", and the AI ride planner suggests places and builds the route. It uses your own Anthropic key, set in Settings.',
+      android: true, tryLabel: 'Settings', go: () => { OR.openMore && OR.openMore('settings'); } },
+    { art: 'weather', title: 'Wind, dusk and more', text: 'The ride brief now shows headwind and crosswind along the route and when it gets dark. You also get a parked-bike pin, a readiness check before you go, and a regroup suggestion when a rider falls behind.',
+      tryLabel: 'Got it', go: () => { } },
+    { art: 'rec', title: 'Let someone follow you', text: 'Share a link from the ride options. Whoever opens it sees where you are on a map, with no app needed. The link is private to the code in it.',
+      android: true, tryLabel: 'Got it', go: () => { } }
   ];
 
   // ---------- the slide show ----------
