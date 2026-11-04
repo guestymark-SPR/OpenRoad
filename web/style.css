@@ -1045,3 +1045,53 @@ body.filming #tiltBtn{display:none}
 .tipkinds .btn svg{width:18px;height:18px;margin-right:6px}
 
 .gdot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+
+/* ---------- depth: raised cards, a recessed segment bar, layered sheets (less flat) ---------- */
+:root{
+  --lift-1:0 1px 2px rgba(16,28,22,.10),0 3px 8px -2px rgba(16,28,22,.12);
+  --lift-2:0 2px 4px rgba(16,28,22,.10),0 10px 22px -8px rgba(16,28,22,.22);
+  --edge:inset 0 1px 0 rgba(255,255,255,.85);
+  --trough:inset 0 2px 4px rgba(16,28,22,.12),inset 0 0 0 1px rgba(16,28,22,.05);
+}
+[data-theme=night]{
+  --lift-1:0 1px 2px rgba(0,0,0,.45),0 3px 8px -2px rgba(0,0,0,.5);
+  --lift-2:0 2px 4px rgba(0,0,0,.4),0 12px 24px -8px rgba(0,0,0,.65);
+  --edge:inset 0 1px 0 rgba(255,255,255,.07);
+  --trough:inset 0 2px 5px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.25);
+}
+/* the sheet sits above the map, with a soft light at its top edge */
+#panel{background:linear-gradient(180deg,color-mix(in srgb,var(--sheet) 82%,#fff) 0,var(--sheet) 90px);
+  box-shadow:0 -14px 34px -10px rgba(16,28,22,.38),0 -2px 6px rgba(16,28,22,.10),inset 0 1px 0 rgba(255,255,255,.8)}
+[data-theme=night] #panel{background:linear-gradient(180deg,color-mix(in srgb,var(--sheet) 90%,#fff) 0,var(--sheet) 90px);box-shadow:0 -14px 34px -10px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.08)}
+/* cards, rows and tiles: raised off the sheet */
+.card,.tile,.tool,.opt,.optcard{box-shadow:var(--edge),var(--lift-1);border:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.optcard{background:var(--surface);border-radius:16px;overflow:hidden}
+.optcard .opt-row+.opt-row{border-top:1px solid color-mix(in srgb,var(--line) 70%,transparent)}
+.tile:active,.tool:active,.opt:active{box-shadow:var(--trough);transform:scale(.985)}
+.opt.on{box-shadow:var(--edge),var(--lift-2),inset 6px 0 0 var(--green-2)}
+.card.okc{box-shadow:var(--edge),var(--lift-1),inset 4px 0 0 #0e9f57}
+/* buttons */
+.btn{box-shadow:var(--edge),var(--lift-1)}
+.btn:active{box-shadow:var(--trough)}
+.btn.ghost{box-shadow:none}
+.btn.pri,.btn.go{background:linear-gradient(180deg,color-mix(in srgb,var(--green) 80%,#fff) 0,var(--green) 55%,color-mix(in srgb,var(--green) 85%,#000) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 2px 4px rgba(0,50,25,.35),0 10px 20px -8px rgba(0,50,25,.55)}
+.btn.go:active,.btn.pri:active{box-shadow:inset 0 3px 6px rgba(0,0,0,.35)}
+.btn.small.on,.tipkinds .btn.on{box-shadow:inset 0 2px 4px rgba(0,0,0,.25)}
+/* the segment bar is a recessed trough with a raised selected pill */
+.seg{background:var(--surface-2);box-shadow:var(--trough);border:0}
+.seg button.on{background:linear-gradient(180deg,color-mix(in srgb,var(--green) 82%,#fff),var(--green));box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 2px 5px rgba(0,50,25,.35)}
+/* page headings and section labels */
+.vh{text-shadow:0 1px 0 rgba(255,255,255,.6)} [data-theme=night] .vh{text-shadow:none}
+h3,.gh{display:flex;align-items:center;gap:8px}
+h3::after,.gh::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+/* empty states: the picture sits on a soft raised disc */
+.empty svg.big{box-sizing:content-box;padding:20px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#fff,color-mix(in srgb,var(--green-2) 14%,var(--surface)));box-shadow:var(--lift-2);margin-bottom:4px}
+[data-theme=night] .empty svg.big{background:radial-gradient(circle at 35% 25%,color-mix(in srgb,var(--green-2) 30%,var(--surface)),var(--surface))}
+/* floating map controls and chips */
+.fab,#chips button,.chips.cats button{box-shadow:var(--edge),var(--lift-2)}
+/* sheets that slide over the panel */
+#sheetBox{box-shadow:0 -16px 40px -10px rgba(16,28,22,.45),inset 0 1px 0 rgba(255,255,255,.7)}
+@media (prefers-reduced-motion:reduce){.tile:active,.tool:active,.opt:active{transform:none}}
+.btn.go{box-shadow:inset 0 0 0 3px var(--green),inset 0 0 0 5px #fff,0 3px 5px rgba(0,50,25,.35),0 12px 22px -8px rgba(0,50,25,.55)}
+.btn.go:active{box-shadow:inset 0 0 0 3px var(--green),inset 0 0 0 5px #fff,inset 0 4px 8px rgba(0,0,0,.35)}
