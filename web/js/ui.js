@@ -12,7 +12,7 @@
   // ---------- startup ----------
   function boot() {
     if (!window.maplibregl) { window.__mlReady = boot; return; }
-    OR.initMap(); OR.mapLiveStart && OR.mapLiveStart(); OR.tipsStart && OR.tipsStart();
+    OR.initMap(); OR.mapLiveStart && OR.mapLiveStart(); OR.tipsStart && OR.tipsStart(); if (OR.peekDraw) { OR.peekDraw(); setInterval(OR.peekDraw, 60000); };
     document.documentElement.dataset.theme = OR.themeNow();
     document.documentElement.dataset.look = OR.cfg.look || 'classic';
     // the fixed buttons get the same icon set as everything else
@@ -225,6 +225,7 @@
   }
   function closePopup() { if (popup) { popup.remove(); popup = null; } }
   OR.closePopup = closePopup;
+  OR.placeMenu = (ll, name) => placeMenu(ll, name);
   function placeMenu(ll, name) {
     closePopup();
     const el = document.createElement('div'); el.className = 'pm';
@@ -376,7 +377,7 @@
         '<button class="btn wide pri" id="loopGo"' + (from ? '' : ' disabled') + '>' + (planning ? 'Finding loops…' : 'Make a loop') + '</button>';
       if (!loopFrom && !OR.pos) h += '<p class="hint">Tap the map where the loop should start and choose "Round trip from here".</p>';
     } else if (!wps.length) {
-      h += (OR.todayHtml && !tgt ? OR.todayHtml() : '') + '<div class="empty">' + ic('plan', 'big') + '<p>Search for a place or tap the map to say where you\'re going. Add via points to ride the roads you want.</p>' +
+      h += (OR.homeHtml && !tgt ? OR.homeHtml() : '') + (OR.todayHtml && !tgt ? OR.todayHtml() : '') + '<div class="empty">' + ic('plan', 'big') + '<p>Search for a place or tap the map to say where you\'re going. Add via points to ride the roads you want.</p>' +
         (OR.pos ? '<button class="btn" id="fromHere">Start from my position</button>' : '') + '</div>';
     } else {
       const fold = wps.length > 5 && !showAllWps;
@@ -384,7 +385,7 @@
         if (fold && i > 1 && i < wps.length - 2) return i === 2 ? '<li><button class="more" id="wpsAll">' + ic('down') + 'Show ' + (wps.length - 4) + ' more via points</button></li>' : '';
         const end = i === wps.length - 1 && wps.length > 1, tag = i === 0 ? 'A' : end ? 'B' : String(i);
         const cls = i === 0 ? 'wp-a' : end ? 'wp-b' : w.type === 'break' ? 'wp-stop' : 'wp-via';
-        return '<li><span class="wp ' + cls + '">' + tag + '</span><span class="wpn">' + esc(w.name || 'Point') +
+        return '<li data-k="' + i + '"><span class="wp ' + cls + '" title="Hold and drag to reorder">' + tag + '</span><span class="wpn">' + esc(w.name || 'Point') +
           (i > 0 && !end ? '<small>' + (w.type === 'break' ? 'Stop' : 'Via') + '</small>' : '') + '</span>' +
           (i > 0 && !end ? '<button class="mini txt" data-k="' + i + '" data-a="kind">' + (w.type === 'break' ? 'Make via' : 'Make stop') + '</button>' : '') +
           '<button class="mini" data-k="' + i + '" data-a="up" aria-label="Move up">' + ic('up') + '</button><button class="mini" data-k="' + i + '" data-a="down" aria-label="Move down">' + ic('down') + '</button>' +
@@ -414,7 +415,7 @@
         '<li>' + OR.arrow(m.type) + '<span>' + esc(m.text) + (m.len > 0 ? '<small>then ' + OR.fmtDist(m.len) + '</small>' : '') + '</span></li>').join('') + '</ol></details>';
     }
     v.innerHTML = h;
-    bindModes(v); bindTarget(v); if (OR.bindToday) OR.bindToday(v);
+    bindModes(v); bindTarget(v); if (OR.bindToday) OR.bindToday(v); if (OR.bindHome) OR.bindHome(v);
     $$('#styleSeg button', v).forEach(b => b.onclick = () => { OR.cfg.style = b.dataset.s; OR.saveCfg(); renderPlan(); if (planMode === 'ab' && wps.length >= 2) doPlan(); });
     const on = (id, fn) => { const el = $('#' + id, v); if (el) el.onclick = fn; };
     on('fromHere', () => { OR.plan.wps.push({ lng: OR.pos.lng, lat: OR.pos.lat, name: 'My position', type: 'break' }); changed(); });
@@ -440,6 +441,7 @@
       fixTypes(); changed(wps.length >= 2);
     });
     $$('.opt', v).forEach(b => b.onclick = () => chooseOption(+b.dataset.i));
+    if (OR.bindPlanGestures) OR.bindPlanGestures(v, (a, b) => { wps.splice(b, 0, wps.splice(a, 1)[0]); fixTypes(); changed(wps.length >= 2); }, a => { wps.splice(a, 1); fixTypes(); changed(wps.length >= 2); }, chooseOption);
     on('ride', () => startRide(OR.plan.route));
     on('brief', () => OR.openBrief && OR.openBrief(OR.plan.route));
     on('save', () => { const n = prompt('Name this route', r.name); if (n == null) return; r.name = n.trim() || r.name; OR.routes.save(r); OR.toast('Saved to Saved routes'); });

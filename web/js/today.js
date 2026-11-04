@@ -146,8 +146,10 @@
       '<button class="icon td-re" id="tdRe" aria-label="Refresh the forecast">' + ic('update') + '</button></div>' + bars(v) +
       '<p class="td-from small muted">Forecast for ' + (f.home ? 'home' : 'where you are') + (old ? ', from ' + OR.clock(new Date(st.wx.at)) : '') + '. Open-Meteo.</p>' + loopHtml(f, v) + '</div>';
   }
+  // one line for the closed panel: the verdict, or nothing yet
+  OR.todayLine = () => { if (OR.cfg.today === false || !st.wx) return null; const v = OR.todayVerdict(st.wx); return { tone: v.tone, head: v.head, sub: v.sub, icon: v.tone === 'bad' ? 'warn' : v.tone === 'wait' ? 'time' : 'sun' }; };
   OR.todayHtml = () => OR.cfg.today === false ? '' : '<div id="today">' + cardHtml() + '</div>';
-  function draw() { const el = $('#today'); if (!el) return; el.innerHTML = cardHtml(); bind(el); }
+  function draw() { if (OR.peekDraw) OR.peekDraw(); const el = $('#today'); if (!el) return; el.innerHTML = cardHtml(); bind(el); }
   OR.bindToday = function (v) { const el = $('#today', v); if (el) bind(el); };
   function bind(el) {
     const on = (id, fn) => { const b = $('#' + id, el); if (b) b.onclick = fn; };
