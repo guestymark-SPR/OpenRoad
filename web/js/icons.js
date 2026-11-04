@@ -87,7 +87,7 @@
     cam: { c: '#f9a825', i: 'cam', label: 'Speed camera', dark: true }, wx: { c: '#1e88e5', i: 'cloud', label: 'Weather' },
     closed: { c: '#d50000', i: 'noentry', label: 'Road closed' },
     tipcafe: { c: '#6d4c41', i: 'cup', label: 'Biker café' }, tipnight: { c: '#6a1b9a', i: 'moto', label: 'Bike night' }, tipview: { c: '#00796b', i: 'view', label: 'Great view' },
-    tippark: { c: '#0277bd', i: 'park', label: 'Secure bike parking' }, tiproad: { c: '#8e24aa', i: 'twisty', label: 'Great road' }, tipfuel: { c: '#c62828', i: 'fuel', label: 'Good fuel stop' }, works: { c: '#ef6c00', i: 'warn', label: 'Roadworks' }
+    tippark: { c: '#0277bd', i: 'park', label: 'Secure bike parking' }, tiproad: { c: '#8e24aa', i: 'twisty', label: 'Great road' }, tipfuel: { c: '#c62828', i: 'fuel', label: 'Good fuel stop' }, tiprough: { c: '#ef6c00', i: 'warn', label: 'Rough road' }, works: { c: '#ef6c00', i: 'warn', label: 'Roadworks' }
   };
 
   // Map pins: a coloured teardrop with a white icon, drawn on a canvas so it can be added to the map at once.

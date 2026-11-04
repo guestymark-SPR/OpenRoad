@@ -7,7 +7,7 @@
   const N = () => OR.native, $ = s => document.querySelector(s);
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   OR.TIP_KINDS = [['cafe', 'Biker café', 'cup', 'tipcafe'], ['night', 'Bike night or meet', 'moto', 'tipnight'], ['view', 'Great view', 'view', 'tipview'],
-    ['park', 'Secure bike parking', 'park', 'tippark'], ['road', 'Great road', 'twisty', 'tiproad'], ['fuel', 'Good fuel stop', 'fuel', 'tipfuel']];
+    ['park', 'Secure bike parking', 'park', 'tippark'], ['road', 'Great road', 'twisty', 'tiproad'], ['fuel', 'Good fuel stop', 'fuel', 'tipfuel'], ['rough', 'Rough road surface', 'warn', 'tiprough']];
   const kindOf = k => OR.TIP_KINDS.find(x => x[0] === k) || OR.TIP_KINDS[0];
   OR.tipsOn = () => OR.cfg.pubTips !== false;
   OR.tipsAvailable = () => !!(N() && N().tips);
