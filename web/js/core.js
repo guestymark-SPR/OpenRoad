@@ -56,6 +56,7 @@ window.OR = window.OR || {};
     checkin: { phone: '', name: '', every: 0, grace: 10 }
   };
   OR.cfg = Object.assign({}, DEF, OR.store.get('cfg', {}));
+  if (OR.cfg.lookV !== 2) { OR.cfg.look = 'dusk'; OR.cfg.lookV = 2; try { OR.store.set('cfg', OR.cfg); } catch (e) { } } // Dusk is the standard look; changing it in Settings sticks
   for (const k of ['bike', 'ice', 'checkin']) OR.cfg[k] = Object.assign({}, DEF[k], OR.cfg[k] || {});
   OR.saveCfg = () => OR.store.set('cfg', OR.cfg);
 

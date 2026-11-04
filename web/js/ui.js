@@ -61,10 +61,12 @@
   // ---------- navigation ----------
   const TABS = [['plan', 'Plan', 'plan'], ['trips', 'Trips', 'trips'], ['group', 'Group', 'group'], ['rides', 'Rides', 'moto'], ['bike', 'Bike', 'wrench']];
   function bindNav() {
-    $('#nav').innerHTML = '<div class="navsign">' + TABS.map(t => '<button data-tab="' + t[0] + '">' + ic(t[2]) + '<span>' + t[1] + '</span></button>').join('') + '</div>';
+    const tb = t => '<button data-tab="' + t[0] + '">' + ic(t[2]) + '<span>' + t[1] + '</span></button>';
+    $('#nav').innerHTML = '<div class="navsign">' + TABS.slice(0, 2).map(tb).join('') + '<button class="navstart" id="navStart" aria-label="Start riding">' + ic('moto') + '<span>Start</span></button>' + TABS.slice(2).map(tb).join('') + '</div>';
+    $('#navStart').onclick = () => startRide(OR.plan.route || null);
     $('#setBtn').innerHTML = ic('gear'); $('#setBtn').onclick = () => { morePage = null; tab('more'); renderMore(); };
     bindChips();
-    $$('#nav button').forEach(b => b.onclick = () => {
+    $$('#nav button[data-tab]').forEach(b => b.onclick = () => {
       const open = $('#panel').classList.contains('open'), same = b.classList.contains('on');
       if (same && open && innerWidth < 900) $('#panel').classList.remove('open'); else tab(b.dataset.tab);
     });
@@ -1082,7 +1084,7 @@
     OR.map.on('dragstart', () => { if (OR.ride.on) { OR.ride.follow = false; $('#recentre').hidden = false; } });
     OR.on('fix', p => {
       if (!OR.ride.on) return;
-      const sp = OR.speed(p.speed) || 0; $('#hSpeed').textContent = sp; $('#hSpeedU').textContent = OR.speedUnit();
+      const sp = OR.speed(p.speed) || 0; $('#hSpeed').textContent = sp; $('#hSpeed').parentNode.style.setProperty('--sp', Math.max(0, Math.min(1, sp / (OR.cfg.units === 'km' ? 180 : 110))).toFixed(3)); $('#hSpeedU').textContent = OR.speedUnit();
       const lim = OR.limitSign(OR.ride.limit);
       $('#limit').hidden = !lim; if (lim) $('#limit').textContent = lim;
       $('#hSpeed').parentNode.classList.toggle('over', !!lim && sp > lim + 2);
