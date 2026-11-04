@@ -1191,3 +1191,8 @@ h3,.gh{margin:26px 2px 10px}
 .parkpin{border:0;background:none;padding:0;width:40px;height:48px;position:relative;cursor:pointer}
 .parkpin span{position:absolute;left:3px;top:0;width:34px;height:34px;border-radius:50%;background:#1565c0;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font:800 19px/1 var(--f)}
 .parkpin::after{content:"";position:absolute;left:12px;top:33px;border:8px solid transparent;border-top:11px solid #fff;border-bottom:0}
+.ready ul{list-style:none;margin:8px 0 0;padding:0}.ready li{display:flex;gap:10px;align-items:flex-start;padding:5px 0;font-size:14.5px;line-height:1.35}
+.ready li i{flex:none;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:800 13px/1 var(--f);font-style:normal;margin-top:1px}
+.ready li.ok i{background:color-mix(in srgb,#0e9f57 18%,var(--surface));color:#0b6b3a}.ready li.no i{background:#f5a623;color:#3b2500}
+.ready.warn{border-color:color-mix(in srgb,#f5a623 60%,var(--line));background:color-mix(in srgb,#f5a623 8%,var(--surface))}
+.ready b{display:flex;align-items:center;gap:8px}.ready b svg{width:20px;height:20px}

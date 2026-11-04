@@ -408,6 +408,7 @@
         (o.closures && o.closures.left.length ? '<span class="closenote bad">' + ic('noentry') + 'Goes through a road closure' + (o.closures.left[0].roads ? ' on ' + esc(o.closures.left[0].roads) : '') + '</span>' : o.closures && o.closures.avoided ? '<span class="closenote">' + ic('noentry') + 'Goes round ' + (o.closures.avoided === 1 ? 'a road closure' : o.closures.avoided + ' road closures') + '</span>' : '') + '</button>').join('') + '</div>';
       h += OR.wxStripHtml ? OR.wxStripHtml() : '';
       h += OR.planExtrasHtml ? OR.planExtrasHtml() : '';
+      h += OR.readyHtml ? OR.readyHtml(r) : '';
       h += '<div class="rideRow"><button class="btn go" id="ride">' + ic('rides') + 'Start ride</button><button class="btn brief" id="brief">' + ic('shield') + 'Route brief</button></div>';
       h += '<div class="tools">' + [['wx', 'cloud', 'Weather', '#039be5'], ['fuelChk', 'fuel', 'Fuel check', '#e53935'], ['stays', 'bed', 'Stays at end', '#7e57c2'], ['save', 'save', 'Save', '#0e9f57'], ['toTrip', 'trips', 'Add to trip', '#1565c0'], ['sendR', 'share', 'Send to…', '#00897b']]
         .map(([id, i, l, c]) => '<button class="tool" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>').join('') + '</div>';
