@@ -941,6 +941,7 @@
       '<h3>Routes</h3><label class="chk"><input type="checkbox" id="sTolls"' + (c.avoidTolls ? ' checked' : '') + '> Avoid toll roads</label>' +
       '<label class="chk"><input type="checkbox" id="sFerry"' + (c.avoidFerries ? ' checked' : '') + '> Avoid ferries</label>' +
       '<h3>While riding</h3><label class="chk"><input type="checkbox" id="sCams"' + (c.cameras !== false ? ' checked' : '') + '> Speed camera warnings (UK and Ireland)</label>' +
+      '<h3>AI ride planner</h3><button class="btn wide" id="sAi">' + ic('spark') + (c.aiKey ? 'AI planner: key saved. Change it' : 'Set up the AI ride planner') + '</button><p class="small muted">Describe a ride in words (Trips, Describe a ride). Uses your own Anthropic key, so you pay Anthropic directly and only for what you use.</p>' +
       '<h3>Live traffic</h3>' + field('sTomtom', 'TomTom traffic key (free)', c.tomtomKey || '', 'text', 'paste your key') +
       '<p class="small muted">For roadworks, accidents and queues in the route brief, road closures on the map, and routes that go round closed roads. Get a free key at developer.tomtom.com (no card needed, 2,500 checks a month). It\'s kept only on this phone.</p>' +
       '<label class="chk"><input type="checkbox" id="sAvoidCl"' + (c.avoidClosures !== false ? ' checked' : '') + '> Plan routes around road closures</label><p class="small">Uses the key: a few checks for each route you plan.</p>' +
@@ -966,6 +967,7 @@
     tog('sAuto', 'autoRecord'); tog('sReveal', 'reveal');
     tog('sHills', 'hills', () => OR.restyle()); tog('sHills3d', 'hills3d', () => OR.restyle());
     $('#sAvoidCl', box).onchange = e => { c.avoidClosures = e.target.checked; OR.saveCfg(); };
+    $('#sAi', box).onclick = () => { OR.closeSheet && OR.closeSheet(); OR.aiKeySheet(); };
     $('#sTomtom', box).onchange = e => { c.tomtomKey = e.target.value.trim(); OR.saveCfg(); OR.toast(c.tomtomKey ? 'Traffic key saved' : 'Traffic key removed'); };
   }
   // Android Auto only lists apps from the Play Store unless "Unknown sources" is on in its developer settings

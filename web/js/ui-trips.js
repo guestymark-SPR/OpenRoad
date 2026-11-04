@@ -17,7 +17,7 @@
     if (t) return tripPage(v, t);
     openId = null;
     const list = OR.trips.list();
-    v.innerHTML = '<h2 class="vh">Trips</h2><button class="btn wide go" id="autoTrip">' + ic('trips') + 'Plan my trip for me</button><button class="btn wide" id="newTrip">' + ic('plus') + 'Plan a trip step by step</button>' +
+    v.innerHTML = '<h2 class="vh">Trips</h2><button class="btn wide go" id="autoTrip">' + ic('trips') + 'Plan my trip for me</button><button class="btn wide" id="aiRide">' + ic('spark') + 'Describe a ride (AI)</button><button class="btn wide" id="newTrip">' + ic('plus') + 'Plan a trip step by step</button>' +
       (list.length ? '<div class="list">' + list.map(t => {
         const c = OR.tripCalc(t);
         return '<button class="li trip" data-id="' + t.id + '"><b>' + esc(t.name) + '</b><span>' + OR.dayDate(t, 0).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + t.days.length + ' day' + (t.days.length > 1 ? 's' : '') + '</span>' +
@@ -25,6 +25,7 @@
       }).join('') + '</div>'
         : '<div class="empty">' + ic('trips', 'big') + '<p>Plan a tour step by step: each day\'s ride, ferry or tunnel crossings, fuel, hotels and what it all costs, split between riders.</p></div>');
     $('#autoTrip', v).onclick = () => OR.autoTripSheet();
+    $('#aiRide', v).onclick = () => OR.aiPlanSheet();
     $('#newTrip', v).onclick = newTrip;
     $$('.trip', v).forEach(b => b.onclick = () => { openId = b.dataset.id; render(); $('#views').scrollTop = 0; });
   }

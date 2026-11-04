@@ -145,6 +145,36 @@ public class MainActivity extends Activity {
             js("window.onWidgetAction&&onWidgetAction(" + JSONObject.quote(i.getStringExtra("widget")) + ")");
             return;
         }
+        // text shared to OpenRoad (a Google Maps place, a WhatsApp location, a link): work out where it is
+        if (i != null && Intent.ACTION_SEND.equals(i.getAction()) && i.getType() != null && i.getType().startsWith("text/") && i.getStringExtra(Intent.EXTRA_TEXT) != null && i.getData() == null && !i.getBooleanExtra("handled", false)) {
+            i.putExtra("handled", true);
+            final String shared = i.getStringExtra(Intent.EXTRA_TEXT), subj = i.getStringExtra(Intent.EXTRA_SUBJECT);
+            new Thread(() -> {
+                // short links (maps.app.goo.gl, goo.gl/maps) only say where they lead once followed: send every step of the way
+                org.json.JSONArray hops = new org.json.JSONArray();
+                try {
+                    java.util.regex.Matcher m = java.util.regex.Pattern.compile("https?://(maps\\.app\\.goo\\.gl|goo\\.gl/maps|g\\.co/kgs|maps\\.google\\.[a-z.]+/\\?q=[^\\s]*|share\\.google/[^\\s]*)[^\\s]*").matcher(shared);
+                    if (m.find()) {
+                        String url = m.group();
+                        for (int n = 0; n < 6 && url != null; n++) {
+                            java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                            c.setInstanceFollowRedirects(false); c.setConnectTimeout(8000); c.setReadTimeout(8000);
+                            c.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) OpenRoad");
+                            int code = c.getResponseCode(); String loc = c.getHeaderField("Location"); c.disconnect();
+                            if (code >= 300 && code < 400 && loc != null) { url = new java.net.URL(new java.net.URL(url), loc).toString(); hops.put(url); } else break;
+                        }
+                    }
+                } catch (Exception ignored) { }
+                js("window.onSharedText&&onSharedText(" + JSONObject.quote(shared) + "," + JSONObject.quote(subj == null ? "" : subj) + "," + hops.toString() + ")");
+            }).start();
+            return;
+        }
+        // a geo: link from another app (geo:lat,lng?q=...)
+        if (i != null && i.getData() != null && "geo".equals(i.getData().getScheme()) && !i.getBooleanExtra("handled", false)) {
+            i.putExtra("handled", true);
+            js("window.onSharedText&&onSharedText(" + JSONObject.quote(i.getData().toString()) + ",\"\",[])");
+            return;
+        }
         if (i == null || i.getData() == null || i.getBooleanExtra("handled", false)) return;
         Uri d = i.getData();
         if ("openroad".equals(d.getScheme()) && "event".equals(d.getHost())) { i.putExtra("handled", true); js("window.onEventLink&&onEventLink(" + JSONObject.quote(d.toString()) + ")"); return; }
