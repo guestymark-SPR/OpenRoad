@@ -182,7 +182,7 @@
 
   // ---------- overlays (route, alternatives, ride track, points of interest) ----------
   const EMPTY = { type: 'FeatureCollection', features: [] };
-  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY, jn: EMPTY, closed: EMPTY, trip: EMPTY, tripdays: EMPTY, wxline: EMPTY };
+  const data = { alts: EMPTY, route: EMPTY, done: EMPTY, track: EMPTY, pois: EMPTY, gaps: EMPTY, rideview: EMPTY, cams: EMPTY, wx: EMPTY, riders: EMPTY, meet: EMPTY, great: EMPTY, haz: EMPTY, jn: EMPTY, closed: EMPTY, tips: EMPTY, trip: EMPTY, tripdays: EMPTY, wxline: EMPTY };
   OR.setData = function (id, fc) { data[id] = fc || EMPTY; const s = OR.map && OR.map.style && OR.map.getSource('ov-' + id); if (s) s.setData(data[id]); }; // no style: the map has been taken down
   function addOverlays() {
     const m = OR.map, night = m.__mode === 'night';
@@ -231,6 +231,10 @@
     L({ id: 'ov-closed-l', type: 'line', source: 'ov-closed', filter: ['all', ['!', ['has', 'pin']], ['==', ['get', 'kind'], 'closed']], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#d50000', 'line-width': z([8, 3, 14, 7]) } });
     L({ id: 'ov-works-l', type: 'line', source: 'ov-closed', filter: ['all', ['!', ['has', 'pin']], ['==', ['get', 'kind'], 'works']], paint: { 'line-color': '#ef6c00', 'line-width': z([8, 3, 14, 7]), 'line-dasharray': [2, 1.2] } });
     L({ id: 'ov-closed', type: 'symbol', source: 'ov-closed', minzoom: 9, filter: ['has', 'pin'], layout: { 'icon-image': ['concat', 'pin-', ['get', 'kind']], 'icon-anchor': 'bottom', 'icon-size': z([9, 0.6, 14, 0.9]), 'icon-allow-overlap': true } });
+    // riders' tips (tips.js): pins with their name from zoom 12
+    L({ id: 'ov-tips', type: 'symbol', source: 'ov-tips', minzoom: 8, layout: { 'icon-image': ['concat', 'pin-', ['get', 'kind']], 'icon-anchor': 'bottom', 'icon-size': z([8, 0.6, 14, 0.9]), 'icon-allow-overlap': true,
+      'text-field': ['step', ['zoom'], '', 12, ['get', 'name']], 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-anchor': 'top', 'text-offset': [0, 0.2], 'text-optional': true, 'text-max-width': 9 },
+      paint: { 'text-color': night ? '#eef2f3' : '#1c2226', 'text-halo-color': night ? '#111' : '#fff', 'text-halo-width': 1.6 } });
     // motorway junction numbers, like the plates on the signs
     L({ id: 'ov-jn', type: 'symbol', source: 'ov-jn', minzoom: 9, layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': z([9, 10, 14, 13]), 'text-padding': 4, 'text-allow-overlap': false },
       paint: { 'text-color': '#fff', 'text-halo-color': night ? '#1d5fa8' : '#0079c1', 'text-halo-width': 3.5 } });

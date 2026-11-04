@@ -12,7 +12,7 @@
   // ---------- startup ----------
   function boot() {
     if (!window.maplibregl) { window.__mlReady = boot; return; }
-    OR.initMap(); OR.mapLiveStart && OR.mapLiveStart();
+    OR.initMap(); OR.mapLiveStart && OR.mapLiveStart(); OR.tipsStart && OR.tipsStart();
     document.documentElement.dataset.theme = OR.themeNow();
     document.documentElement.dataset.look = OR.cfg.look || 'classic';
     // the fixed buttons get the same icon set as everything else
@@ -195,6 +195,8 @@
       if (rider && rider.length) { OR.emit('riderTap', rider[0].properties.id); return; }
       const hz = OR.map.getLayer('ov-haz') && OR.map.queryRenderedFeatures([[e.point.x - 16, e.point.y - 30], [e.point.x + 16, e.point.y + 6]], { layers: ['ov-haz'] });
       if (hz && hz.length) { OR.emit('hazTap', hz[0].properties.key); return; }
+      const tp0 = OR.map.getLayer('ov-tips') && OR.map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 30], [e.point.x + 14, e.point.y + 4]], { layers: ['ov-tips'] });
+      if (tp0 && tp0.length && !OR.pickHook) { OR.tipSheet(tp0[0].properties.id); return; }
       const cl = OR.map.getLayer('ov-closed') && OR.map.queryRenderedFeatures([[e.point.x - 16, e.point.y - 30], [e.point.x + 16, e.point.y + 6]], { layers: ['ov-closed', 'ov-closed-l', 'ov-works-l'] });
       if (cl && cl.length) { closureSheet(cl[0].properties.i); return; }
       const tp = OR.map.getLayer('poi-main') && OR.map.queryRenderedFeatures([[e.point.x - 14, e.point.y - 30], [e.point.x + 14, e.point.y + 4]], { layers: ['poi-main'] });
@@ -229,7 +231,8 @@
     const has = OR.plan.wps.length;
     el.innerHTML = '<div class="pm-name">' + esc(name || 'This spot') + '</div><div class="pm-btns">' +
       (has ? '<button class="btn" data-a="via">Add via point</button><button class="btn pri" data-a="end">Go here</button>' : '<button class="btn" data-a="start">Start here</button><button class="btn pri" data-a="end">Go here</button>') +
-      '<button class="btn" data-a="loop">Round trip from here</button><button class="btn" data-a="stay">Stays nearby</button><button class="btn" data-a="fuel">Fuel nearby</button></div>';
+      '<button class="btn" data-a="loop">Round trip from here</button><button class="btn" data-a="stay">Stays nearby</button><button class="btn" data-a="fuel">Fuel nearby</button>' +
+      (OR.tipsAvailable && OR.tipsAvailable() ? '<button class="btn" data-a="tip">Share a tip here</button>' : '') + '</div>';
     popup = new maplibregl.Popup({ closeButton: true, maxWidth: '310px', className: 'orpop' }).setLngLat(ll).setDOMContent(el).addTo(OR.map);
     const label = name ? Promise.resolve(name) : OR.reverseName(ll[0], ll[1]);
     if (!name) label.then(n => { if (n) $('.pm-name', el).textContent = n; });
@@ -237,6 +240,7 @@
       const a = b.dataset.a; closePopup();
       if (a === 'stay' || a === 'fuel') return findNearby(a, ll);
       const nm = (await label.catch(() => null)) || (ll[1].toFixed(4) + ', ' + ll[0].toFixed(4));
+      if (a === 'tip') return OR.tipAddSheet(ll, name || '');
       if (a === 'loop') { loopFrom = { lng: ll[0], lat: ll[1], name: nm }; planMode = 'loop'; renderPlan(); tab('plan'); return; }
       const w = { lng: ll[0], lat: ll[1], name: nm, type: 'through' };
       const wps = OR.plan.wps;
@@ -250,6 +254,16 @@
       changed(wps.length >= 2);
     });
   }
+  // go to a place from anywhere (a tip, a shared place): while riding, straight there; otherwise into the planner
+  OR.goTo = function (p) {
+    const w = { lng: p.lng, lat: p.lat, name: p.name || 'Destination', type: 'break' };
+    if (OR.ride.on && OR.pos) { OR.plan.wps = [{ lng: OR.pos.lng, lat: OR.pos.lat, name: 'Here', type: 'break' }, w]; return planAndRide(); }
+    const wps = OR.plan.wps; planMode = 'ab';
+    if (!wps.length && OR.pos) wps.push({ lng: OR.pos.lng, lat: OR.pos.lat, name: 'My position', type: 'break' });
+    if (wps.length >= 2 && wps[wps.length - 1].type !== 'through') wps[wps.length - 1].type = 'through';
+    wps.push(w);
+    changed(wps.length >= 2);
+  };
   function poiPopup(f) {
     const p = (OR.lastPois || []).find(x => x.id === f.properties.id); if (!p) return;
     const d = OR.poiDetails(p);
@@ -388,7 +402,8 @@
       h += '<h3>Pick a route</h3><div class="opts">' + OR.plan.options.map((o, i) =>
         '<button class="opt' + (i === OR.plan.choice ? ' on' : '') + '" data-i="' + i + '"><span class="opt-top"><b>' + esc(o.variant) + '</b><span class="nums">' + OR.fmtDist(o.dist) + '<i>' + OR.fmtTime(OR.myTime ? OR.myTime(o.time) : o.time) + '</i></span></span>' +
         (o.roads && o.roads.length ? '<span class="refs">' + o.roads.map(chip).join('') + '</span>' : '') +
-        '<span class="bend"><span class="bar"><i style="width:' + Math.min(100, Math.round(o.twist / 2.2)) + '%"></i></span>' + OR.bendLabel(o.twist) + (o.mwayPct ? ', ' + o.mwayPct + '% motorway' : ', no motorway') + '</span></button>').join('') + '</div>';
+        '<span class="bend"><span class="bar"><i style="width:' + Math.min(100, Math.round(o.twist / 2.2)) + '%"></i></span>' + OR.bendLabel(o.twist) + (o.mwayPct ? ', ' + o.mwayPct + '% motorway' : ', no motorway') + '</span>' +
+        (o.closures && o.closures.left.length ? '<span class="closenote bad">' + ic('noentry') + 'Goes through a road closure' + (o.closures.left[0].roads ? ' on ' + esc(o.closures.left[0].roads) : '') + '</span>' : o.closures && o.closures.avoided ? '<span class="closenote">' + ic('noentry') + 'Goes round ' + (o.closures.avoided === 1 ? 'a road closure' : o.closures.avoided + ' road closures') + '</span>' : '') + '</button>').join('') + '</div>';
       h += OR.wxStripHtml ? OR.wxStripHtml() : '';
       h += OR.planExtrasHtml ? OR.planExtrasHtml() : '';
       h += '<div class="rideRow"><button class="btn go" id="ride">' + ic('rides') + 'Start ride</button><button class="btn brief" id="brief">' + ic('shield') + 'Route brief</button></div>';
@@ -675,7 +690,7 @@
     const more = r => {
       const row = (a, i, c, t, d) => '<button data-a="' + a + '" data-id="' + r.id + '">' + badge(i, c) + '<span><b>' + t + '</b><small>' + d + '</small></span>' + ic('chev', 'chev') + '</button>';
       sheet('<h2>' + ic('rides') + esc(r.name) + '</h2><h3 class="grp">Share</h3><div class="menu">' + row('card', 'star', '#ef8f00', 'Picture', 'A map card with your numbers, for WhatsApp or Facebook') +
-        row('fly', 'pass', '#7e57c2', 'Flyover video', '30 seconds flying over the hills you rode') + row('video', 'cam', '#d81b60', 'Helmet-cam video', 'Your footage with speed, lean and a map on it') + '</div>' +
+        row('fly', 'pass', '#7e57c2', 'Flyover video', '30 seconds flying over the hills you rode') + row('gfly', 'group', '#e53935', 'Group ride film', 'The flyover with every rider\'s line in their colour') + row('video', 'cam', '#d81b60', 'Helmet-cam video', 'Your footage with speed, lean and a map on it') + '</div>' +
         '<h3 class="grp">Look back</h3><div class="menu">' + row('coach', 'lean', '#1565c0', 'Corner coach', 'Your smoothest bends, and ones to work on') + '</div>' +
         '<h3 class="grp">Keep</h3><div class="menu">' + row('route', 'save', '#0e9f57', 'Save as a route', 'Ride it again with directions') + row('gpx', 'dl', '#5d6d7e', 'GPX file', 'For other apps and Garmin') + row('del', 'x', '#c62828', 'Delete', 'Remove this ride from the phone') + '</div>', b => {
         const del = b.querySelector('button[data-a=del]'); if (del) del.classList.add('danger');
@@ -692,6 +707,7 @@
       if (b.dataset.a === 'card') OR.rideCard(r);
       if (b.dataset.a === 'coach') OR.cornerCoach(r);
       if (b.dataset.a === 'video') OR.rideVideo(r);
+      if (b.dataset.a === 'gfly') OR.groupFilmSheet(r);
       if (b.dataset.a === 'fly') { OR.closeSheet && OR.closeSheet(); if (innerWidth < 900) $('#panel').classList.remove('open'); OR.flyover(r); }
       if (b.dataset.a === 'route') { try { const rt = await OR.routeFromTrack(pts, r.name); OR.routes.save(rt); OR.toast('Saved to Saved routes'); } catch (e) { OR.toast('Could not make a route: ' + e.message, 6000); } }
       if (b.dataset.a === 'del' && confirm('Delete this ride?')) { OR.rides.del(r.id); renderRides(); }
@@ -926,7 +942,8 @@
       '<label class="chk"><input type="checkbox" id="sFerry"' + (c.avoidFerries ? ' checked' : '') + '> Avoid ferries</label>' +
       '<h3>While riding</h3><label class="chk"><input type="checkbox" id="sCams"' + (c.cameras !== false ? ' checked' : '') + '> Speed camera warnings (UK and Ireland)</label>' +
       '<h3>Live traffic</h3>' + field('sTomtom', 'TomTom traffic key (free)', c.tomtomKey || '', 'text', 'paste your key') +
-      '<p class="small muted">For roadworks, accidents and queues in the route brief. Get a free key at developer.tomtom.com (no card needed, 2,500 checks a month). It\'s kept only on this phone.</p>' +
+      '<p class="small muted">For roadworks, accidents and queues in the route brief, road closures on the map, and routes that go round closed roads. Get a free key at developer.tomtom.com (no card needed, 2,500 checks a month). It\'s kept only on this phone.</p>' +
+      '<label class="chk"><input type="checkbox" id="sAvoidCl"' + (c.avoidClosures !== false ? ' checked' : '') + '> Plan routes around road closures</label><p class="small">Uses the key: a few checks for each route you plan.</p>' +
       '<p class="small muted">Camera warnings are switched off everywhere else because warning devices are illegal in France, Germany and Switzerland. Camera locations come from OpenStreetMap and aren\'t complete.</p>' +
       '<h3>Home</h3><div class="card"><div class="row-l"><span class="lbl">Today\'s forecast and loop start from</span><b>' + esc(c.home ? c.home.name || 'Home' : 'Not set') + '</b></div><button class="btn small" id="sHome">' + (c.home ? 'Change' : 'Set') + '</button></div>' +
       '<h3>Today and recording</h3><label class="chk"><input type="checkbox" id="sToday"' + (c.today !== false ? ' checked' : '') + '> Today card on the Plan screen</label><p class="small">Whether it\'s a riding day, and when it\'s dry.</p>' +
@@ -948,6 +965,7 @@
     tog('sToday', 'today', () => renderPlan()); tog('sTodayLoop', 'todayLoop', () => OR.todayRefresh && OR.todayRefresh());
     tog('sAuto', 'autoRecord'); tog('sReveal', 'reveal');
     tog('sHills', 'hills', () => OR.restyle()); tog('sHills3d', 'hills3d', () => OR.restyle());
+    $('#sAvoidCl', box).onchange = e => { c.avoidClosures = e.target.checked; OR.saveCfg(); };
     $('#sTomtom', box).onchange = e => { c.tomtomKey = e.target.value.trim(); OR.saveCfg(); OR.toast(c.tomtomKey ? 'Traffic key saved' : 'Traffic key removed'); };
   }
   // Android Auto only lists apps from the Play Store unless "Unknown sources" is on in its developer settings
@@ -1066,7 +1084,7 @@
     const t = (id, i, c, l) => '<button class="tile" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>';
     const grp = (title, tiles) => tiles ? '<h3 class="grp">' + title + '</h3><div class="tiles">' + tiles + '</div>' : '';
     sheet('<h2>Ride options</h2>' +
-      grp('This route', r ? t('roSkip', 'skip', '#ff6a1f', 'Skip next stop') + t('roView', 'map', '#1e88e5', 'Route overview') + t('roWx', 'cloud', '#039be5', 'Weather ahead') : '') +
+      grp('This route', r ? t('roSkip', 'skip', '#ff6a1f', 'Skip next stop') + t('roView', 'map', '#1e88e5', 'Route overview') + t('roWx', 'cloud', '#039be5', 'Weather ahead') + t('roRain', 'loop', '#0277bd', 'Dodge the rain') : '') +
       grp('Find nearby', t('roFuel', 'fuel', '#e53935', 'Fuel') + t('roCafe', 'cup', '#8d5a3b', 'Cafés') + t('roStay', 'bed', '#7e57c2', 'Stays') + t('roFill', 'fuel', '#0e9f57', 'I\'ve filled up')) +
       grp('Group', OR.group && OR.group.state.on ? t('roGroup', 'group', '#e53935', 'Group') + t('roChat', 'chat', '#0e9f57', 'Group chat') : '') +
       grp('Help and papers', t('roWhere', 'near', '#e53935', 'Where am I') + t('roIce', 'helmet', '#ef8f00', 'Emergency card') + t('roPapers', 'id', '#00897b', 'My papers') + t('roPhrase', 'chat', '#1e88e5', 'Phrasebook')) +
@@ -1075,6 +1093,7 @@
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();
       on('roSkip', () => OR.skipNextStop());
+      on('roRain', () => { OR.toast('Checking the next 2 hours of the route for rain…'); OR.rainCheck(); });
       on('roView', () => { OR.ride.follow = false; $('#recentre').hidden = false; OR.map.fitBounds(OR.bbox(OR.ride.route.shape), { padding: 80, pitch: 0, bearing: 0 }); });
       on('roWx', () => OR.weatherAlong(OR.ride.route, new Date()).then(w => {
         const ahead = w.filter(x => x.along >= OR.ride.along - 100), warns = ahead.map(OR.weatherWarn).filter(Boolean);

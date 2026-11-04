@@ -1029,3 +1029,19 @@ body.filming #tiltBtn{display:none}
   body.riding #radarChip{top:auto;bottom:calc(70px + var(--safe-b))}
   #hud>#cdBar:not([hidden]){right:62px;top:calc(8px + var(--safe-t));bottom:calc(8px + var(--safe-b))}
 }
+
+/* route card: road closures it goes round, or can't avoid */
+.opt .closenote{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#0b6b3a;margin-top:6px}
+.opt .closenote svg{width:16px;height:16px;color:#d50000}
+.opt .closenote.bad{color:#b00020}
+
+/* big stacked buttons in a sheet shown while riding */
+.bigbtns{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.bigbtns .btn{min-height:58px;font-size:17px;justify-content:center}
+.bigbtns .btn svg{width:22px;height:22px;margin-right:8px}
+/* riders' tips: the chosen kind */
+.tipkinds{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.tipkinds .btn.on{background:var(--green);border-color:var(--green);color:#fff}
+.tipkinds .btn svg{width:18px;height:18px;margin-right:6px}
+
+.gdot{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}

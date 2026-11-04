@@ -74,7 +74,17 @@
       m.addLayer({ id: 'fly-done', type: 'line', source: 'fly-done', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': getComputedStyle(document.documentElement).getPropertyValue('--yellow').trim() || '#ffd200', 'line-width': 5.5 } });
     }
   }
-  function unlayers(m) { FLY.forEach(id => { if (m.getLayer(id)) m.removeLayer(id); }); ['fly-all', 'fly-done'].forEach(id => { if (m.getSource(id)) m.removeSource(id); }); }
+  function othersLayers(m) {
+    if (!m.getSource('fly-oth')) m.addSource('fly-oth', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (m.getLayer('fly-oth-l')) return;
+    m.addLayer({ id: 'fly-oth-l', type: 'line', source: 'fly-oth', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ['get', 'c'], 'line-width': 5, 'line-opacity': 0.95 } });
+    m.addLayer({ id: 'fly-oth-p', type: 'circle', source: 'fly-oth', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 8, 'circle-color': ['get', 'c'], 'circle-stroke-color': '#fff', 'circle-stroke-width': 3 } });
+    m.addLayer({ id: 'fly-oth-t', type: 'symbol', source: 'fly-oth', filter: ['==', ['geometry-type'], 'Point'], layout: { 'text-field': ['get', 'n'], 'text-font': ['Noto Sans Bold'], 'text-size': 15, 'text-anchor': 'bottom', 'text-offset': [0, -1.1], 'text-allow-overlap': true }, paint: { 'text-color': '#fff', 'text-halo-color': ['get', 'c'], 'text-halo-width': 2.5 } });
+  }
+  function unlayers(m) {
+    FLY.concat(['fly-oth-l', 'fly-oth-p', 'fly-oth-t']).forEach(id => { if (m.getLayer(id)) m.removeLayer(id); });
+    ['fly-all', 'fly-done', 'fly-oth'].forEach(id => { if (m.getSource(id)) m.removeSource(id); });
+  }
   async function encoderFor(W, H) {
     if (!window.VideoEncoder) return null;
     for (const codec of ['avc1.4D401F', 'avc1.42E01F', 'avc1.640028', 'avc1.42001F']) {
@@ -102,13 +112,34 @@
       if (!m.getSource('fly-dem')) m.addSource('fly-dem', { type: 'raster-dem', tiles: [DEM], tileSize: 256, encoding: 'terrarium', maxzoom: 14 });
       m.setTerrain({ source: 'fly-dem', exaggeration: 1.5 });
       layers(m, pth.P);
+      // group film: other riders' lines, drawn up to the same moment of the ride as yours
+      const others = (opts && opts.others || []).filter(o => o.p && o.p.length > 1);
+      const tm = OR.rides.times ? OR.rides.times(ride) : null, cumO = OR.cumulative(pts), totO = cumO[cumO.length - 1] || 1;
+      const timeAt = d => { // the clock time when you were d metres along your ride
+        if (!tm || tm.length !== pts.length) return null;
+        const dd = d / pth.L * totO; let lo = 0, hi = cumO.length - 1; while (hi - lo > 1) { const md = (lo + hi) >> 1; if (cumO[md] <= dd) lo = md; else hi = md; }
+        const k = (dd - cumO[lo]) / ((cumO[hi] - cumO[lo]) || 1); return tm[lo] + (tm[hi] - tm[lo]) * k;
+      };
+      if (others.length) othersLayers(m, others);
+      const othersAt = (d, frac) => {
+        const T = timeAt(d), lines = [], heads = [];
+        others.forEach(o => {
+          const timed = T != null && o.p.every(q => q[2]);
+          let n = timed ? o.p.findIndex(q => q[2] > T) : Math.round(o.p.length * frac);
+          if (n < 0) n = o.p.length;
+          const seg = o.p.slice(0, Math.max(1, n)).map(q => [q[0], q[1]]);
+          if (seg.length > 1) lines.push({ type: 'Feature', properties: { c: o.c }, geometry: { type: 'LineString', coordinates: seg } });
+          if (n > 0) heads.push({ type: 'Feature', properties: { c: o.c, n: o.n }, geometry: { type: 'Point', coordinates: seg[seg.length - 1] } });
+        });
+        m.getSource('fly-oth').setData({ type: 'FeatureCollection', features: lines.concat(heads) });
+      };
       const samples = []; let desc = null, err = null;
       const ve = new VideoEncoder({ output: (chunk, meta) => { const b = new Uint8Array(chunk.byteLength); chunk.copyTo(b); samples.push({ data: b, key: chunk.type === 'key' }); if (meta && meta.decoderConfig && meta.decoderConfig.description) desc = new Uint8Array(meta.decoderConfig.description); }, error: e => { err = e; } });
       ve.configure(cfg);
       // camera: a wide look first, then along the ride, then pull back to see it all
       const intro = Math.round(frames / 10), outro = Math.round(frames / 10), mid = frames - intro - outro;
       let hd = OR.bearing(pth.at(0), pth.at(Math.min(pth.L, 1500)));
-      const box = OR.bbox(pts), over = m.cameraForBounds(box, { padding: 80 }) || { center: m.getCenter(), zoom: 9 };
+      const box = OR.bbox(pts.concat(...(opts && opts.others || []).map(o => (o.p || []).map(q => [q[0], q[1]])))), over = m.cameraForBounds(box, { padding: 80 }) || { center: m.getCenter(), zoom: 9 };
       for (let f = 0; f < frames && !stop && !err; f++) {
         let cam, d;
         if (f < intro) { const k = ease(f / intro); d = 0; const p0 = pth.at(0); cam = { center: [over.center.lng + (p0[0] - over.center.lng) * k, over.center.lat + (p0[1] - over.center.lat) * k], zoom: over.zoom + (zoom - over.zoom) * k, pitch: 30 + 32 * k, bearing: hd * k }; }
@@ -118,11 +149,12 @@
           hd = (hd + angDelta(hd, ahead) * 0.06 + 360) % 360; // turn smoothly towards where the road goes
           cam = { center: pth.at(d), zoom, pitch: 62, bearing: hd };
         } else { const k = ease((f - intro - mid) / outro); d = pth.L; const pe = pth.at(pth.L); cam = { center: [pe[0] + (over.center.lng - pe[0]) * k, pe[1] + (over.center.lat - pe[1]) * k], zoom: zoom + (over.zoom - zoom) * k, pitch: 62 - 40 * k, bearing: hd * (1 - k) }; }
+        if (others.length) othersAt(d, Math.min(1, d / pth.L));
         const done = pth.upto(d); m.getSource('fly-done').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: done.length > 1 ? done : [done[0], done[0]] } });
         m.jumpTo(cam);
         // copy the map into the frame, filling it (cropped to the video's shape), then the words on top
         await capture(m, f === 0 ? 8000 : 2500, () => { const src = m.getCanvas(), sw = src.width, sh = src.height, sc = Math.max(W / sw, H / sh), dw = sw * sc, dh = sh * sc; g.drawImage(src, (W - dw) / 2, (H - dh) / 2, dw, dh); });
-        overlay(g, W, H, ride, Math.min(1, d / pth.L), pth.L);
+        overlay(g, W, H, ride, Math.min(1, d / pth.L), pth.L, others);
         const vf = new VideoFrame(cv, { timestamp: Math.round(f * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
         ve.encode(vf, { keyFrame: f % (FPS * 2) === 0 }); vf.close();
         if (ve.encodeQueueSize > 10) await new Promise(r => setTimeout(r, 20));
@@ -144,13 +176,22 @@
       m.jumpTo({ center: before.c, zoom: before.z, bearing: before.b, pitch: before.p });
     }
   };
-  function overlay(g, W, H, ride, k, L) {
+  function overlay(g, W, H, ride, k, L, others) {
     const u = Math.min(W, H) / 720, pad = 28 * u;
     g.save();
     const grad = g.createLinearGradient(0, 0, 0, 190 * u); grad.addColorStop(0, 'rgba(0,0,0,.55)'); grad.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = grad; g.fillRect(0, 0, W, 190 * u);
     g.fillStyle = '#fff'; g.font = '800 ' + Math.round(38 * u) + 'px Overpass, Roboto, sans-serif'; g.fillText(ride.name || 'My ride', pad, pad + 36 * u, W - pad * 2);
     g.font = '600 ' + Math.round(24 * u) + 'px Overpass, Roboto, sans-serif';
     g.fillText(new Date(ride.start).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + ' · ' + OR.fmtDist(ride.dist || L) + (ride.moving ? ' in ' + OR.fmtTime(ride.moving) : ''), pad, pad + 72 * u, W - pad * 2);
+    // group film: who's who
+    if (others && others.length) {
+      g.font = '700 ' + Math.round(20 * u) + 'px Overpass, Roboto, sans-serif'; let x = pad;
+      [{ n: 'Me', c: getComputedStyle(document.documentElement).getPropertyValue('--yellow').trim() || '#ffd200' }].concat(others).forEach(o => {
+        const w = g.measureText(o.n).width; if (x + w + 34 * u > W - pad) return;
+        g.fillStyle = o.c; g.beginPath(); g.arc(x + 9 * u, pad + 104 * u, 8 * u, 0, Math.PI * 2); g.fill();
+        g.fillStyle = '#fff'; g.fillText(o.n, x + 22 * u, pad + 111 * u); x += w + 44 * u;
+      });
+    }
     // progress along the ride
     const by = H - pad - 70 * u;
     g.fillStyle = 'rgba(15,18,20,.6)'; g.beginPath(); g.roundRect(pad, by, W - pad * 2, 56 * u, 14 * u); g.fill();

@@ -122,11 +122,17 @@ class CoreBridge {
     }
     @JavascriptInterface public void rideStop() { onMain(() -> { try { ctx.startService(new Intent(ctx, RideService.class).setAction(RideService.ACTION_STOP)); } catch (Exception ignored) { } }); }
     // hazards shared with all OpenRoad riders (see PublicHazards)
-    @JavascriptInterface public void pubHazOn(boolean on) { PublicHazards.enabled = on; if (!on) PublicHazards.stop(); }
+    @JavascriptInterface public void pubHazOn(boolean on) { PublicHazards.enabled = on; if (!on && !PublicHazards.tipsEnabled) PublicHazards.stop(); }
     @JavascriptInterface public void pubHazPos(double lat, double lon) { PublicHazards.pos(ctx, lat, lon); }
     @JavascriptInterface public String pubHazards() { return PublicHazards.list(); }
     @JavascriptInterface public boolean pubHazAdd(String kind, String note) { return PublicHazards.add(ctx, kind, note); }
     @JavascriptInterface public void pubHazGone(String id) { PublicHazards.gone(ctx, id); }
+    @JavascriptInterface public boolean tipAdd(String kind, String name, String note, double lat, double lon) { return PublicHazards.tipAdd(ctx, kind, name, note, lat, lon); }
+    @JavascriptInterface public void tipArea(double lat, double lon) { PublicHazards.tipArea(ctx, lat, lon); }
+    @JavascriptInterface public String tips() { return PublicHazards.tipList(); }
+    @JavascriptInterface public void tipVote(String id, boolean good) { PublicHazards.tipVote(ctx, id, good); }
+    @JavascriptInterface public void tipRemove(String id) { PublicHazards.tipRemove(ctx, id); }
+    @JavascriptInterface public void tipsOn(boolean on) { PublicHazards.tipsEnabled = on; if (!on && !PublicHazards.enabled) PublicHazards.stop(); }
     @JavascriptInterface public boolean rideActive() { return RideService.running; }
     @JavascriptInterface public String rideTrack(String since) { return RideService.pointsSince(Long.parseLong(since)); }
     @JavascriptInterface public String rideJolts(String since) { return RideService.joltsSince(Long.parseLong(since)); }

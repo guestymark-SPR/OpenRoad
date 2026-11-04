@@ -125,6 +125,7 @@
     $('#gRole', box).value = G().role || '';
     $('#gRole', box).onchange = e => { OR.group.setRole(e.target.value); OR.toast(e.target.value === 'sweep' ? 'You\'re the sweep. You\'ll hear when anyone drops behind you.' : e.target.value === 'lead' ? 'You\'re the leader. The sweep sees how far ahead you are.' : 'Role set'); };
     bindShared(box, st);
+    const mk = $('#gMarker', box); if (mk) mk.onchange = () => { const g = G(); g.marker = mk.checked; OR.saveCfg(); OR.toast(mk.checked ? 'Corner marker on. Ask everyone in the group to switch it on too.' : 'Corner marker off'); };
     const hn = $('#gHazNow', box); if (hn) hn.onclick = () => OR.hazardSheet();
     $('#gLeave', box).onclick = () => { if (!confirm('Leave the group? The others will stop seeing you.')) return; OR.group.leave(); setTimeout(() => OR.pageGroup(box), 700); };
   }
@@ -186,6 +187,7 @@
       (plan && plan.name !== mine.name ? '<button class="btn small" id="gShareR">Share the route on the map instead</button>' : '') + '<button class="btn small ghost" id="gUnshareR">Stop sharing</button></div></div>';
     else if (plan) h += '<button id="gShareR" class="btn wide">' + ic('share') + 'Share my planned route: ' + esc(plan.name || 'route') + ' (' + OR.fmtDist(plan.dist) + ')</button>';
     else if (!others.length) h += '<p class="small muted">Plan a route on the Plan tab, then come back here to share it. Everyone gets exactly the same roads and turn-by-turn.</p>';
+    h += '<label class="opt-row"><span><b>Corner marker system</b><small>On the shared route: at each turn, the rider just behind the leader is asked to pull in and show the way, then told to rejoin once the sweep has passed. Everyone needs it on, a leader and ideally a sweep.</small></span><input type="checkbox" class="switch" id="gMarker"' + (G().marker ? ' checked' : '') + '></label>';
     return h;
   }
   function sharedRoute(id) { const r = (OR.group.state.routes || []).find(x => x.id === id); return r && r.route ? OR.unpackRoute(r.route) : null; }

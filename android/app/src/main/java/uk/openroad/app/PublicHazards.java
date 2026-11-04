@@ -31,11 +31,13 @@ final class PublicHazards {
     private static final Handler main = new Handler(Looper.getMainLooper());
     private static Location last;
     static volatile boolean enabled = true;
+    static volatile boolean tipsEnabled = true;
+    private static boolean any() { return enabled || tipsEnabled; }
 
     static String cell(double lat, double lon) { return "PUBHAZ" + (int) Math.floor(lat + 90) + "X" + (int) Math.floor(lon + 180); }
 
     static synchronized void start(Context c) {
-        if (link != null || !enabled) return;
+        if (link != null || !any()) return;
         app = c.getApplicationContext();
         me = Util.kvGet(app, "pubHazId");
         if (me == null || me.length() < 8) { me = GroupLink.newRiderId(); Util.kvSet(app, "pubHazId", me); }
@@ -57,8 +59,9 @@ final class PublicHazards {
 
     private static void onIn(String kind, String json) {
         try {
+            if ("t".equals(kind) || "t-clear".equals(kind)) { tipIn(kind, json); return; }
             if ("h-clear".equals(kind)) { String id = new JSONObject(json).optString("id"); synchronized (haz) { haz.remove(id); } return; }
-            if (!"h".equals(kind)) return;
+            if (!"h".equals(kind) || !enabled) return;
             JSONObject h = new JSONObject(json);
             String id = h.optString("hid"); if (id.isEmpty()) return;
             if (System.currentTimeMillis() - h.optLong("t") > TTL || h.optInt("gone") >= 2) { // expired or voted gone: tidy it away for everyone
@@ -100,6 +103,77 @@ final class PublicHazards {
             link.sendKeptAt(cl, "h", id, h.toString());
         } catch (Exception ignored) { }
     }
+    // ---------- riders' tips: good places (a biker café, a bike night, a view, secure parking), kept 60 days ----------
+    static final long TIP_TTL = 60L * 86400000L;
+    private static final Map<String, JSONObject> tips = new HashMap<>();
+    private static final java.util.ArrayDeque<Long> tipAdds = new java.util.ArrayDeque<>();
+    private static void tipIn(String kind, String json) {
+        try {
+            if ("t-clear".equals(kind)) { String id = new JSONObject(json).optString("id"); synchronized (tips) { tips.remove(id); } return; }
+            JSONObject t = new JSONObject(json);
+            String id = t.optString("tid"); if (id.isEmpty()) return;
+            // expired (not confirmed for 60 days) or voted gone: tidy it away for everyone
+            if (System.currentTimeMillis() - t.optLong("u") > TIP_TTL || t.optInt("gone") >= 2) {
+                if (link != null) link.clearKeptAt(cell(t.optDouble("la"), t.optDouble("lo")), "t", id);
+                synchronized (tips) { tips.remove(id); } return;
+            }
+            synchronized (tips) { JSONObject old = tips.get(id); if (old != null && old.optLong("u") > t.optLong("u")) return; tips.put(id, t); }
+        } catch (Exception ignored) { }
+    }
+    /** Share a tip at a place. Returns false with no connection yet, or after 10 in a day from this phone. */
+    static boolean tipAdd(Context c, String kind, String name, String note, double lat, double lon) {
+        start(c); if (link == null) return false;
+        long now = System.currentTimeMillis();
+        synchronized (tipAdds) { while (!tipAdds.isEmpty() && now - tipAdds.peekFirst() > 86400000L) tipAdds.pollFirst(); if (tipAdds.size() >= 10) return false; tipAdds.addLast(now); }
+        try {
+            byte[] b = new byte[6]; new SecureRandom().nextBytes(b);
+            String id = GroupLink.hex(b);
+            JSONObject t = new JSONObject().put("tid", id).put("k", kind).put("n", cut(name, 40)).put("x", cut(note, 120))
+                    .put("la", Math.round(lat * 1e5) / 1e5).put("lo", Math.round(lon * 1e5) / 1e5)
+                    .put("t", now).put("u", now).put("by", me).put("good", 1).put("gone", 0).put("votes", new JSONArray().put(me));
+            area(lat, lon);
+            link.sendKeptAt(cell(lat, lon), "t", id, t.toString());
+            synchronized (tips) { tips.put(id, t); }
+            return true;
+        } catch (Exception e) { return false; }
+    }
+    private static String cut(String s, int n) { s = s == null ? "" : s.trim(); return s.length() > n ? s.substring(0, n) : s; }
+    /** "Still good" keeps it another 60 days; "gone": the rider who shared it, or two others, take it down. One vote each. */
+    static void tipVote(Context c, String id, boolean good) {
+        start(c);
+        JSONObject t; synchronized (tips) { t = tips.get(id); }
+        if (t == null || link == null) return;
+        try {
+            String cl = cell(t.getDouble("la"), t.getDouble("lo"));
+            JSONArray v = t.optJSONArray("votes"); if (v == null) v = new JSONArray();
+            for (int i = 0; i < v.length(); i++) if (me.equals(v.optString(i))) return;
+            if (!good && (me.equals(t.optString("by")) || t.optInt("gone") + 1 >= 2)) { link.clearKeptAt(cl, "t", id); synchronized (tips) { tips.remove(id); } return; }
+            v.put(me); t.put("votes", v).put("u", System.currentTimeMillis());
+            if (good) t.put("good", t.optInt("good") + 1); else t.put("gone", t.optInt("gone") + 1);
+            link.sendKeptAt(cl, "t", id, t.toString());
+        } catch (Exception ignored) { }
+    }
+    static void tipRemove(Context c, String id) {
+        JSONObject t; synchronized (tips) { t = tips.get(id); }
+        if (t == null || link == null || !me.equals(t.optString("by"))) return;
+        try { link.clearKeptAt(cell(t.getDouble("la"), t.getDouble("lo")), "t", id); synchronized (tips) { tips.remove(id); } } catch (Exception ignored) { }
+    }
+    /** Look at tips around a place on the map (not where I am, so hazards still use the real position). */
+    static void tipArea(Context c, double lat, double lon) { if (!tipsEnabled) return; start(c); area(lat, lon); }
+    static String tipList() {
+        JSONArray a = new JSONArray(); long now = System.currentTimeMillis();
+        synchronized (tips) {
+            for (JSONObject t : tips.values()) if (now - t.optLong("u") < TIP_TTL) {
+                try {
+                    boolean voted = false; JSONArray v = t.optJSONArray("votes");
+                    if (v != null) for (int i = 0; i < v.length(); i++) if (me != null && me.equals(v.optString(i))) voted = true;
+                    a.put(new JSONObject(t.toString()).put("mine", me != null && me.equals(t.optString("by"))).put("voted", voted));
+                } catch (Exception ignored) { }
+            }
+        }
+        return a.toString();
+    }
+
     static String list() {
         JSONArray a = new JSONArray(); long now = System.currentTimeMillis();
         synchronized (haz) { for (JSONObject h : haz.values()) if (now - h.optLong("t") < TTL) { try { a.put(new JSONObject(h.toString()).put("mine", me != null && me.equals(h.optString("by"))).put("voted", h.optJSONArray("votes") != null && h.optJSONArray("votes").toString().contains("\"" + me + "\""))); } catch (Exception ignored) { } } }
@@ -110,14 +184,15 @@ final class PublicHazards {
     static void pos(Context c, double lat, double lon) {
         Location l = new Location("app"); l.setLatitude(lat); l.setLongitude(lon); l.setTime(System.currentTimeMillis());
         if (last == null || last.getProvider().equals("app") || System.currentTimeMillis() - last.getTime() > 30000) last = l;
-        if (!enabled) return; start(c); area(lat, lon);
+        if (!any()) return; start(c); area(lat, lon);
     }
     /** Each GPS fix while riding: watch the area, and warn about hazards ahead (about 12 seconds' warning, at least 250 m). */
     static void fix(Context c, Location l) {
         last = l;
-        if (!enabled) return;
+        if (!any()) return;
         start(c);
         area(l.getLatitude(), l.getLongitude());
+        if (!enabled) return;
         float v = l.hasSpeed() ? l.getSpeed() : 0; if (v < 3) return;
         double warnAt = Math.max(250, v * 12);
         java.util.List<Object[]> say = new java.util.ArrayList<>();

@@ -53,12 +53,17 @@
     if (opts.shortest) m.shortest = true;
     return { motorcycle: m };
   }
+  // areas the route must not enter: low-emission zones you chose to avoid, and known road closures (maplive.js)
+  function noGo(wps) {
+    const z = (OR.plan && OR.plan.avoidZones || []).concat(OR.closureBoxes ? OR.closureBoxes(wps.map(w => [w.lng, w.lat])) : []);
+    return z.length ? z : undefined;
+  }
   function body(wps, opts) {
     return {
       locations: wps.map((w, i) => ({ lat: +w.lat.toFixed(6), lon: +w.lng.toFixed(6), type: i === 0 || i === wps.length - 1 || w.type === 'break' ? 'break' : 'through' })),
       costing: 'motorcycle', costing_options: costing(opts), units: OR.cfg.units === 'km' ? 'kilometers' : 'miles', language: 'en-GB',
       alternates: opts.alternates || 0, id: 'openroad',
-      exclude_polygons: OR.plan && OR.plan.avoidZones && OR.plan.avoidZones.length ? OR.plan.avoidZones : undefined
+      exclude_polygons: noGo(wps)
     };
   }
   function valhalla(path, b) {
@@ -189,7 +194,21 @@
     return [r];
   }
   OR.planRoute = async function () {
-    const opts = await planOptions(OR.plan.wps, OR.cfg.style);
+    let opts = await planOptions(OR.plan.wps, OR.cfg.style);
+    // road closures: ask about the roads this route uses, and if it runs through one, plan again around it
+    if (OR.closuresAlong && OR.avoidClosuresOn() && OR.online()) {
+      try {
+        await OR.closuresAlong(opts[0]);
+        const hits = OR.closuresOnRoute(opts[0]);
+        if (hits.length) {
+          const again = await planOptions(OR.plan.wps, OR.cfg.style);
+          const still = OR.closuresOnRoute(again[0]).length;
+          again.forEach(r => { r.closures = { avoided: Math.max(0, hits.length - OR.closuresOnRoute(r).length), left: OR.closuresOnRoute(r) }; });
+          opts = again;
+          OR.toast(still ? 'A road closure is on this route and there was no way round it. Check the route card.' : 'Planned around ' + (hits.length === 1 ? 'a road closure' : hits.length + ' road closures') + ' (' + (hits.map(h => h.roads).filter(Boolean).join(', ') || 'TomTom') + ')', 6000);
+        }
+      } catch (e) { }
+    }
     OR.plan.options = opts; OR.plan.choice = 0; OR.plan.route = opts[0];
     return opts;
   };
@@ -197,6 +216,13 @@
   OR.planOptions = planOptions;
   function defaultName(wps) { return (wps[0].name || 'Start') + ' to ' + (wps[wps.length - 1].name || 'End'); }
 
+  // the stops still ahead of the bike: where each one sits along the route, compared with where the bike is
+  OR.remainingStops = function (route, along) {
+    const rest = [];
+    const at = w => { let best = 1e12, a = 0; for (let i = 0; i < route.shape.length - 1; i++) { const r = OR.projSeg([w.lng, w.lat], route.shape[i], route.shape[i + 1]); if (r.d < best) { best = r.d; a = route.cum[i] + r.t * (route.cum[i + 1] - route.cum[i]); } } return a; };
+      route.wps.forEach((w, i) => { if (i > 0 && (i === route.wps.length - 1 || at(w) > along + 50)) rest.push(w); });
+    return rest;
+  };
   // Re-plan from where the bike is now to the remaining stops (used when off route).
   OR.rerouteFrom = async function (pos, route, along) {
     let rest = [];
@@ -206,9 +232,7 @@
       rest = OR.resample(ahead.length ? ahead : [route.shape[route.shape.length - 1]], 5000).slice(0, MAX_LOC - 1)
         .map((p, i, a) => ({ lng: p[0], lat: p[1], name: i === a.length - 1 ? 'Track end' : 'Track', type: i === a.length - 1 ? 'break' : 'through' }));
     } else {
-      // stops still ahead: where each one sits along the route, compared with where the bike is
-      const at = w => { let best = 1e12, a = 0; for (let i = 0; i < route.shape.length - 1; i++) { const r = OR.projSeg([w.lng, w.lat], route.shape[i], route.shape[i + 1]); if (r.d < best) { best = r.d; a = route.cum[i] + r.t * (route.cum[i + 1] - route.cum[i]); } } return a; };
-      route.wps.forEach((w, i) => { if (i > 0 && (i === route.wps.length - 1 || at(w) > along + 50)) rest.push(w); });
+      rest = OR.remainingStops(route, along);
     }
     const wps = [{ lng: pos[0], lat: pos[1], name: 'Here', type: 'break' }].concat(rest).slice(0, MAX_LOC);
     const t = (STYLES[route.mode] || STYLES.twisty).tries[0];

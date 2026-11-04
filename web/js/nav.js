@@ -192,6 +192,7 @@
     OR.emit('ride', { m, next: route.man[k + 1], toTurn, remain, eta, k, limit: ride.limit });
     camera(p, toTurn);
   }
+  OR.timeLeftOn = (route, along) => timeLeft(route, along);
   function timeLeft(route, along) {
     let t = 0;
     for (const m of route.man) { const end = m.at + m.len; if (end <= along) continue; t += m.time * (m.at >= along ? 1 : (end - along) / Math.max(1, m.len)); }

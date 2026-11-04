@@ -64,6 +64,77 @@
   function cSpend() { OR.store.set('ttUse', { d: today(), n: cBudget() + 1 }); }
   OR.closuresOn = () => OR.cfg.mapClosures !== false && !!(OR.cfg.tomtomKey || '').trim();
 
+  // one request to TomTom for closures and roadworks in a box [w, s, e, n]; closures are remembered for routing
+  async function incidents(box) {
+    const fields = '{incidents{type,geometry{type,coordinates},properties{id,iconCategory,from,to,roadNumbers,startTime,endTime,events{description}}}}';
+    cSpend();
+    const j = await OR.json(TOMTOM + '?key=' + encodeURIComponent(OR.cfg.tomtomKey.trim()) + '&bbox=' + box.map(v => v.toFixed(4)).join(',') + '&language=en-GB&timeValidityFilter=present&categoryFilter=' + CLOSED + ',' + WORKS + '&fields=' + encodeURIComponent(fields), { timeout: 20000 });
+    for (const inc of j.incidents || []) remember(inc);
+    return j;
+  }
+
+  // ---------- planning around closures ----------
+  // Every closed road the app has heard about is kept (until it's due to reopen, or 12 hours) and handed to the
+  // route planner as a small no-go box on the closed stretch, so routes and reroutes go round it.
+  const known = {};
+  function remember(inc) {
+    const g = inc.geometry, p = inc.properties || {};
+    if (!g || p.iconCategory !== CLOSED) return;
+    const line = g.type === 'LineString' ? g.coordinates : [g.coordinates];
+    const end = Date.parse(p.endTime || '') || 0, until = end && end > Date.now() ? Math.min(end, Date.now() + 3 * 864e5) : Date.now() + 12 * 3600e3;
+    known[p.id || JSON.stringify(line[0])] = { mid: midOf(line), until, roads: (p.roadNumbers || []).join(', '), from: p.from || '', to: p.to || '' };
+  }
+  // the point halfway along a line (not a vertex, so it sits on the road between junctions)
+  function midOf(line) {
+    if (line.length < 2) return line[0];
+    const cum = OR.cumulative(line), half = cum[cum.length - 1] / 2;
+    for (let i = 1; i < line.length; i++) if (cum[i] >= half) { const t = (half - cum[i - 1]) / ((cum[i] - cum[i - 1]) || 1); return [line[i - 1][0] + (line[i][0] - line[i - 1][0]) * t, line[i - 1][1] + (line[i][1] - line[i - 1][1]) * t]; }
+    return line[line.length - 1];
+  }
+  OR.avoidClosuresOn = () => OR.cfg.avoidClosures !== false && !!(OR.cfg.tomtomKey || '').trim();
+  // no-go boxes (about 30 m across) for the closures near these points, for the route planner
+  OR.closureBoxes = function (pts) {
+    if (!OR.avoidClosuresOn()) return [];
+    const now = Date.now(), lngs = pts.map(p => p[0]), lats = pts.map(p => p[1]);
+    const w = Math.min.apply(null, lngs) - 0.5, e = Math.max.apply(null, lngs) + 0.5, s = Math.min.apply(null, lats) - 0.4, n = Math.max.apply(null, lats) + 0.4;
+    const out = [];
+    for (const id in known) {
+      const k = known[id]; if (k.until < now) { delete known[id]; continue; }
+      const [x, y] = k.mid; if (x < w || x > e || y < s || y > n) continue;
+      const dy = 15 / 111320, dx = dy / Math.cos(y * Math.PI / 180);
+      out.push([[x - dx, y - dy], [x + dx, y - dy], [x + dx, y + dy], [x - dx, y + dy], [x - dx, y - dy]]);
+      if (out.length >= 40) break; // the public route server limits how much can be excluded
+    }
+    return out;
+  };
+  // closures the route runs through (within 30 m of the line)
+  OR.closuresOnRoute = function (route) {
+    const hits = [], now = Date.now();
+    for (const id in known) {
+      const k = known[id]; if (k.until < now) continue;
+      for (let i = 0; i < route.shape.length - 1; i++) if (OR.projSeg(k.mid, route.shape[i], route.shape[i + 1]).d < 30) { hits.push(k); break; }
+    }
+    return hits;
+  };
+  // ask TomTom about closures along a planned route, in boxes of about 60 km (the first 360 km; reroutes catch the rest)
+  const asked = {};
+  OR.closuresAlong = async function (route) {
+    if (!OR.avoidClosuresOn() || !OR.online()) return;
+    const boxes = []; let start = 0;
+    for (let i = 1; i < route.shape.length && boxes.length < 6; i++) {
+      if (route.cum[i] - route.cum[start] > 60000 || i === route.shape.length - 1) {
+        const seg = route.shape.slice(start, i + 1), b = OR.bbox(seg);
+        boxes.push([b[0][0] - 0.02, b[0][1] - 0.02, b[1][0] + 0.02, b[1][1] + 0.02]); start = i;
+      }
+    }
+    for (const b of boxes) {
+      const key = b.map(v => v.toFixed(2)).join(',');
+      if (asked[key] && Date.now() - asked[key] < 15 * 60000) continue;
+      if (cBudget() >= 60) return;
+      try { await incidents(b); asked[key] = Date.now(); } catch (e) { return; }
+    }
+  };
+
   async function cUpdate(force) {
     const m = OR.map; if (!m || cBusy) return;
     if (!OR.closuresOn() || m.getZoom() < 8) { if (!OR.closuresOn()) OR.setData('closed', EMPTY); return; }
@@ -80,10 +151,7 @@
     if (cBudget() >= 60 || !OR.online()) return;
     cBusy = true;
     try {
-      const bb = [c.lng - lngH, c.lat - latH, c.lng + lngH, c.lat + latH].map(v => v.toFixed(4)).join(',');
-      const fields = '{incidents{type,geometry{type,coordinates},properties{id,iconCategory,from,to,roadNumbers,startTime,endTime,events{description}}}}';
-      cSpend();
-      const j = await OR.json(TOMTOM + '?key=' + encodeURIComponent(OR.cfg.tomtomKey.trim()) + '&bbox=' + bb + '&language=en-GB&timeValidityFilter=present&categoryFilter=' + CLOSED + ',' + WORKS + '&fields=' + encodeURIComponent(fields), { timeout: 20000 });
+      const j = await incidents([c.lng - lngH, c.lat - latH, c.lng + lngH, c.lat + latH]);
       cLast = { lat: c.lat, lng: c.lng, latH, lngH, at: now };
       cList = [];
       const feats = [];

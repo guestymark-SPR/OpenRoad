@@ -283,14 +283,16 @@
     el.innerHTML = '<p class="small muted">All spoken through your headset while you ride. Each one can be switched off here.</p>' +
       card('The road ahead',
         row('bendWarn', 'Tight bends', 'A few seconds before a tight bend on your route, with a speed to take it at (from the shape of the road and the lean you usually use, now about ' + OR.comfortLean() + '°). Only when you\'re faster than that.') +
+        row('rainDodge', 'Rain dodger', 'Every 15 minutes on a planned route, checks the forecast for the next 2 hours of it. If heavy rain or a storm is coming, says so and offers a drier way round, or a café to wait it out.') +
         row('glareWarn', 'Low sun ahead', 'When you\'re about to ride into a low sun. The route card shows it before you go too.') +
         row('stereoTurns', 'Turns in the ear they\'re on', 'A chime and the direction in your left ear for a left turn, right for right. Needs a stereo headset or intercom.')) +
       card('Riders around you',
         row('pubHazards', 'Hazards from all OpenRoad riders', 'Hear hazards other riders mark (gravel, diesel, a crash) and mark your own for everyone. Anonymous, and gone after 6 hours. Android app.') +
+        row('pubTips', 'Riders\' tips on the map', 'Good places other riders share: biker cafés, bike nights, views, secure parking, great roads. Tap the map to share your own. Anonymous. Android app.') +
         row('bikeLink', 'Bike to bike in group rides', 'Positions and quick messages straight between phones over Bluetooth, so riders close by still see each other with no signal (about 50 to 150 m). Android app.')) +
       card('You',
         row('fatigueWarn', 'Tiredness', 'Suggests a break when your riding gets less smooth than in your first half hour. A guide only: stop whenever you feel tired.'));
     box.appendChild(el);
-    $$('[data-aw]', el).forEach(x => x.onchange = () => { c[x.dataset.aw] = x.checked; OR.saveCfg(); if (x.dataset.aw === 'pubHazards' && A && A.pubHazOn) A.pubHazOn(x.checked); if (x.dataset.aw === 'bikeLink' && A && A.bikeLinkSet) A.bikeLinkSet(x.checked); });
+    $$('[data-aw]', el).forEach(x => x.onchange = () => { c[x.dataset.aw] = x.checked; OR.saveCfg(); if (x.dataset.aw === 'pubHazards' && A && A.pubHazOn) A.pubHazOn(x.checked); if (x.dataset.aw === 'bikeLink' && A && A.bikeLinkSet) A.bikeLinkSet(x.checked); if (x.dataset.aw === 'pubTips') { if (A && A.tipsOn) A.tipsOn(x.checked); OR.tipsRefresh && OR.tipsRefresh(); } });
   };
 })(window.OR);
