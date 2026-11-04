@@ -11,11 +11,13 @@
     const home = OR.cfg.home && OR.cfg.home.lng != null ? OR.cfg.home : null;
     let h = '<button class="whereto" id="whereBtn">' + OR.ic('search') + '<span><b>Where to?</b><small>Search a place, postcode or road</small></span></button>';
     if (home) h += '<div class="chips homechips"><button class="btn small" id="goHome">' + OR.ic('home') + 'Home</button></div>';
+    h += OR.parkedHtml ? OR.parkedHtml() : '';
     if (last) h += '<button class="lastride" id="lastRide"><span class="lr-t">Last ride</span><b>' + esc(last.name) + '</b><small>' + OR.fmtDist(last.dist) + ' on ' + new Date(last.start).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + '</small>' + OR.ic('chev', 'chev') + '</button>';
     return h;
   };
   OR.bindHome = function (v) {
     const w = v.querySelector('#whereBtn'); if (w) w.onclick = () => OR.whereSheet();
+    if (OR.parkedBind) OR.parkedBind(v);
     const l = v.querySelector('#lastRide'); if (l) l.onclick = () => OR.tab('rides');
     const g = v.querySelector('#goHome'); if (g) g.onclick = () => OR.goTo({ lng: OR.cfg.home.lng, lat: OR.cfg.home.lat, name: 'Home' });
   };

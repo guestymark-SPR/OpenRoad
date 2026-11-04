@@ -1188,3 +1188,6 @@ h3,.gh{margin:26px 2px 10px}
 .btn.wide{margin:12px 0}
 .empty{padding:26px 14px}
 .empty p{line-height:1.5}
+.parkpin{border:0;background:none;padding:0;width:40px;height:48px;position:relative;cursor:pointer}
+.parkpin span{position:absolute;left:3px;top:0;width:34px;height:34px;border-radius:50%;background:#1565c0;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font:800 19px/1 var(--f)}
+.parkpin::after{content:"";position:absolute;left:12px;top:33px;border:8px solid transparent;border-top:11px solid #fff;border-bottom:0}

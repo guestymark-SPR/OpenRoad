@@ -72,6 +72,7 @@
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
     home: '<path class="d" d="M4 11 12 4l8 7v9H4z"/><path d="M4 11 12 4l8 7v9H4z M10 20v-5h4v5"/>',
     wind: '<path d="M3 9h11a3 3 0 1 0-3-3 M3 15h15a3 3 0 1 1-3 3 M3 12h7"/>',
+    walk: '<circle cx="13" cy="4.5" r="2"/><path d="M12 8l-3 4 3 3-1 6 M12 8l3 3h3 M9 12l-3 2 M12 15l3 2v4"/>',
     search: '<circle class="d" cx="10.5" cy="10.5" r="6.5"/><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/>'
   };
   I.rides = I.moto; I.bike = I.moto;

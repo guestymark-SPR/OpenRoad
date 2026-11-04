@@ -12,7 +12,7 @@
   // ---------- startup ----------
   function boot() {
     if (!window.maplibregl) { window.__mlReady = boot; return; }
-    OR.initMap(); OR.mapLiveStart && OR.mapLiveStart(); OR.tipsStart && OR.tipsStart(); OR.twistyMapStart && OR.twistyMapStart(); if (OR.peekDraw) { OR.peekDraw(); setInterval(OR.peekDraw, 60000); };
+    OR.initMap(); OR.mapLiveStart && OR.mapLiveStart(); OR.tipsStart && OR.tipsStart(); OR.twistyMapStart && OR.twistyMapStart(); OR.parkedStart && OR.parkedStart(); if (OR.peekDraw) { OR.peekDraw(); setInterval(OR.peekDraw, 60000); };
     document.documentElement.dataset.theme = OR.themeNow();
     document.documentElement.dataset.look = OR.cfg.look || 'classic';
     // the fixed buttons get the same icon set as everything else
