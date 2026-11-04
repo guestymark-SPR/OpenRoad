@@ -102,6 +102,12 @@ class CoreBridge {
     @JavascriptInterface public int versionCode() { try { return ctx.getPackageManager().getPackageInfo(ctx.getPackageName(), 0).versionCode; } catch (Exception e) { return 0; } }
     @JavascriptInterface public String kvGet(String k) { return Util.kvGet(ctx, k); }
     @JavascriptInterface public void kvSet(String k, String v) { Util.kvSet(ctx, k, v); }
+    /** the names of everything kept with kvSet, as a JSON list (for the backup file) */
+    @JavascriptInterface public String kvKeys() {
+        org.json.JSONArray out = new org.json.JSONArray();
+        try { String[] n = new java.io.File(ctx.getFilesDir(), "kv").list(); if (n != null) for (String x : n) if (!x.endsWith(".tmp")) out.put(x); } catch (Exception ignored) { }
+        return out.toString();
+    }
     @JavascriptInterface public void fetchTextH(int id, String url, String method, String body, String type, String headers) { Util.fetch(id, url, method, body, type, headers, js); }
     @JavascriptInterface public void speak(String text) { Speech.get(ctx).speak(text); }
     @JavascriptInterface public void speakPan(String text, float pan) { Speech.get(ctx).speakPan(text, pan); }

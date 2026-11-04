@@ -830,6 +830,7 @@
       (A ? '<button id="sVTry" class="btn wide">' + ic('mic') + 'Try a voice command</button>' : '') +
       '<h3>Watch</h3><label class="chk"><input type="checkbox" id="sWatch"' + (c.watchTurns ? ' checked' : '') + '> Alert my watch at each turn</label>' +
       '<p class="small muted">Each turn pops up as a notification, so a paired watch (Galaxy Watch and others) buzzes and shows it, for example "Turn left onto the A515". On a Galaxy Watch, turn on "Show phone notifications on watch while using phone" in the Galaxy Wearable app, or it only shows them when the phone screen is off.</p>' +
+      '<h3>Your data</h3><button class="btn wide" id="sBackup">' + ic('save') + 'Back up and restore</button>' +
       '<h3>Ride screen</h3><label class="chk"><input type="checkbox" id="sTurnBar"' + (c.turnBar !== false ? ' checked' : '') + '> Countdown bar for the next turn</label>' +
       '<p class="small muted">A bar down the right side that empties as the next turn gets closer, with the distance and the turn arrow.</p>';
     box.appendChild(el);
@@ -974,6 +975,7 @@
     $('#sHaptic', box).onchange = e => { c.haptics = e.target.checked; OR.saveCfg(); if (c.haptics) OR.haptic(20); };
     $('#sRegroup', box).onchange = e => { c.regroup = e.target.checked; OR.saveCfg(); };
     $('#sGlove', box).onchange = e => { c.glove = e.target.checked; OR.saveCfg(); };
+    $('#sBackup', box).onclick = () => { OR.closeSheet && OR.closeSheet(); OR.backupSheet(); };
     $('#sHud', box).onclick = () => { OR.closeSheet && OR.closeSheet(); OR.hudFieldsSheet(); };
     $('#sAi', box).onclick = () => { OR.closeSheet && OR.closeSheet(); OR.aiKeySheet(); };
     $('#sTomtom', box).onchange = e => { c.tomtomKey = e.target.value.trim(); OR.saveCfg(); OR.toast(c.tomtomKey ? 'Traffic key saved' : 'Traffic key removed'); };
