@@ -1169,3 +1169,6 @@ body.glove .hb svg{width:38px;height:38px}
 body.glove .hb.end{min-width:110px;font-size:22px}
 body.glove #hudBar .stat b{font-size:calc(1em + 6px)}
 body.glove #recentre{min-height:64px;font-size:20px}
+
+/* smoother panel: the browser is told what will change, and the contents don't re-layout while it moves */
+#panel{will-change:height;transition:height .36s cubic-bezier(.22,.9,.25,1)}

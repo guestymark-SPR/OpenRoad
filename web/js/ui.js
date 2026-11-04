@@ -943,7 +943,7 @@
       '<h3>Routes</h3><label class="chk"><input type="checkbox" id="sTolls"' + (c.avoidTolls ? ' checked' : '') + '> Avoid toll roads</label>' +
       '<label class="chk"><input type="checkbox" id="sFerry"' + (c.avoidFerries ? ' checked' : '') + '> Avoid ferries</label>' +
       '<h3>While riding</h3><label class="chk"><input type="checkbox" id="sCams"' + (c.cameras !== false ? ' checked' : '') + '> Speed camera warnings (UK and Ireland)</label>' +
-      '<h3>Ride screen</h3><label class="chk"><input type="checkbox" id="sGlove"' + (c.glove !== false ? ' checked' : '') + '> Glove mode: big buttons only above about 15 mph</label><p class="small muted">Swipe up on the map for the whole route, swipe down to put the map back on you.</p><button class="btn wide" id="sHud">' + ic('speed') + 'Choose the three big numbers</button>' +
+      '<h3>Ride screen</h3><label class="chk"><input type="checkbox" id="sHaptic"' + (c.haptics !== false ? ' checked' : '') + '> Buzz when you tap buttons</label><label class="chk"><input type="checkbox" id="sGlove"' + (c.glove !== false ? ' checked' : '') + '> Glove mode: big buttons only above about 15 mph</label><p class="small muted">Swipe up on the map for the whole route, swipe down to put the map back on you.</p><button class="btn wide" id="sHud">' + ic('speed') + 'Choose the three big numbers</button>' +
       '<h3>AI ride planner</h3><button class="btn wide" id="sAi">' + ic('spark') + (c.aiKey ? 'AI planner: key saved. Change it' : 'Set up the AI ride planner') + '</button><p class="small muted">Describe a ride in words (Trips, Describe a ride). Uses your own Anthropic key, so you pay Anthropic directly and only for what you use.</p>' +
       '<h3>Live traffic</h3>' + field('sTomtom', 'TomTom traffic key (free)', c.tomtomKey || '', 'text', 'paste your key') +
       '<p class="small muted">For roadworks, accidents and queues in the route brief, road closures on the map, and routes that go round closed roads. Get a free key at developer.tomtom.com (no card needed, 2,500 checks a month). It\'s kept only on this phone.</p>' +
@@ -970,6 +970,7 @@
     tog('sAuto', 'autoRecord'); tog('sReveal', 'reveal');
     tog('sHills', 'hills', () => OR.restyle()); tog('sHills3d', 'hills3d', () => OR.restyle());
     $('#sAvoidCl', box).onchange = e => { c.avoidClosures = e.target.checked; OR.saveCfg(); };
+    $('#sHaptic', box).onchange = e => { c.haptics = e.target.checked; OR.saveCfg(); if (c.haptics) OR.haptic(20); };
     $('#sGlove', box).onchange = e => { c.glove = e.target.checked; OR.saveCfg(); };
     $('#sHud', box).onclick = () => { OR.closeSheet && OR.closeSheet(); OR.hudFieldsSheet(); };
     $('#sAi', box).onclick = () => { OR.closeSheet && OR.closeSheet(); OR.aiKeySheet(); };
