@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Follow a ride · OpenRoad</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root{--g:#0b6b3a;--y:#f5c518;--ink:#1c2226;--bg:#eef1ee}
+html,body{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+#map{position:fixed;inset:0}
+#bar{position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));background:#fff;border-radius:18px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,.28);max-width:460px;margin:0 auto}
+#bar b{font-size:19px}#bar .row{display:flex;gap:18px;margin-top:6px}#bar .row div{flex:1}#bar .row span{display:block;font-size:12.5px;color:#5c666e;text-transform:uppercase;letter-spacing:.04em}#bar .row i{font-style:normal;font-weight:800;font-size:20px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px;background:#9aa4aa}.dot.live{background:#0e9f57;box-shadow:0 0 0 0 rgba(14,159,87,.6);animation:p 1.6s infinite}
+@keyframes p{to{box-shadow:0 0 0 10px rgba(14,159,87,0)}}
+small{color:#5c666e}a{color:var(--g)}
+.brand{position:fixed;top:10px;left:10px;background:#fff;border-radius:12px;padding:6px 12px;font-weight:800;color:var(--g);box-shadow:0 2px 10px rgba(0,0,0,.2)}
+</style></head><body>
+<div id="map"></div><div class="brand">OpenRoad</div>
+<div id="bar"><b id="who">Looking for the ride…</b><div><small id="st">Connecting to the ride</small></div>
+<div class="row" id="nums" hidden><div><span>Speed</span><i id="sp">–</i></div><div><span>Updated</span><i id="ago">–</i></div><div><span>Phone</span><i id="bt">–</i></div></div>
+<p><small>Shown live by the rider's phone using OpenRoad. This page only reads their position: it can't be used to send anything, and it works only while they have sharing on. <a href="https://github.com/guestymark-SPR/OpenRoad/releases/download/app/OpenRoad.apk">Get OpenRoad</a></small></p></div>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+'use strict';
+// The rider's phone and this page share a code in the link after the #. It never goes to a server: it makes the
+// key that reads the rider's position, and the name of the place on the free relay servers where it is kept.
+var CODE = (location.hash || '').replace('#', '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+var SERVERS = ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt'];
+var enc = new TextEncoder(), dec = new TextDecoder(), key = null, base = '', trail = [], last = null, map, marker, speedMph = true;
+var $ = function (id) { return document.getElementById(id); };
+var hex = function (b) { return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); };
+
+async function setup() {
+  if (CODE.length < 8) { $('who').textContent = 'No ride in this link'; $('st').textContent = 'Ask the rider to send the link again.'; return false; }
+  var km = await crypto.subtle.importKey('raw', enc.encode(CODE), 'PBKDF2', false, ['deriveBits']);
+  var bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('OpenRoad group ride v1'), iterations: 20000, hash: 'SHA-256' }, km, 256);
+  key = await crypto.subtle.importKey('raw', bits, 'AES-GCM', false, ['decrypt']);
+  var h = await crypto.subtle.digest('SHA-256', enc.encode('topic:' + CODE));
+  base = 'openroad/v1/' + hex(h).slice(0, 24);
+  return true;
+}
+// a message is 12 bytes of nonce then the encrypted JSON
+async function open(bytes) {
+  if (bytes.length < 29) return null;
+  try { var p = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: bytes.slice(0, 12), tagLength: 128 }, key, bytes.slice(12)); return JSON.parse(dec.decode(p)); } catch (e) { return null; }
+}
+async function handle(topic, bytes) {
+  if (topic.indexOf(base + '/p/') !== 0 || !bytes || !bytes.length) return;
+  var p = await open(bytes); if (!p || p.la == null || p.lo == null) return;
+  if (last && p.t && last.t && p.t < last.t) return; // an older message arriving late
+  last = p; trail.push([p.lo, p.la]); if (trail.length > 600) trail.shift(); show();
+}
+function ago(t) { var s = Math.max(0, Math.round((Date.now() - t) / 1000)); return s < 90 ? s + ' s ago' : s < 5400 ? Math.round(s / 60) + ' min ago' : Math.round(s / 3600) + ' h ago'; }
+function show() {
+  if (!last) return;
+  var fresh = Date.now() - last.t < 5 * 60000;
+  $('who').innerHTML = '<span class="dot' + (fresh ? ' live' : '') + '"></span>' + (last.n ? last.n.replace(/[<>&]/g, '') : 'Rider') + (fresh ? ' is riding' : ' was last seen');
+  $('st').textContent = fresh ? 'Live position' : 'No update for a while. They may have stopped, or have no signal.';
+  $('nums').hidden = false; $('sp').textContent = Math.round((last.s || 0) * 2.23694) + ' mph'; $('ago').textContent = ago(last.t); $('bt').textContent = last.b != null && last.b >= 0 ? last.b + '%' : '–';
+  if (map && map.getSource('trail')) {
+    map.getSource('trail').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: trail.length > 1 ? trail : [[last.lo, last.la], [last.lo, last.la]] } });
+    marker.setLngLat([last.lo, last.la]); marker.getElement().style.display = ''; map.easeTo({ center: [last.lo, last.la], zoom: Math.max(map.getZoom(), 13), duration: 800 });
+  }
+}
+setInterval(function () { if (last) { $('ago').textContent = ago(last.t); show(); } }, 15000);
+
+function connect() {
+  SERVERS.forEach(function (url) {
+    var c = mqtt.connect(url, { reconnectPeriod: 4000, connectTimeout: 15000, clientId: 'follow-' + Math.random().toString(16).slice(2, 10) });
+    c.on('connect', function () { c.subscribe(base + '/p/#'); if (!last) $('st').textContent = 'Connected. Waiting for the rider\'s phone…'; });
+    c.on('message', function (t, m) { handle(t, new Uint8Array(m)); });
+    c.on('error', function () { });
+  });
+}
+window.__follow = { handle: handle, setup: setup, base: function () { return base; } }; // for testing
+
+(async function () {
+  var ok = await setup(); if (!ok) return;
+  map = new maplibregl.Map({ container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty', center: [-1.5, 53], zoom: 5, attributionControl: { compact: true } });
+  marker = new maplibregl.Marker({ color: '#0b6b3a' }).setLngLat([-1.5, 53]).addTo(map); marker.getElement().style.display = 'none';
+  map.on('load', function () {
+    map.addSource('trail', { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [[0, 0], [0, 0]] } } });
+    map.addLayer({ id: 'trail', type: 'line', source: 'trail', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0b6b3a', 'line-width': 5, 'line-opacity': .85 } });
+    if (last) show();
+  });
+  connect();
+})();
+</script></body></html>

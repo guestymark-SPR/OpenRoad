@@ -1102,12 +1102,14 @@
       grp('This route', r ? t('roSkip', 'skip', '#ff6a1f', 'Skip next stop') + t('roView', 'map', '#1e88e5', 'Route overview') + t('roWx', 'cloud', '#039be5', 'Weather ahead') + t('roRain', 'loop', '#0277bd', 'Dodge the rain') : '') +
       grp('Find nearby', t('roFuel', 'fuel', '#e53935', 'Fuel') + t('roCafe', 'cup', '#8d5a3b', 'Cafés') + t('roStay', 'bed', '#7e57c2', 'Stays') + t('roFill', 'fuel', '#0e9f57', 'I\'ve filled up')) +
       grp('Group', OR.group && OR.group.state.on ? t('roGroup', 'group', '#e53935', 'Group') + t('roChat', 'chat', '#0e9f57', 'Group chat') : '') +
+      grp('Share', t('roFollow', 'near', '#0e9f57', OR.followActive && OR.followActive() ? 'Live link on' : 'Let someone follow me')) +
       grp('Help and papers', t('roWhere', 'near', '#e53935', 'Where am I') + t('roIce', 'helmet', '#ef8f00', 'Emergency card') + t('roPapers', 'id', '#00897b', 'My papers') + t('roPhrase', 'chat', '#1e88e5', 'Phrasebook')) +
       grp('Bike', t('roSpeedo', 'lean', '#1565c0', 'Speedo check')) +
       (OR.ride.leanL || OR.ride.leanR ? '<p class="small muted">Lean so far: ' + Math.round(OR.ride.leanL) + '° left, ' + Math.round(OR.ride.leanR) + '° right (estimated).</p>' : ''), b => {
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();
       on('roSkip', () => OR.skipNextStop());
+      on('roFollow', () => OR.followSheet());
       on('roRain', () => { OR.toast('Checking the next 2 hours of the route for rain…'); OR.rainCheck(); });
       on('roView', () => { OR.ride.follow = false; $('#recentre').hidden = false; OR.map.fitBounds(OR.bbox(OR.ride.route.shape), { padding: 80, pitch: 0, bearing: 0 }); });
       on('roWx', () => OR.weatherAlong(OR.ride.route, new Date()).then(w => {
