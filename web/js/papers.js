@@ -76,7 +76,7 @@
   async function bigPhoto(k, onDelete, back) {
     const src = await get(k);
     OR.sheet('<img class="ppbig" src="' + (src || '') + '" alt=""><p class="small muted">Pinch to zoom.</p><div class="row"><button class="btn ghost" id="pbDel">Remove photo</button><button class="btn pri" id="pbBack">Back</button></div>', b => {
-      $('#pbDel', b).onclick = () => { if (confirm('Remove this photo from the phone?')) onDelete(); };
+      $('#pbDel', b).onclick = () => { OR.confirm('Remove this photo from the phone?', onDelete, { ok: 'Remove' }); };
       $('#pbBack', b).onclick = back;
     });
   }

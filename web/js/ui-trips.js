@@ -206,7 +206,7 @@
     on('tPdf', () => OR.printHtml(t.name, OR.tripHtml(t)));
     on('tGpx', () => OR.saveFile(OR.fileName(t.name) + '.gpx', OR.tripGpx(t)));
     on('tShare', () => OR.share(OR.tripText(t), t.name));
-    on('tDel', () => { if (confirm('Delete the trip "' + t.name + '"?')) { OR.trips.del(t.id); openId = null; render(); } });
+    on('tDel', () => { OR.confirm('Delete the trip "' + t.name + '"?', () => { OR.trips.del(t.id); openId = null; render(); }, { ok: 'Delete' }); });
     const ds = s => s.split(':').map(Number);
     $$('.day-title', v).forEach(i => i.onchange = () => { t.days[+i.dataset.d].title = i.value.trim(); save(t); });
     $$('[data-start]', v).forEach(i => i.onchange = () => { t.days[+i.dataset.start].startTime = i.value; save(t); render(); });
@@ -226,7 +226,7 @@
     });
     $$('[data-ride]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.ride); const r = OR.unpackRoute(t.days[di].steps[si].route); r.wps = t.days[di].steps[si].wps; OR.startRideUi(r); });
     $$('[data-fuel]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.fuel); fuelStops(t, di, si); });
-    $$('[data-rm]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.rm); if (confirm('Remove this from day ' + (di + 1) + '?')) { t.days[di].steps.splice(si, 1); save(t); render(); } });
+    $$('[data-rm]', v).forEach(b => b.onclick = () => { const [di, si] = ds(b.dataset.rm); OR.confirm('Remove this from day ' + (di + 1) + '?', () => { t.days[di].steps.splice(si, 1); save(t); render(); }, { ok: 'Remove' }); });
     $$('[data-toport]', v).forEach(b => b.onclick = () => { const li = b.closest('.day'), di = +li.dataset.d, si = +b.dataset.toport, day = t.days[di], f = day.steps[si + 1].from;
       day.steps[si].wps[day.steps[si].wps.length - 1] = { lng: f.lng, lat: f.lat, name: f.name, type: 'break' }; day.steps[si].route = null; save(t); planStep(t, di, si); });
     $$('[data-addferry]', v).forEach(b => b.onclick = () => ferrySheet(t, +b.dataset.addferry, null));
@@ -237,7 +237,7 @@
     $$('[data-nohotel]', v).forEach(b => b.onclick = () => { t.days[+b.dataset.nohotel].hotel = { name: 'Home', cost: 0, cur: 'GBP' }; save(t); render(); });
     $$('[data-addcost]', v).forEach(b => b.onclick = () => costSheet(t, +b.dataset.addcost));
     $$('[data-uncost]', v).forEach(b => b.onclick = () => { const [di, ci] = ds(b.dataset.uncost); t.days[di].costs.splice(ci, 1); save(t); render(); });
-    $$('[data-delday]', v).forEach(b => b.onclick = () => { const di = +b.dataset.delday; if (confirm('Remove day ' + (di + 1) + ' and everything in it? Later days move up a date.')) { t.days.splice(di, 1); save(t); render(); } });
+    $$('[data-delday]', v).forEach(b => b.onclick = () => { const di = +b.dataset.delday; OR.confirm('Remove day ' + (di + 1) + ' and everything in it? Later days move up a date.', () => { t.days.splice(di, 1); save(t); render(); }, { ok: 'Remove' }); });
   }
 
   // ---------- planning a ride on the map ----------

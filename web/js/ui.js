@@ -449,7 +449,7 @@
     if (OR.bindPlanGestures) OR.bindPlanGestures(v, (a, b) => { wps.splice(b, 0, wps.splice(a, 1)[0]); fixTypes(); changed(wps.length >= 2); }, a => { wps.splice(a, 1); fixTypes(); changed(wps.length >= 2); }, chooseOption);
     on('ride', () => startRide(OR.plan.route));
     on('brief', () => OR.openBrief && OR.openBrief(OR.plan.route));
-    on('save', () => { const n = prompt('Name this route', r.name); if (n == null) return; r.name = n.trim() || r.name; OR.routes.save(r); OR.toast('Saved to Saved routes'); });
+    on('save', () => { OR.ask('Name this route', r.name, n => { r.name = n.trim() || r.name; OR.routes.save(r); OR.toast('Saved to Saved routes'); }); });
     on('fuelChk', () => fuelCheck(r));
     on('sendR', () => sendSheet(r));
     on('wx', () => weatherCheck(r));
@@ -607,7 +607,7 @@
       if (b.dataset.a === 'open') { loadRoute(r); }
       if (b.dataset.a === 'ride') startRide(r);
       if (b.dataset.a === 'send') sendSheet(r);
-      if (b.dataset.a === 'del' && confirm('Delete "' + r.name + '"?')) { OR.routes.del(r.id); renderPlan(); }
+      if (b.dataset.a === 'del') OR.confirm('Delete "' + r.name + '"?', () => { OR.routes.del(r.id); renderPlan(); }, { ok: 'Delete' });
     });
   }
   function loadRoute(r) {
@@ -719,7 +719,7 @@
       if (b.dataset.a === 'gfly') OR.groupFilmSheet(r);
       if (b.dataset.a === 'fly') { OR.closeSheet && OR.closeSheet(); if (innerWidth < 900) $('#panel').classList.remove('open'); OR.flyover(r); }
       if (b.dataset.a === 'route') { try { const rt = await OR.routeFromTrack(pts, r.name); OR.routes.save(rt); OR.toast('Saved to Saved routes'); } catch (e) { OR.toast('Could not make a route: ' + e.message, 6000); } }
-      if (b.dataset.a === 'del' && confirm('Delete this ride?')) { OR.rides.del(r.id); renderRides(); }
+      if (b.dataset.a === 'del') OR.confirm('Delete this ride?', () => { OR.rides.del(r.id); renderRides(); }, { ok: 'Delete' });
     }
   }
 
@@ -810,7 +810,7 @@
     $$('[data-del]', box).forEach(b => b.onclick = () => { c.presets.splice(+b.dataset.del, 1); if (!c.presets.length) c.presets = OR.CHAT_PRESETS.slice(); save(); });
     const add = () => { const t = $('#pcNew', box).value.trim().slice(0, 40); if (!t) return; c.presets.push(t); save(); };
     $('#pcAdd', box).onclick = add; $('#pcNew', box).onkeydown = e => { if (e.key === 'Enter') add(); };
-    $('#pcReset', box).onclick = () => { if (confirm('Put back the standard quick messages?')) { c.presets = OR.CHAT_PRESETS.slice(); save(); } };
+    $('#pcReset', box).onclick = () => OR.confirm('Put back the standard quick messages?', () => { c.presets = OR.CHAT_PRESETS.slice(); save(); }, { ok: 'Put back' });
     const o = $('#pcOpen', box); if (o) o.onclick = () => OR.openChat();
     const g = $('#pcGroup', box); if (g) g.onclick = () => OR.openMore('group');
   }
@@ -922,8 +922,8 @@
     box.innerHTML = h;
     const sg = $('#osGet', box); if (sg) sg.onclick = () => { OR.offSearch.sync(true).catch(e => OR.toast('Couldn\'t download the search: ' + e.message)); };
     $$('[data-get]', box).forEach(b => b.onclick = () => { const p = catalogue.find(c => c.id === b.dataset.get); packState[p.id] = { state: 'downloading', done: 0, total: p.size }; OR.packs.download(p); pageMaps(box); });
-    $$('[data-del]', box).forEach(b => b.onclick = () => { if (confirm('Delete this map pack?')) { OR.packs.del(b.dataset.del); pageMaps(box); } });
-    const cc = $('#clrCache', box); if (cc) cc.onclick = () => { if (confirm('Clear saved map tiles? Country packs are kept.')) { A.clearTiles(); pageMaps(box); } };
+    $$('[data-del]', box).forEach(b => b.onclick = () => OR.confirm('Delete this map pack?', () => { OR.packs.del(b.dataset.del); pageMaps(box); }, { ok: 'Delete' }));
+    const cc = $('#clrCache', box); if (cc) cc.onclick = () => OR.confirm('Clear saved map tiles? Country packs are kept.', () => { A.clearTiles(); pageMaps(box); }, { ok: 'Clear' });
   }
   // search with no signal (offsearch.js): one index per country that has a pack here
   let searchState = null;
@@ -1074,7 +1074,7 @@
   }
   function refOf(street) { const m = String(street || '').match(/\b([A-Z]{1,3}\d{1,4}[A-Z]?)\b/); return m ? m[1] : ''; }
   function bindHud() {
-    $('#hEnd').onclick = () => { if (confirm('End this ride?')) endRide(); };
+    $('#hEnd').onclick = () => OR.confirm('Tracking stops and the ride is finished.', endRide, { title: 'End this ride?', ok: 'End ride', cancel: 'Keep riding' });
     $('#hMic').innerHTML = ic('mic'); $('#hMic').onclick = () => OR.voiceListen();
     OR.on('voiceState', s => { $('#hMic').classList.toggle('on', s === 'listening' || s === 'thinking'); });
     OR.on('voiceToggled', updateMute);

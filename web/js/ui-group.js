@@ -58,8 +58,9 @@
     $$('[data-to]', b).forEach(x => x.onclick = () => rideTo(x.dataset.to));
     $$('[data-q]', b).forEach(x => x.onclick = () => {
       const q = OR.QUICK.find(k => k[0] === x.dataset.q);
-      if (q[0] === 'help' && !confirm('Tell the group you need help? They\'ll get your position.')) return;
-      OR.group.say(q[0]); OR.toast('Sent: ' + q[1]);
+      const send = () => { OR.group.say(q[0]); OR.toast('Sent: ' + q[1]); };
+      if (q[0] === 'help') OR.confirm('Tell the group you need help? They\'ll get your position.', send, { ok: 'Send help request', danger: true });
+      else send();
     });
   }
 
@@ -128,7 +129,7 @@
     bindShared(box, st);
     const mk = $('#gMarker', box); if (mk) mk.onchange = () => { const g = G(); g.marker = mk.checked; OR.saveCfg(); OR.toast(mk.checked ? 'Corner marker on. Ask everyone in the group to switch it on too.' : 'Corner marker off'); };
     const hn = $('#gHazNow', box); if (hn) hn.onclick = () => OR.hazardSheet();
-    $('#gLeave', box).onclick = () => { if (!confirm('Leave the group? The others will stop seeing you.')) return; OR.group.leave(); setTimeout(() => OR.pageGroup(box), 700); };
+    $('#gLeave', box).onclick = () => OR.confirm('Leave the group? The others will stop seeing you.', () => { OR.group.leave(); setTimeout(() => OR.pageGroup(box), 700); }, { ok: 'Leave' });
   }
 
   // ---------- QR codes ----------
@@ -149,7 +150,7 @@
       g.lastCode = code; OR.saveCfg();
       setTimeout(() => { OR.group.start(code); OR.toast('Joining the group…'); setTimeout(() => OR.openMore('group'), 700); }, st.on ? 800 : 0);
     };
-    if (g.name) { if (!st.on || confirm('Leave your current group and join ' + code + '?')) go(); return; }
+    if (g.name) { if (!st.on) go(); else OR.confirm('Leave your current group and join ' + code + '?', go, { ok: 'Leave and join' }); return; }
     OR.sheet('<h2>Join the group ride</h2><p>Group code <b>' + esc(code) + '</b></p>' + OR.field('jName', 'Your name on the map', '', 'text', 'e.g. Mark') + '<button id="jGo" class="btn wide pri">Join</button>', b => {
       $('#jGo', b).onclick = () => { const n = $('#jName', b).value.trim().slice(0, 24); if (!n) return OR.toast('Put your name in first'); g.name = n; OR.saveCfg(); OR.closeSheet(); go(); };
     });

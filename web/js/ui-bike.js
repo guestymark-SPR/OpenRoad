@@ -99,7 +99,7 @@
       '<div class="two">' + OR.field('lC', 'Cost (£)', '', 'number') + OR.field('lB', 'Who did it', '', 'text', 'garage or me') + '</div>' + OR.field('lN', 'Notes', '', 'text', 'parts, oil used…') + '<button class="btn wide pri" id="lSave">Save</button>', b => {
       $('#lSave', b).onclick = () => { const w = $('#lW', b).value.trim(); if (!w) { OR.toast('Say what was done'); return; } m.log.unshift({ what: w, date: $('#lD', b).value, miles: $('#lM', b).value, cost: $('#lC', b).value, who: $('#lB', b).value.trim(), notes: $('#lN', b).value.trim() }); m.log.sort((a, c) => String(c.date).localeCompare(String(a.date))); save(); OR.closeSheet(); re(); };
     });
-    $$('[data-dellog]', box).forEach(x => x.onclick = () => { if (confirm('Delete this entry?')) { m.log.splice(+x.dataset.dellog, 1); save(); re(); } });
+    $$('[data-dellog]', box).forEach(x => x.onclick = () => OR.confirm('Delete this entry?', () => { m.log.splice(+x.dataset.dellog, 1); save(); re(); }, { ok: 'Delete' }));
   }
 
   // once a day, mention anything overdue
@@ -151,7 +151,7 @@
       (n ? '<button class="btn small ghost" id="spReset">Start again</button>' : '') + '</div>';
   }
   OR.pageBike = function (box) {
-    setTimeout(() => { const el = document.createElement('div'); el.innerHTML = speedoCard(); box.appendChild(el); const rs = el.querySelector('#spReset'); if (rs) rs.onclick = () => { if (confirm('Clear your speedo readings?')) { OR.store.set('speedo', []); OR.pageBike(box); } }; }, 0);
+    setTimeout(() => { const el = document.createElement('div'); el.innerHTML = speedoCard(); box.appendChild(el); const rs = el.querySelector('#spReset'); if (rs) rs.onclick = () => OR.confirm('Clear your speedo readings?', () => { OR.store.set('speedo', []); OR.pageBike(box); }, { ok: 'Clear' }); }, 0);
     const b = OR.cfg.bike, prof = OR.BIKES[b.profile], range = OR.fuelRange(), left = OR.fuelLeft();
     const lm = OR.learnedMpg(), pace = OR.pace(), brk = OR.breaks(), mm = OR.monthlyMiles(), costs = OR.runningCosts();
     let h = '<div id="bikePage"></div>'; const photo = OR.bikePhotoCard ? OR.bikePhotoCard() : '';
@@ -203,13 +203,13 @@
     $('#bProf', box).onchange = e => {
       const id = e.target.value;
       if (!id) { b.profile = ''; OR.saveCfg(); re(); return; }
-      if (confirm('Set up as ' + OR.BIKES[id].name + '? This loads Harley\'s service schedule into Maintenance (keeping any dates you\'ve already recorded).')) { OR.applyBike(id); OR.toast('Set up as ' + OR.BIKES[id].short); }
-      re();
+      OR.confirm('Set up as ' + OR.BIKES[id].name + '? This loads Harley\'s service schedule into Maintenance (keeping any dates you\'ve already recorded).',
+        () => { OR.applyBike(id); OR.toast('Set up as ' + OR.BIKES[id].short); re(); }, { ok: 'Set up', onNo: re });
     };
     const keep = (id, key) => { const el = $('#' + id, box); if (el) el.onchange = () => { b[key] = el.value === '' ? '' : (key === 'name' ? el.value.trim() : parseFloat(el.value)); OR.saveCfg(); re(); }; };
     keep('bName', 'name'); keep('bTank', 'tankL'); keep('bMpg', 'mpg'); keep('bRes', 'reserveMi');
     { const gs = box.querySelector('#bGrade'); if (gs) gs.onchange = () => { OR.cfg.fuelGrade = gs.value; OR.saveCfg(); }; }
     $('#bFill', box).onclick = OR.fillUpSheet;
-    $$('[data-delfill]', box).forEach(x => x.onclick = () => { if (!confirm('Delete this fill-up?')) return; const l = OR.fuelLog.list(); l.splice(+x.dataset.delfill, 1); OR.fuelLog.save(l); re(); });
+    $$('[data-delfill]', box).forEach(x => x.onclick = () => OR.confirm('Delete this fill-up?', () => { const l = OR.fuelLog.list(); l.splice(+x.dataset.delfill, 1); OR.fuelLog.save(l); re(); }, { ok: 'Delete' }));
   }
 })(window.OR);

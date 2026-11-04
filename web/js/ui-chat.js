@@ -94,7 +94,7 @@
     const el = $('#chatPresets', box), list = OR.chatCfg().presets;
     el.innerHTML = list.map((t, i) => '<button data-p="' + i + '">' + esc(t) + '</button>').join('') + '<button data-p="help" class="sos">Need help</button>';
     $$('button', el).forEach(b => b.onclick = () => {
-      if (b.dataset.p === 'help') { if (!confirm('Tell the group you need help? They\'ll get your position.')) return; OR.group.say('help'); }
+      if (b.dataset.p === 'help') { OR.confirm('Tell the group you need help? They\'ll get your position.', () => OR.group.say('help'), { ok: 'Send help request', danger: true }); return; }
       else OR.group.chatSend(list[+b.dataset.p], to, false);
       b.classList.add('sent'); setTimeout(() => b.classList.remove('sent'), 700);
       setTimeout(() => draw(true), 450);

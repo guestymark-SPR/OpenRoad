@@ -152,7 +152,7 @@
       $('#bpOn', body).onchange = e => { t.on = e.target.checked; save(t); };
       $$('[data-m]', body).forEach(b => b.onclick = () => { t.main = b.dataset.m; t.on = true; save(t); OR.bindBikePhoto(box); });
       $$('[data-h]', body).forEach(b => b.onclick = () => { t.hi = b.dataset.h; t.on = true; save(t); OR.bindBikePhoto(box); });
-      $('#bpDel', body).onclick = async () => { if (!confirm('Remove the photo and go back to OpenRoad\'s colours?')) return; await del('photo'); OR.store.set('bikeTheme', null); OR.applyBikeTheme(); OR.bindBikePhoto(box); };
+      $('#bpDel', body).onclick = () => OR.confirm('Remove the photo and go back to OpenRoad\'s colours?', async () => { await del('photo'); OR.store.set('bikeTheme', null); OR.applyBikeTheme(); OR.bindBikePhoto(box); }, { ok: 'Remove' });
     }
     $('#bpAdd', body).onchange = async e => {
       const f = e.target.files && e.target.files[0]; if (!f) return;

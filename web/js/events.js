@@ -77,7 +77,7 @@
         $('#evMap', b).onclick = () => { OR.closeSheet(); OR.map.flyTo({ center: [ev.meet.lng, ev.meet.lat], zoom: 13 }); if (ev.route) { const r = OR.unpackRoute(ev.route); OR.setData('rideview', { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'LineString', coordinates: r.shape } }] }); } if (innerWidth < 900) $('#panel').classList.remove('open'); };
         $('#evRef', b).onclick = async () => { const r = await peek(ev.code); if (r.ok) { if (r.event && !ev.mine) Object.assign(ev, r.event, { mine: false }); ev.answers = r.answers; put(ev); draw(); } else OR.toast('No connection'); };
         $('#evShare', b).onclick = () => OR.share('Group ride: ' + ev.title + '\n' + when(ev.when) + ', meet at ' + ev.meet.name + '.\n\nIn OpenRoad: Group tab, Scan a QR code, or "Join an event" with the code ' + OR.group.pretty(ev.code) + '.\nGet OpenRoad: https://github.com/guestymark-SPR/OpenRoad/releases/download/app/OpenRoad.apk', ev.title);
-        $('#evDel', b).onclick = () => { if (!confirm(ev.mine ? 'Delete this ride? Riders who have it will still see it until they remove it.' : 'Remove this ride from your list?')) return; save(list().filter(x => x.code !== ev.code)); OR.closeSheet(); OR.renderGroupTab && OR.renderGroupTab(); };
+        $('#evDel', b).onclick = () => OR.confirm(ev.mine ? 'Delete this ride? Riders who have it will still see it until they remove it.' : 'Remove this ride from your list?', () => { save(list().filter(x => x.code !== ev.code)); OR.closeSheet(); OR.renderGroupTab && OR.renderGroupTab(); }, { ok: ev.mine ? 'Delete' : 'Remove' });
       });
     };
     if (!ev || fresh) {
