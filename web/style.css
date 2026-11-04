@@ -1095,3 +1095,35 @@ h3::after,.gh::after{content:"";flex:1;height:1px;background:linear-gradient(90d
 @media (prefers-reduced-motion:reduce){.tile:active,.tool:active,.opt:active{transform:none}}
 .btn.go{box-shadow:inset 0 0 0 3px var(--green),inset 0 0 0 5px #fff,0 3px 5px rgba(0,50,25,.35),0 12px 22px -8px rgba(0,50,25,.55)}
 .btn.go:active{box-shadow:inset 0 0 0 3px var(--green),inset 0 0 0 5px #fff,inset 0 4px 8px rgba(0,0,0,.35)}
+
+/* ---------- motion: sheets rise, pages settle in, icons respond (all off with "reduce motion") ---------- */
+@keyframes orRise{from{opacity:0;transform:translateY(26px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes orFade{from{opacity:0}to{opacity:1}}
+@keyframes orIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes orPop{0%{transform:scale(.6)}55%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes orHop{0%{transform:translateY(0)}35%{transform:translateY(-5px) scale(1.12)}70%{transform:translateY(0) scale(.96)}100%{transform:none}}
+@keyframes orPulse{0%{box-shadow:0 0 0 0 rgba(245,197,24,.7)}100%{box-shadow:0 0 0 12px rgba(245,197,24,0)}}
+#sheet:not([hidden]){animation:orFade .18s ease-out}
+#sheet:not([hidden]) #sheetBox{animation:orRise .32s cubic-bezier(.2,.85,.25,1.08)}
+/* each page's cards settle in one after another */
+.view.on>*{animation:orIn .34s cubic-bezier(.2,.8,.3,1) both}
+.view.on>*:nth-child(2){animation-delay:.04s}.view.on>*:nth-child(3){animation-delay:.08s}.view.on>*:nth-child(4){animation-delay:.12s}
+.view.on>*:nth-child(5){animation-delay:.16s}.view.on>*:nth-child(6){animation-delay:.2s}.view.on>*:nth-child(n+7){animation-delay:.24s}
+/* tab bar: the chosen tab's icon hops, the yellow plate slides in */
+#nav .navsign button{transition:background-color .22s,color .22s,transform .12s}
+#nav .navsign button.on svg{animation:orHop .45s ease-out}
+#nav .navsign button:active{transform:scale(.92)}
+#nav button[data-n]:not([data-n=""])::after{animation:orPop .4s ease-out}
+/* icons everywhere respond to a touch */
+.tile svg,.tool svg,.btn svg,.badge{transition:transform .18s cubic-bezier(.3,1.6,.5,1)}
+.tile:active svg,.tool:active svg,.btn:active svg,.tile:active .badge,.tool:active .badge{transform:scale(1.18) rotate(-4deg)}
+.opt{transition:box-shadow .2s,transform .12s,border-color .2s}
+/* switches and segment bars glide */
+.seg button{transition:background .2s,color .2s,box-shadow .2s}
+.switch{transition:background-color .2s}
+/* what is live breathes */
+#nav button.live:not(.on) span::after{animation:orPulse 1.6s ease-out infinite}
+.fab{transition:transform .15s,box-shadow .2s}.fab:active{transform:scale(.9)}
+/* the empty-state picture floats gently */
+@keyframes orFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.empty svg.big{animation:orFloat 3.6s ease-in-out infinite}
