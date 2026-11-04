@@ -1212,3 +1212,29 @@ h3,.gh{margin:26px 2px 10px}
 .seg.styles{min-height:0}.seg.styles button{min-height:38px;padding:6px 4px;font-size:13px;line-height:1.1}
 .setfind{margin-top:12px}
 .quick .q-row{padding-top:7px;padding-bottom:7px}
+
+/* livelier menus: colour-tinted tiles, bold hero cards */
+.menu.tmenu{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:transparent;box-shadow:none;border-radius:0;overflow:visible}
+.tmenu button{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:10px;min-height:128px;padding:14px;border:1.5px solid color-mix(in srgb,var(--c) 38%,var(--line))!important;border-radius:20px;text-align:left;position:relative;
+  background:linear-gradient(155deg,color-mix(in srgb,var(--c) 26%,var(--surface)),color-mix(in srgb,var(--c) 6%,var(--surface)) 70%);box-shadow:0 6px 16px -10px var(--c),inset 0 1px 0 rgba(255,255,255,.14)}
+.tmenu button .badge{flex:0 0 auto;width:46px;height:46px;border-radius:14px;box-shadow:0 6px 12px -6px var(--c)}
+.tmenu button>span:not(.badge){flex:0 0 auto;width:100%}
+.tmenu b{font-size:16.5px;font-weight:800;line-height:1.15}
+.tmenu small{display:block;margin-top:3px;font-size:12.5px;line-height:1.25}
+.tmenu .chev{position:absolute;top:12px;right:10px;opacity:.5}
+.tmenu button:active{transform:scale(.97)}
+/* ride options tiles take their colour */
+.tiles.rq .tile{background:linear-gradient(160deg,color-mix(in srgb,var(--c) 28%,var(--surface)),color-mix(in srgb,var(--c) 7%,var(--surface)));border:1.5px solid color-mix(in srgb,var(--c) 40%,var(--line));box-shadow:0 6px 14px -9px var(--c)}
+.tiles.rq .tile .badge{width:44px;height:44px;box-shadow:0 5px 10px -5px var(--c)}
+/* the Where to? card is the hero of the Plan screen */
+.whereto{background:linear-gradient(135deg,#0f8a4d,#0b6b3a)!important;border:0!important;color:#fff;box-shadow:0 10px 22px -12px rgba(11,107,58,.9),inset 0 1px 0 rgba(255,255,255,.22);min-height:76px;border-radius:22px}
+.whereto b{color:#fff;font-size:22px}.whereto small{color:rgba(255,255,255,.82)}
+.whereto svg,[data-theme=night] .whereto svg{color:var(--yellow);width:32px;height:32px}
+.homechips .btn{border-radius:999px;background:color-mix(in srgb,var(--green-2) 16%,var(--surface));border:1.5px solid color-mix(in srgb,var(--green-2) 40%,var(--line));font-weight:800}
+.modes{border-bottom:0;background:var(--surface);border-radius:999px;padding:4px;gap:2px;box-shadow:inset 0 1px 3px rgba(0,0,0,.18)}
+.modes button{border:0;border-radius:999px;min-height:40px;margin:0}
+.modes button.on{background:linear-gradient(180deg,#f9d23a,#f5c518);color:#1c2226;box-shadow:0 3px 8px -3px rgba(245,197,24,.7)}
+[data-theme=night] .modes button.on{border-bottom-color:transparent}
+/* sub-page groups get a coloured spine */
+.sgrp h3{display:flex;align-items:center;gap:8px}.sgrp h3::before{content:"";width:5px;height:16px;border-radius:3px;background:linear-gradient(var(--yellow),var(--green-2))}
+.menu.tmenu{border:0!important;box-shadow:none!important;padding:0}

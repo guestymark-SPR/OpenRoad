@@ -736,7 +736,7 @@
   function renderMore() {
     const v = $('#v-more');
     if (!morePage) {
-      const sec = (title, ids) => '<h3 class="grp">' + title + '</h3><div class="menu">' + ids.map(id => PAGES.find(p => p[0] === id)).map(p => '<button data-p="' + p[0] + '">' + badge(p[1], p[4]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
+      const sec = (title, ids) => '<h3 class="grp">' + title + '</h3><div class="menu tmenu">' + ids.map(id => PAGES.find(p => p[0] === id)).map(p => '<button data-p="' + p[0] + '" style="--c:' + p[4] + '">' + badge(p[1], p[4]) + '<span><b>' + p[2] + '</b><small>' + p[3] + '</small></span>' + ic('chev', 'chev') + '</button>').join('') + '</div>';
       const c = OR.cfg, qs = (id, val, opts) => '<div class="seg qseg" id="' + id + '">' + opts.map(([k, l]) => '<button data-v="' + k + '" class="' + (val === k ? 'on' : '') + '">' + l + '</button>').join('') + '</div>';
       v.innerHTML = '<h2 class="vh">Settings</h2>' +
         '<div class="quick"><div class="q-row"><span>' + ic('sun') + 'Map colours</span>' + qs('qTheme', c.theme, [['auto', 'Auto'], ['day', 'Day'], ['night', 'Night']]) + '</div>' +
@@ -1108,7 +1108,7 @@
   }
   function rideOptions() {
     const r = OR.ride.route, grpOn = OR.group && OR.group.state.on;
-    const t = (id, i, c, l) => '<button class="tile" id="' + id + '">' + badge(i, c) + '<span>' + l + '</span></button>';
+    const t = (id, i, c, l) => '<button class="tile" id="' + id + '" style="--c:' + c + '">' + badge(i, c) + '<span>' + l + '</span></button>';
     const grp = (title, tiles) => tiles ? '<h3 class="grp">' + title + '</h3><div class="tiles rq">' + tiles + '</div>' : '';
     sheet('<h2>Ride options</h2>' +
       grp('Route', r ? t('roSkip', 'skip', '#ff6a1f', 'Skip next stop') + t('roView', 'map', '#1e88e5', 'Overview') + t('roWx', 'cloud', '#039be5', 'Weather') + t('roRain', 'loop', '#0277bd', 'Dodge rain') : '') +
