@@ -734,6 +734,7 @@
     ['phrases', 'chat', 'Phrasebook', 'French, Dutch and German, spoken aloud', '#1e88e5'],
     ['papers', 'id', 'Papers', 'Licence, V5C, insurance, MOT and breakdown cover', '#00897b'],
     ['auto', 'moto', 'Android Auto', 'Setting it up on a car screen', '#3949ab'],
+    ['notes', 'warn', 'Notifications', 'What OpenRoad has in your notification shade, and clear it', '#ef6c00'],
     ['about', 'update', 'Updates and about', 'Version, updates, where the data comes from', '#8e6bd6']];
   function renderMore() {
     const v = $('#v-more');
@@ -746,9 +747,9 @@
         '<div class="q-row"><span>' + ic('map') + 'Units</span>' + qs('qUnits', c.units, [['mi', 'Miles'], ['km', 'Km']]) + '</div>' +
         '<div class="q-row"><span>' + ic('star') + 'Look</span>' + qs('qLook', c.look || 'classic', [['dusk', 'Dusk'], ['outlaw', 'Outlaw'], ['classic', 'Classic']]) + '</div></div>' +
         '<input id="setFind" type="search" class="setfind" placeholder="Find a setting, like tolls or glove" autocomplete="off" aria-label="Find a setting">' +
-        '<div id="setList">' + sec('Riding', ['settings', 'screen', 'voice', 'aware', 'maps']) + sec('Plan and map', ['today', 'mapset']) + sec('Safety', ['safety', 'ice']) + sec('Group rides', ['chat']) + sec('Riding abroad', ['papers', 'phrases']) + sec('App', ['data', 'auto', 'about']) + '</div>' +
+        '<div id="setList">' + sec('Riding', ['settings', 'screen', 'voice', 'aware', 'maps']) + sec('Plan and map', ['today', 'mapset']) + sec('Safety', ['safety', 'ice']) + sec('Group rides', ['chat']) + sec('Riding abroad', ['papers', 'phrases']) + sec('App', ['notes', 'data', 'auto', 'about']) + '</div>' +
         (A ? '<p class="small muted center">OpenRoad ' + esc(A.version()) + '</p>' : '');
-      const KW = { settings: 'toll ferry camera traffic tomtom closure ai anthropic key planner voice test', screen: 'glove haptic buzz vibrate big numbers speed regroup hud', voice: 'voice mic intercom headset watch turn bar countdown', aware: 'bend sun tired hazard warning', maps: 'offline download country pack', today: 'home forecast loop record automatic', mapset: 'hill shading 3d tilt reveal', safety: 'crash check-in alarm break speed limit', ice: 'emergency contact medical', chat: 'message quick', papers: 'licence insurance mot v5c', phrases: 'french dutch german language', data: 'backup restore export import file', auto: 'android auto car screen', about: 'update version privacy data welcome' };
+      const KW = { settings: 'toll ferry camera traffic tomtom closure ai anthropic key planner voice test', screen: 'glove haptic buzz vibrate big numbers speed regroup hud', voice: 'voice mic intercom headset watch turn bar countdown', aware: 'bend sun tired hazard warning', maps: 'offline download country pack', today: 'home forecast loop record automatic', mapset: 'hill shading 3d tilt reveal', safety: 'crash check-in alarm break speed limit', ice: 'emergency contact medical', chat: 'message quick', papers: 'licence insurance mot v5c', phrases: 'french dutch german language', data: 'backup restore export import file', auto: 'android auto car screen', notes: 'notification alert badge dot number clear', about: 'update version privacy data welcome' };
       const find = $('#setFind', v), applyFind = () => {
         const q = find.value.trim().toLowerCase();
         $$('#setList .menu button', v).forEach(b => { const pg = PAGES.find(x => x[0] === b.dataset.p); b.hidden = !!q && !((pg[2] + ' ' + pg[3] + ' ' + (KW[pg[0]] || '')).toLowerCase().includes(q)); });
@@ -766,7 +767,7 @@
     const p = PAGES.find(x => x[0] === morePage);
     v.innerHTML = '<button class="backbtn" id="moreBack">' + ic('back') + 'Settings</button><h2 class="vh">' + p[2] + '</h2><div id="morePage"></div>';
     $('#moreBack', v).onclick = () => { morePage = null; renderMore(); };
-    ({ phrases: p => OR.pagePhrases(p), voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: p => pageSettings(p, 'routing'), screen: p => pageSettings(p, 'screen'), today: p => pageSettings(p, 'today'), mapset: p => pageSettings(p, 'mapset'), data: p => pageSettings(p, 'data'), about: pageAbout, auto: pageAuto, aware: p => OR.awareSettings && OR.awareSettings(p) })[morePage]($('#morePage', v));
+    ({ phrases: p => OR.pagePhrases(p), voice: p => handsFree(p, true), group: p => OR.pageGroup(p), chat: pageChat, bike: p => OR.pageBike(p), maint: OR.pageMaint, safety: pageSafety, ice: pageIce, maps: pageMaps, settings: p => pageSettings(p, 'routing'), screen: p => pageSettings(p, 'screen'), today: p => pageSettings(p, 'today'), mapset: p => pageSettings(p, 'mapset'), data: p => pageSettings(p, 'data'), about: pageAbout, notes: pageNotes, auto: pageAuto, aware: p => OR.awareSettings && OR.awareSettings(p) })[morePage]($('#morePage', v));
   }
   // pages that now have their own tab
   OR.openMore = p => {
@@ -1012,6 +1013,19 @@
       '<h3>On the car screen</h3><p class="small">OpenRoad shows your trip days and saved routes. Pick one to navigate, with the map, turn card and voice; or choose <b>Record a ride</b>. Plan routes on the phone first: planning isn\'t possible on the car screen.</p>' +
       '<p class="small muted">Android Auto may switch developer settings off again after it updates. If OpenRoad disappears from the car, check Unknown sources is still on.</p>';
     const b = $('#aaOpen', box); if (b) b.onclick = () => A.openAutoSettings();
+  }
+  function pageNotes(box) {
+    const ok = A && A.notesList;
+    if (!ok) { box.innerHTML = '<p class="small muted">Notifications are only listed in the Android app.</p>'; return; }
+    let list = []; try { list = JSON.parse(A.notesList() || '[]'); } catch (e) { }
+    list.sort((a, b) => b.when - a.when);
+    const ago = t => { const m = Math.max(0, Math.round((Date.now() - t) / 60000)); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m / 60) + ' h ago' : Math.round(m / 1440) + ' d ago'; };
+    box.innerHTML = '<p class="small muted">The number on the OpenRoad icon is how many of these are waiting in your notification shade.</p>' +
+      (list.length ? '<div class="list">' + list.map(n => '<div class="li"><b>' + esc(n.title || 'OpenRoad') + '</b>' + (n.text ? '<div class="small">' + esc(n.text) + '</div>' : '') + '<div class="small muted">' + ago(n.when) + (n.ongoing ? ' · stays while it is running' : '') + '</div></div>').join('') + '</div>' : '<p><b>Nothing waiting.</b></p>') +
+      (list.some(n => !n.ongoing) ? '<button id="nClr" class="btn wide pri">Clear notifications</button>' : '') +
+      '<button id="nSet" class="btn wide ghost">Notification settings on this phone</button>';
+    const c = $('#nClr', box); if (c) c.onclick = () => { A.notesClear(); setTimeout(() => pageNotes(box), 300); };
+    $('#nSet', box).onclick = () => A.notesSettings && A.notesSettings();
   }
   function pageAbout(box) {
     box.innerHTML = (A ? '<div class="stats"><div><b>' + esc(A.version()) + '</b><span>your version</span></div></div>' + (OR.playBuild ? '<p class="small muted">Updates come from Google Play.</p>'

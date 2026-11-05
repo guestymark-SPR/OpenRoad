@@ -227,6 +227,33 @@ public class MainActivity extends Activity {
 
         @Override void needPermission() { runOnUiThread(MainActivity.this::askPermissions); }
 
+        // what OpenRoad currently has in the notification shade (this is what puts the dot/number on the app icon)
+        @JavascriptInterface public String notesList() {
+            org.json.JSONArray out = new org.json.JSONArray();
+            try {
+                android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                for (android.service.notification.StatusBarNotification s : nm.getActiveNotifications()) {
+                    android.app.Notification n = s.getNotification();
+                    if ((n.flags & android.app.Notification.FLAG_GROUP_SUMMARY) != 0) continue;
+                    JSONObject o = new JSONObject();
+                    CharSequence t = n.extras.getCharSequence(android.app.Notification.EXTRA_TITLE), x = n.extras.getCharSequence(android.app.Notification.EXTRA_TEXT);
+                    o.put("id", s.getId()); o.put("title", t == null ? "" : t.toString()); o.put("text", x == null ? "" : x.toString());
+                    o.put("when", s.getPostTime()); o.put("ongoing", s.isOngoing());
+                    out.put(o);
+                }
+            } catch (Exception ignored) { }
+            return out.toString();
+        }
+        @JavascriptInterface public void notesClear() {
+            try {
+                android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                for (android.service.notification.StatusBarNotification s : nm.getActiveNotifications()) if (!s.isOngoing()) nm.cancel(s.getTag(), s.getId());
+            } catch (Exception ignored) { }
+        }
+        @JavascriptInterface public void notesSettings() {
+            runOnUiThread(() -> { try { startActivity(new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName())); } catch (Exception ignored) { } });
+        }
+
         @JavascriptInterface public void keepScreenOn(final boolean on) {
             runOnUiThread(() -> { if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); });
         }
