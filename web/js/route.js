@@ -55,7 +55,10 @@
   }
   // areas the route must not enter: low-emission zones you chose to avoid, and known road closures (maplive.js)
   function noGo(wps) {
-    const z = (OR.plan && OR.plan.avoidZones || []).concat(OR.closureBoxes ? OR.closureBoxes(wps.map(w => [w.lng, w.lat])) : []);
+    const zones = (OR.plan && OR.plan.avoidZones || []);
+    // the route server takes at most 100 points across all excluded areas: zones you chose come first, closures fill what is left
+    const used = zones.reduce((n, r) => n + r.length, 0), room = Math.floor((96 - used) / 5);
+    const z = zones.concat(OR.closureBoxes && room > 0 ? OR.closureBoxes(wps.map(w => [w.lng, w.lat]), room) : []);
     return z.length ? z : undefined;
   }
   function body(wps, opts) {

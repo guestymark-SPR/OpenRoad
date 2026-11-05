@@ -93,7 +93,7 @@
   }
   OR.avoidClosuresOn = () => OR.cfg.avoidClosures !== false && !!(OR.cfg.tomtomKey || '').trim();
   // no-go boxes (about 30 m across) for the closures near these points, for the route planner
-  OR.closureBoxes = function (pts) {
+  OR.closureBoxes = function (pts, max) {
     if (!OR.avoidClosuresOn()) return [];
     const now = Date.now(), lngs = pts.map(p => p[0]), lats = pts.map(p => p[1]);
     const w = Math.min.apply(null, lngs) - 0.5, e = Math.max.apply(null, lngs) + 0.5, s = Math.min.apply(null, lats) - 0.4, n = Math.max.apply(null, lats) + 0.4;
@@ -102,10 +102,13 @@
       const k = known[id]; if (k.until < now) { delete known[id]; continue; }
       const [x, y] = k.mid; if (x < w || x > e || y < s || y > n) continue;
       const dy = 15 / 111320, dx = dy / Math.cos(y * Math.PI / 180);
-      out.push([[x - dx, y - dy], [x + dx, y - dy], [x + dx, y + dy], [x - dx, y + dy], [x - dx, y - dy]]);
-      if (out.length >= 40) break; // the public route server limits how much can be excluded
+      let d = 1e9; for (const p of pts) d = Math.min(d, (p[0] - x) * (p[0] - x) + (p[1] - y) * (p[1] - y));
+      const ring = [[x - dx, y - dy], [x + dx, y - dy], [x + dx, y + dy], [x - dx, y + dy], [x - dx, y - dy]]; ring.d = d;
+      out.push(ring);
     }
-    return out;
+    // the public route server allows 100 points in all the excluded areas together, so keep the closures nearest the route
+    out.sort((a, b) => a.d - b.d);
+    return out.slice(0, Math.max(0, Math.min(max == null ? 19 : max, 19)));
   };
   // closures the route runs through (within 30 m of the line)
   OR.closuresOnRoute = function (route) {

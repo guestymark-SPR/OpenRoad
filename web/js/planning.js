@@ -31,9 +31,9 @@
   }
   const inRing = (p, r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) { const a = r[i], b = r[j]; if ((a[1] > p[1]) !== (b[1] > p[1]) && p[0] < (b[0] - a[0]) * (p[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c; } return c; };
   OR.inZone = (p, z) => z.rings.some(r => inRing(p, r));
-  // a simpler outline for asking the router to avoid it (at most about 120 points), slightly enlarged so the simplification doesn't cut corners
+  // a simpler outline for asking the router to avoid it (at most about 40 points: the route server allows 100 points across everything it avoids), slightly enlarged so the simplification doesn't cut corners
   function simplify(ring) {
-    const step = Math.max(1, Math.ceil(ring.length / 120)), pts = ring.filter((_, i) => i % step === 0);
+    const step = Math.max(1, Math.ceil(ring.length / 40)), pts = ring.filter((_, i) => i % step === 0);
     const c = pts.reduce((a, p) => [a[0] + p[0] / pts.length, a[1] + p[1] / pts.length], [0, 0]);
     const out = pts.map(p => [+(c[0] + (p[0] - c[0]) * 1.03).toFixed(5), +(c[1] + (p[1] - c[1]) * 1.03).toFixed(5)]);
     out.push(out[0]); return out;
