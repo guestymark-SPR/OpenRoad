@@ -154,7 +154,7 @@
     setTimeout(() => { const el = document.createElement('div'); el.innerHTML = speedoCard(); box.appendChild(el); const rs = el.querySelector('#spReset'); if (rs) rs.onclick = () => OR.confirm('Clear your speedo readings?', () => { OR.store.set('speedo', []); OR.pageBike(box); }, { ok: 'Clear' }); }, 0);
     const b = OR.cfg.bike, prof = OR.BIKES[b.profile], range = OR.fuelRange(), left = OR.fuelLeft();
     const lm = OR.learnedMpg(), pace = OR.pace(), brk = OR.breaks(), mm = OR.monthlyMiles(), costs = OR.runningCosts();
-    let h = '<div id="bikePage"></div>'; const photo = OR.bikePhotoCard ? OR.bikePhotoCard() : '';
+    let h = '<div id="bikePage"></div><button class="btn wide mechbtn" id="bMech">' + OR.ic('wrench') + '<span><b>AI Mechanic</b><small>Something wrong with the bike? Find the fault</small></span></button>'; const photo = OR.bikePhotoCard ? OR.bikePhotoCard() : '';
     setTimeout(() => OR.bindBikePhoto && OR.bindBikePhoto(box), 0);
     // which bike
     const bikecard = '<div class="bikecard"><div class="bk-h">' + OR.badge('moto', 'var(--green)') + '<div><b>' + esc(prof ? prof.name : (b.name || 'Your bike')) + '</b><span>' + (prof ? 'Set up with Harley-Davidson\'s figures' : 'Choose your bike to load its figures and service schedule') + '</span></div></div>' +
@@ -209,6 +209,7 @@
     const keep = (id, key) => { const el = $('#' + id, box); if (el) el.onchange = () => { b[key] = el.value === '' ? '' : (key === 'name' ? el.value.trim() : parseFloat(el.value)); OR.saveCfg(); re(); }; };
     keep('bName', 'name'); keep('bTank', 'tankL'); keep('bMpg', 'mpg'); keep('bRes', 'reserveMi');
     { const gs = box.querySelector('#bGrade'); if (gs) gs.onchange = () => { OR.cfg.fuelGrade = gs.value; OR.saveCfg(); }; }
+    $('#bMech', box).onclick = () => OR.mechanicSheet();
     $('#bFill', box).onclick = OR.fillUpSheet;
     $$('[data-delfill]', box).forEach(x => x.onclick = () => OR.confirm('Delete this fill-up?', () => { const l = OR.fuelLog.list(); l.splice(+x.dataset.delfill, 1); OR.fuelLog.save(l); re(); }, { ok: 'Delete' }));
   }

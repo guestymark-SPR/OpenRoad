@@ -1394,3 +1394,32 @@ a.lnk{color:var(--yellow);font-weight:700}
 :root[data-look=dusk] #orDlg .dyes{background:var(--ember,linear-gradient(135deg,#ff5a14,#ff9d4a))!important;color:#fff!important;box-shadow:var(--glow,0 0 22px rgba(255,106,31,.45))}
 :root[data-look=dusk] #orDlg .danger .dyes{background:linear-gradient(135deg,#e5342a,#ff6a3a)!important}
 #orDlg h3::after,#orDlg h3::before{display:none!important;content:none!important}
+
+/* ---- AI Mechanic ---- */
+.mechbtn{display:flex!important;align-items:center;gap:12px;text-align:left;margin:0 0 14px;padding:14px 16px;min-height:64px;border-radius:18px;border:1px solid rgba(239,108,0,.45);background:linear-gradient(135deg,rgba(239,108,0,.16),rgba(239,108,0,.05));color:inherit}
+.mechbtn svg{width:30px;height:30px;flex:none;color:#ef6c00}
+.mechbtn span{display:flex;flex-direction:column;gap:2px}
+.mechbtn b{font-size:17px}.mechbtn small{font-size:13px;opacity:.75}
+#mech .mhead{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+#mech .mhead h2{margin:0;display:flex;align-items:center;gap:8px}
+#mech .mhead h2 svg{width:24px;height:24px}
+#mech .mback{width:40px;height:40px;border-radius:12px;border:1px solid var(--line,rgba(128,128,128,.3));background:transparent;color:inherit;display:grid;place-items:center}
+#mech .mback svg{width:20px;height:20px;transform:rotate(180deg)}
+#mech .mq{font-size:21px;line-height:1.3;margin:14px 0}
+#mech .mbtns{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0 14px}
+#mech .mbtns .btn{min-height:60px;font-size:18px;font-weight:800}
+#mech .mres{border-left:6px solid var(--c);padding:6px 0 6px 12px;margin:12px 0}
+#mech .mres h3{margin:2px 0 0;font-size:21px}
+#mech .mlv{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#fff;background:var(--c);border-radius:99px;padding:3px 10px}
+#mech .mlist{list-style:none;margin:8px 0 12px;padding:0;display:grid;gap:10px}
+#mech .mlist li{padding:11px 13px;border-radius:14px;background:rgba(128,128,128,.12);font-size:15px;line-height:1.4}
+#mech .mlist small{display:block;margin-top:5px;font-size:11.5px;font-weight:800;letter-spacing:.3px;text-transform:uppercase}
+#mech .mlist small.man{color:#1e88e5}#mech .mlist small.gen{color:#8d8d8d}
+#mech .mact{display:grid;gap:8px;margin:8px 0}
+#mech .warnbox{padding:9px 12px;border-radius:12px;background:rgba(239,143,0,.15)}
+#mech .mfoot,#mech .mnote{margin-top:14px}
+#mech .mfoot a{color:inherit;text-decoration:underline}
+:root[data-look=dusk] #mech .mlist li{background:rgba(255,255,255,.06)}
+:root[data-look=dusk] .mechbtn{background:linear-gradient(135deg,rgba(255,106,31,.22),rgba(255,106,31,.06));border-color:rgba(255,140,60,.5)}
+#mech .mres h3{color:inherit!important}
+#mech h2::after,#mech h3::after,#mech h3::before{display:none!important;content:none!important}
