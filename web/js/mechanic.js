@@ -1,4 +1,4 @@
-/* AI Mechanic: a step-by-step fault finder for the bike.
+/* Fault Finder: a step-by-step fault finder for the bike.
    It is a guided checker that works offline (no AI service, no key). Every line is tagged:
    "Manual p.N" = taken from Harley-Davidson's 2025 Softail Owner's Manual (part 94001246EN, covers the Low Rider S),
    "General" = ordinary safe-riding advice that is not from the manual. */
@@ -41,7 +41,7 @@
     ['sec', 'Security', R(CHK, 'Security lamp', [
       m('77-103', 'Flashing means the system is armed (normal when parked). Solid while armed means the alarm has been activated.'),
       m(69, 'Solid while disarmed, or on while riding: see a Harley-Davidson dealer.'),
-      g('If the bike says NO FOB or FOB LOW BATT, use "Won\'t start" in AI Mechanic.')])],
+      g('If the bike says NO FOB or FOB LOW BATT, use "Won\'t start" in Fault Finder.')])],
     ['abs', 'ABS', R(CARE, 'ABS lamp', [
       m('78-79', 'It flashes at start-up while the system checks itself, until you pass about 5 km/h (3 mph). That is normal.'),
       m('78-79', 'A solid lamp means an ABS malfunction. The ABS is disabled, the normal brakes still work, but the wheels can lock under hard braking.'),
@@ -92,7 +92,7 @@
 
   const stalls = Q('Did a warning lamp come on (oil pressure, battery, fault or check engine) before it cut out?',
     R(STOP, 'Do not restart yet', [
-      g('Pull in safely. Look at which lamp it was and use "A warning light" in AI Mechanic.'),
+      g('Pull in safely. Look at which lamp it was and use "A warning light" in Fault Finder.'),
       m(80, 'Oil pressure lamp on while running: stop the engine immediately.'),
       g('If it was the oil lamp, do not restart. Arrange recovery.')]),
     R(CARE, 'Engine cut out', [
@@ -201,7 +201,7 @@
     const tel = () => { try { return (((OR.store.get('papers', {}) || {}).breakdown || {}).tel || '').replace(/\s/g, ''); } catch (e) { return ''; } };
     OR.sheet('<div id="mech"></div>', b => {
       const root = b.querySelector('#mech');
-      const bar = (back) => '<div class="mhead">' + (back ? '<button class="mback" id="mBack" aria-label="Back">' + ic('chev') + '</button>' : '') + '<h2>' + ic('wrench') + 'AI Mechanic</h2></div>';
+      const bar = (back) => '<div class="mhead">' + (back ? '<button class="mback" id="mBack" aria-label="Back">' + ic('chev') + '</button>' : '') + '<h2>' + ic('wrench') + 'Fault Finder</h2></div>';
       function menu() {
         root.innerHTML = bar(false) + '<p class="small muted">What is the bike doing? Answer a few questions and it will tell you whether to stop, or how to get going. It works offline.</p>' +
           (hd ? '' : '<p class="small warnbox">This guide is based on the Harley-Davidson Softail manual. Other bikes can differ, so check your own manual for the bike-specific details.</p>') +

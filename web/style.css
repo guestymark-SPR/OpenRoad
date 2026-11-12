@@ -1395,7 +1395,7 @@ a.lnk{color:var(--yellow);font-weight:700}
 :root[data-look=dusk] #orDlg .danger .dyes{background:linear-gradient(135deg,#e5342a,#ff6a3a)!important}
 #orDlg h3::after,#orDlg h3::before{display:none!important;content:none!important}
 
-/* ---- AI Mechanic ---- */
+/* ---- Fault Finder ---- */
 .mechbtn{display:flex!important;align-items:center;gap:12px;text-align:left;margin:0 0 14px;padding:14px 16px;min-height:64px;border-radius:18px;border:1px solid rgba(239,108,0,.45);background:linear-gradient(135deg,rgba(239,108,0,.16),rgba(239,108,0,.05));color:inherit}
 .mechbtn svg{width:30px;height:30px;flex:none;color:#ef6c00}
 .mechbtn span{display:flex;flex-direction:column;gap:2px}

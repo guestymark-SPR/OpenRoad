@@ -1130,7 +1130,7 @@
       grp('Route', r ? t('roSkip', 'skip', '#ff6a1f', 'Skip next stop') + t('roView', 'map', '#1e88e5', 'Overview') + t('roWx', 'cloud', '#039be5', 'Weather') + t('roRain', 'loop', '#0277bd', 'Dodge rain') : '') +
       grp('Nearby', t('roFuel', 'fuel', '#e53935', 'Fuel') + t('roCafe', 'cup', '#8d5a3b', 'Cafés') + t('roStay', 'bed', '#7e57c2', 'Stays') + t('roFill', 'fuel', '#0e9f57', 'Filled up')) +
       grp(grpOn ? 'Group and sharing' : 'Sharing', (grpOn ? t('roGroup', 'group', '#e53935', 'Group') + t('roChat', 'chat', '#0e9f57', 'Chat') : '') + t('roFollow', 'near', '#0e9f57', OR.followActive && OR.followActive() ? 'Link is on' : 'Follow me')) +
-      grp('Help and bike', t('roWhere', 'near', '#e53935', 'Where am I') + t('roIce', 'helmet', '#ef8f00', 'Emergency') + t('roMech', 'wrench', '#ef6c00', 'AI Mechanic') + t('roPapers', 'id', '#00897b', 'Papers') + t('roPhrase', 'chat', '#1e88e5', 'Phrases') + t('roSpeedo', 'lean', '#1565c0', 'Speedo check')) +
+      grp('Help and bike', t('roWhere', 'near', '#e53935', 'Where am I') + t('roIce', 'helmet', '#ef8f00', 'Emergency') + t('roMech', 'wrench', '#ef6c00', 'Fault Finder') + t('roPapers', 'id', '#00897b', 'Papers') + t('roPhrase', 'chat', '#1e88e5', 'Phrases') + t('roSpeedo', 'lean', '#1565c0', 'Speedo check')) +
       (OR.ride.leanL || OR.ride.leanR ? '<p class="small muted">Lean so far: ' + Math.round(OR.ride.leanL) + '° left, ' + Math.round(OR.ride.leanR) + '° right (estimated).</p>' : ''), b => {
       const on = (id, fn) => { const e = $('#' + id, b); if (e) e.onclick = () => { closeSheet(); fn(); }; };
       const here = () => OR.pos ? [OR.pos.lng, OR.pos.lat] : OR.map.getCenter().toArray();
