@@ -55,6 +55,12 @@ final class CarHome extends Screen {
             }
         } catch (Exception ignored) { }
 
+        // pick any place and start turn-by-turn: this is how a first-time driver (or a reviewer) starts navigating
+        ItemList.Builder where = new ItemList.Builder();
+        where.addItem(new Row.Builder().setTitle("Where to?").addText("Search for a place and start turn-by-turn directions")
+                .setOnClickListener(() -> getScreenManager().push(new CarSearch(getCarContext(), map, null))).build());
+        used++;
+
         ItemList.Builder routes = new ItemList.Builder();
         routes.addItem(new Row.Builder().setTitle("Record a ride").addText("No route, just your track and stats").setOnClickListener(() -> go("free", "", 0, 0)).build());
         used++;
@@ -69,6 +75,7 @@ final class CarHome extends Screen {
             }
         } catch (Exception ignored) { }
 
+        t.addSectionedList(SectionedItemList.create(where.build(), "Navigate"));
         ItemList ti = trips.build();
         if (!ti.getItems().isEmpty()) t.addSectionedList(SectionedItemList.create(ti, "Trips"));
         t.addSectionedList(SectionedItemList.create(routes.build(), "Saved routes"));

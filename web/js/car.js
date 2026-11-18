@@ -32,7 +32,48 @@
     }
     return null;
   }
+  // ---- a destination typed or spoken on the car screen: plan from where you are, then ride it ----
+  let sim = false, simT = null;
+  const realFix = window.onNativeFix, realRough = window.onRoughFix;
+  // "Test drive": while simulating, the car drives the route itself and real GPS fixes are ignored
+  window.onNativeFix = f => { if (!sim) realFix && realFix(f); };
+  window.onRoughFix = (a, b, c, d) => { if (!sim) realRough && realRough(a, b, c, d); };
+  const hav = (a, b) => { const R = 6371000, r = Math.PI / 180, dl = (b[1] - a[1]) * r, dg = (b[0] - a[0]) * r, x = Math.sin(dl / 2) ** 2 + Math.cos(a[1] * r) * Math.cos(b[1] * r) * Math.sin(dg / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(x)); };
+  function driveSim() {
+    clearInterval(simT); simT = null;
+    const r = OR.ride.on && OR.ride.route; if (!sim || !r || !r.shape || r.shape.length < 2) return;
+    const sh = r.shape, cum = [0]; for (let i = 1; i < sh.length; i++) cum.push(cum[i - 1] + hav(sh[i - 1], sh[i]));
+    let d = 0, i = 0; const V = 22; // metres a second, about 50 mph
+    simT = setInterval(() => {
+      d += V; if (d >= cum[cum.length - 1]) { d = cum[cum.length - 1]; clearInterval(simT); simT = null; }
+      while (i < sh.length - 2 && cum[i + 1] < d) i++;
+      const seg = (cum[i + 1] - cum[i]) || 1, k = Math.min(1, Math.max(0, (d - cum[i]) / seg));
+      const lng = sh[i][0] + (sh[i + 1][0] - sh[i][0]) * k, lat = sh[i][1] + (sh[i + 1][1] - sh[i][1]) * k;
+      realFix && realFix({ coords: { latitude: lat, longitude: lng, accuracy: 5, speed: V, heading: null }, timestamp: Date.now() });
+    }, 1000);
+  }
+  window.carSim = function (on) { sim = !!on; if (!sim) { clearInterval(simT); simT = null; } else driveSim(); };
+
+  async function planDest(name, lat, lng) {
+    send({ state: 'loading', name, dest: name });
+    try {
+      let here = OR.pos;
+      for (let n = 0; !here && n < 20; n++) { await new Promise(ok => setTimeout(ok, 500)); here = OR.pos; }
+      // no GPS yet: only in a test drive, start a few km from the destination so there is something to drive
+      if (!here) { if (!sim) throw new Error('Waiting for GPS. Try again in a moment.'); here = { lng, lat: lat - 0.03 }; }
+      const wps = [{ lng: here.lng, lat: here.lat, name: 'Your location' }, { lng, lat, name }];
+      const r = await OR.planWaypoints(wps);
+      if (!r) throw new Error('No route found to ' + name);
+      r.name = 'To ' + name; r.wps = wps;
+      if (OR.ride.on) OR.stopRide();
+      OR.startRide(r);
+      OR.map.fitBounds(OR.bbox(r.shape), { padding: 40, duration: 0 });
+      if (sim) driveSim();
+    } catch (e) { send({ state: 'error', text: e.message || 'Could not plan the route' }); }
+  }
+
   window.carStart = function (kind, a, b, c) {
+    if (kind === 'dest') { planDest(a, +b, +c); return; }
     const r = kind === 'free' ? null : routeFor(kind, a, +b, +c);
     if (kind !== 'free' && !r) { send({ state: 'error', text: 'That route could not be found on the phone' }); return; }
     if (OR.ride.on) OR.stopRide();
@@ -41,6 +82,7 @@
     send(r ? { state: 'loading', name: r.name, dest: r.wps[r.wps.length - 1].name } : { state: 'free' });
   };
   window.carStop = function () {
+    clearInterval(simT); simT = null;
     const saved = OR.stopRide();
     send({ state: 'stopped', saved: saved ? OR.fmtDist(saved.dist) + ' in ' + OR.fmtTime(saved.moving) : '' });
   };

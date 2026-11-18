@@ -36,17 +36,28 @@ final class CarNav extends Screen implements CarMap.Listener {
     private boolean active = true, muted;
     private final NavigationManager nav;
 
+    /** A saved route or trip day from the phone, or a free recording. */
     CarNav(@NonNull CarContext c, CarMap map, String kind, String id, int day, int step) {
+        this(c, map, kind, "carStart(" + JSONObject.quote(kind) + "," + JSONObject.quote(id) + "," + day + "," + step + ")");
+    }
+
+    /** A place chosen on the car screen (or sent by another app): plan from here and navigate to it. */
+    CarNav(@NonNull CarContext c, CarMap map, String name, double lat, double lng) {
+        this(c, map, "dest", "carStart('dest'," + JSONObject.quote(name) + "," + String.format(java.util.Locale.US, "%.6f,%.6f", lat, lng) + ")");
+    }
+
+    private CarNav(@NonNull CarContext c, CarMap map, String kind, String start) {
         super(c);
         this.map = map; this.kind = kind;
         nav = c.getCarService(NavigationManager.class);
         nav.setNavigationManagerCallback(new NavigationManagerCallback() {
             @Override public void onStopNavigation() { stop(false); }
-            @Override public void onAutoDriveEnabled() { }
+            // Play's review (and the test drive in the head unit) asks the app to drive the route itself
+            @Override public void onAutoDriveEnabled() { CarNav.this.map.js("carSim(true)"); }
         });
         nav.navigationStarted();
         map.listener = this;
-        map.js("carStart(" + JSONObject.quote(kind) + "," + JSONObject.quote(id) + "," + day + "," + step + ")");
+        map.js(start);
         getLifecycle().addObserver(new DefaultLifecycleObserver() {
             @Override public void onDestroy(@NonNull LifecycleOwner o) { if (active) stop(false); }
         });

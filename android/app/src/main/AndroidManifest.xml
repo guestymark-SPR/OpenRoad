@@ -80,6 +80,17 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="geo" />
             </intent-filter>
+            <!-- "Navigate to ..." from Android Auto and the Assistant (Play's car app quality requirement NF-6) -->
+            <intent-filter>
+                <action android:name="androidx.car.app.action.NAVIGATE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="geo" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.NAVIGATE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="geo" />
+            </intent-filter>
             <!-- open GPX files from Files, email, WhatsApp and route planners -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
